@@ -1,29 +1,36 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database');
+const { getDb } = require('../database');
 
 // GET all employees
 router.get('/', (req, res) => {
+  const db = getDb();
   const { status, department } = req.query;
   let sql = 'SELECT * FROM employees WHERE 1=1';
   const params = [];
 
-  if (status) {
-    sql += ' AND status = ?';
-    params.push(status);
-  }
-  if (department) {
-    sql += ' AND department = ?';
-    params.push(department);
-  }
+  if (status) { sql += ' AND status = ?'; params.push(status); }
+  if (department) { sql += ' AND department = ?'; params.push(department); }
   sql += ' ORDER BY created_at DESC';
 
   const employees = db.prepare(sql).all(...params);
   res.json(employees);
 });
 
+// GET dashboard stats — must be before /:id
+router.get('/stats/summary', (req, res) => {
+  const db = getDb();
+  const total = db.prepare('SELECT COUNT(*) as count FROM employees').get().count;
+  const active = db.prepare("SELECT COUNT(*) as count FROM employees WHERE status='active'").get().count;
+  const terminated = db.prepare("SELECT COUNT(*) as count FROM employees WHERE status='terminated'").get().count;
+  const byDept = db.prepare("SELECT department, COUNT(*) as count FROM employees WHERE status='active' GROUP BY department").all();
+
+  res.json({ total, active, terminated, by_department: byDept });
+});
+
 // GET single employee with equipment
 router.get('/:id', (req, res) => {
+  const db = getDb();
   const employee = db.prepare('SELECT * FROM employees WHERE id = ?').get(req.params.id);
   if (!employee) return res.status(404).json({ error: 'Employee not found' });
 
@@ -40,6 +47,7 @@ router.get('/:id', (req, res) => {
 
 // POST hire new employee
 router.post('/', (req, res) => {
+  const db = getDb();
   const { first_name, last_name, email, phone, department, position, hire_date, notes } = req.body;
   if (!first_name || !last_name || !department || !position || !hire_date) {
     return res.status(400).json({ error: 'first_name, last_name, department, position, and hire_date are required' });
@@ -56,6 +64,7 @@ router.post('/', (req, res) => {
 
 // PUT update employee
 router.put('/:id', (req, res) => {
+  const db = getDb();
   const { first_name, last_name, email, phone, department, position, notes } = req.body;
 
   db.prepare(`
@@ -69,18 +78,17 @@ router.put('/:id', (req, res) => {
 
 // POST terminate (fire) employee — generates billing
 router.post('/:id/terminate', (req, res) => {
+  const db = getDb();
   const { termination_date, notes } = req.body;
   const employee = db.prepare('SELECT * FROM employees WHERE id = ?').get(req.params.id);
   if (!employee) return res.status(404).json({ error: 'Employee not found' });
 
   const dateUsed = termination_date || new Date().toISOString().split('T')[0];
 
-  // Update employee status
   db.prepare(`
     UPDATE employees SET status='terminated', termination_date=?, notes=?, updated_at=datetime('now') WHERE id=?
   `).run(dateUsed, notes || employee.notes, req.params.id);
 
-  // Calculate equipment billing
   const assignments = db.prepare(`
     SELECT ea.*, ec.unit_cost, ec.name as equipment_name
     FROM equipment_assignments ea
@@ -98,21 +106,7 @@ router.post('/:id/terminate', (req, res) => {
   const billRecord = db.prepare('SELECT * FROM termination_bills WHERE id = ?').get(bill.lastInsertRowid);
   const updatedEmployee = db.prepare('SELECT * FROM employees WHERE id = ?').get(req.params.id);
 
-  res.json({
-    employee: updatedEmployee,
-    bill: billRecord,
-    unreturned_equipment: assignments
-  });
-});
-
-// GET dashboard stats
-router.get('/stats/summary', (req, res) => {
-  const total = db.prepare('SELECT COUNT(*) as count FROM employees').get().count;
-  const active = db.prepare("SELECT COUNT(*) as count FROM employees WHERE status='active'").get().count;
-  const terminated = db.prepare("SELECT COUNT(*) as count FROM employees WHERE status='terminated'").get().count;
-  const byDept = db.prepare("SELECT department, COUNT(*) as count FROM employees WHERE status='active' GROUP BY department").all();
-
-  res.json({ total, active, terminated, by_department: byDept });
+  res.json({ employee: updatedEmployee, bill: billRecord, unreturned_equipment: assignments });
 });
 
 module.exports = router;
