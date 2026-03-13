@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const DEPARTMENTS = ['IT', 'Warehouse', 'HR', 'Finance', 'Operations', 'Sales', 'Engineering', 'Support'];
+const DEPARTMENTS = ['IT', 'Warehouse', 'HR', 'Finance', 'Operations', 'Sales', 'HVAC', 'Insulation', 'Support'];
 
 export default function HRPage({ role }) {
   const [employees, setEmployees] = useState([]);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 const CATEGORIES = ['Revenue', 'Operations', 'Customer', 'Employee', 'Safety', 'Quality', 'Efficiency'];
-const DEPARTMENTS = ['IT', 'Warehouse', 'HR', 'Finance', 'Operations', 'Sales', 'Engineering', 'Support', 'Company-Wide'];
+const DEPARTMENTS = ['IT', 'Warehouse', 'HR', 'Finance', 'Operations', 'Sales', 'HVAC', 'Insulation', 'Support', 'Company-Wide'];
 
 export default function KPIPage({ role }) {
   const [kpis, setKpis] = useState([]);
