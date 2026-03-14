@@ -12,7 +12,7 @@ function ensureHESIEProgram() {
 
   if (!program) {
     // Create the program
-    const result = db.prepare(
+    db.prepare(
       "INSERT INTO programs (name, code, description, manager_name, manager_title, status) VALUES (?, ?, ?, ?, ?, ?)"
     ).run(
       'HES IE',
@@ -20,7 +20,7 @@ function ensureHESIEProgram() {
       'Home Energy Savings - Income Eligible. Single family retrofits program per the 2026 HES Retrofits Operations Manual.',
       null, null, 'active'
     );
-    program = db.prepare("SELECT * FROM programs WHERE id = ?").get(result.lastInsertRowid);
+    program = db.prepare("SELECT * FROM programs WHERE code = ?").get('HES-IE');
     console.log('Created HES IE program (id: ' + program.id + ')');
   }
 
