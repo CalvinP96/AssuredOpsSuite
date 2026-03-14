@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
 import LazyPhoto from '../components/LazyPhoto';
 
@@ -578,32 +578,28 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                     onClick={() => setExpandedJob(isExpanded ? null : job.id)}
                   >
                     <div>
-                      <strong style={{ cursor: 'pointer', color: '#1a73e8', textDecoration: 'none' }}
-                        onClick={e => { e.stopPropagation(); navigate(`/job/${job.id}`); }}
-                        onMouseOver={e => e.target.style.textDecoration = 'underline'}
-                        onMouseOut={e => e.target.style.textDecoration = 'none'}
-                      >{job.customer_name || 'Unnamed'}</strong>
+                      <Link to={`/job/${job.id}`} onClick={e => e.stopPropagation()} style={{ cursor: 'pointer', color: '#1a73e8', textDecoration: 'none', fontWeight: 'bold' }}
+                      >{job.customer_name || 'Unnamed'}</Link>
                       {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
                       <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>{job.address}{job.city ? `, ${job.city}` : ''} {job.zip || ''}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                      <button className="btn btn-sm btn-primary" style={{ fontSize: 11, padding: '3px 10px', whiteSpace: 'nowrap' }}
-                        onClick={e => { e.stopPropagation(); navigate(`/job/${job.id}`); }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Link to={`/job/${job.id}`} className="btn btn-sm btn-primary" onClick={e => e.stopPropagation()} style={{ textDecoration: 'none', fontSize: 11, padding: '3px 10px', whiteSpace: 'nowrap' }}>
                         Open Project
-                      </button>
-                      <div style={{ textAlign: 'right' }}>
+                      </Link>
+                      {canEdit && (
+                        <select className="btn btn-sm" value={job.status} onClick={e => e.stopPropagation()}
+                          onChange={e => { e.stopPropagation(); updateJobStatus(job, e.target.value); }}
+                          style={{ padding: '2px 6px', fontSize: 11, minWidth: 160 }}>
+                          {JOB_STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                        </select>
+                      )}
+                      <div style={{ textAlign: 'right', marginLeft: 'auto' }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: pct === 100 ? '#27ae60' : '#e94560' }}>{pct}% Complete</div>
                         <div style={{ width: 120, height: 6, background: '#eee', borderRadius: 3, marginTop: 4 }}>
                           <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? '#27ae60' : '#e94560', borderRadius: 3 }} />
                         </div>
                       </div>
-                      {canEdit && (
-                        <select className="btn btn-sm" value={job.status} onClick={e => e.stopPropagation()}
-                          onChange={e => { e.stopPropagation(); updateJobStatus(job, e.target.value); }}
-                          style={{ padding: '2px 6px', fontSize: 11, maxWidth: 140 }}>
-                          {JOB_STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
-                        </select>
-                      )}
                       <span style={{ color: '#888', fontSize: 18 }}>{isExpanded ? '\u25B2' : '\u25BC'}</span>
                     </div>
                   </div>
@@ -1355,17 +1351,13 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                   <div style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: job.status === 'assessment_scheduled' ? '#fff3e0' : '#e8f5e9' }}
                     onClick={() => setExpandedJob(isExpanded ? null : job.id)}>
                     <div>
-                      <strong style={{ cursor: 'pointer', color: '#1a73e8' }}
-                        onClick={e => { e.stopPropagation(); navigate(`/job/${job.id}`); }}
-                        onMouseOver={e => e.target.style.textDecoration = 'underline'}
-                        onMouseOut={e => e.target.style.textDecoration = 'none'}
-                      >{job.customer_name || 'Unnamed'}</strong>
+                      <Link to={`/job/${job.id}`} onClick={e => e.stopPropagation()} style={{ cursor: 'pointer', color: '#1a73e8', textDecoration: 'none', fontWeight: 'bold' }}
+                      >{job.customer_name || 'Unnamed'}</Link>
                       {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
                       <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>{job.address}, {job.city} {job.zip}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <button className="btn btn-sm btn-primary" style={{ fontSize: 11, padding: '3px 10px' }}
-                        onClick={e => { e.stopPropagation(); navigate(`/job/${job.id}`); }}>Open Project</button>
+                      <Link to={`/job/${job.id}`} className="btn btn-sm btn-primary" onClick={e => e.stopPropagation()} style={{ textDecoration: 'none', fontSize: 11, padding: '3px 10px', whiteSpace: 'nowrap' }}>Open Project</Link>
                       <span className={`badge ${job.status === 'assessment_scheduled' ? 'pending' : 'active'}`}>{job.status.replace(/_/g, ' ')}</span>
                       {job.assessment_date && <span style={{ fontSize: 12, color: '#666' }}>{job.assessment_date}</span>}
                       <span style={{ color: '#888', fontSize: 18 }}>{isExpanded ? '\u25B2' : '\u25BC'}</span>
@@ -1639,11 +1631,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                   <div style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: isDeferral ? '#ffebee' : selectedMeasures.length > 0 ? '#e8f5e9' : '#fff8e1' }}
                     onClick={() => setExpandedJob(isExpanded ? null : job.id)}>
                     <div>
-                      <strong style={{ cursor: 'pointer', color: '#1a73e8' }}
-                        onClick={e => { e.stopPropagation(); navigate(`/job/${job.id}`); }}
-                        onMouseOver={e => e.target.style.textDecoration = 'underline'}
-                        onMouseOut={e => e.target.style.textDecoration = 'none'}
-                      >{job.customer_name || 'Unnamed'}</strong>
+                      <Link to={`/job/${job.id}`} onClick={e => e.stopPropagation()} style={{ cursor: 'pointer', color: '#1a73e8', textDecoration: 'none', fontWeight: 'bold' }}
+                      >{job.customer_name || 'Unnamed'}</Link>
                       {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
                       <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>{job.address}, {job.city}</span>
                     </div>
@@ -1710,10 +1699,9 @@ export default function ProgramDetail({ role, fixedProgramId }) {
 
                       {/* Action Buttons */}
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button className="btn btn-sm btn-primary" style={{ fontSize: 12 }}
-                          onClick={() => navigate(`/job/${job.id}`)}>
+                        <Link to={`/job/${job.id}`} className="btn btn-sm btn-primary" onClick={e => e.stopPropagation()} style={{ textDecoration: 'none', fontSize: 12, padding: '3px 10px', whiteSpace: 'nowrap' }}>
                           Open Full Detail - Appendix D Form
-                        </button>
+                        </Link>
                         {job.status === 'assessment_complete' && (
                           <button className="btn btn-sm btn-success" style={{ fontSize: 12 }}
                             onClick={() => updateJobStatus(job, 'pre_approval')}>
@@ -1746,11 +1734,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                   <div style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#e3f2fd' }}
                     onClick={() => setExpandedJob(isExpanded ? null : job.id)}>
                     <div>
-                      <strong style={{ cursor: 'pointer', color: '#1a73e8' }}
-                        onClick={e => { e.stopPropagation(); navigate(`/job/${job.id}`); }}
-                        onMouseOver={e => e.target.style.textDecoration = 'underline'}
-                        onMouseOut={e => e.target.style.textDecoration = 'none'}
-                      >{job.customer_name}</strong>
+                      <Link to={`/job/${job.id}`} onClick={e => e.stopPropagation()} style={{ cursor: 'pointer', color: '#1a73e8', textDecoration: 'none', fontWeight: 'bold' }}
+                      >{job.customer_name}</Link>
                       {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
                       <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>{job.address}, {job.city}</span>
                     </div>
@@ -1920,11 +1905,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                   <div style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fce4ec' }}
                     onClick={() => setExpandedJob(isExpanded ? null : job.id)}>
                     <div>
-                      <strong style={{ cursor: 'pointer', color: '#1a73e8' }}
-                        onClick={e => { e.stopPropagation(); navigate(`/job/${job.id}`); }}
-                        onMouseOver={e => e.target.style.textDecoration = 'underline'}
-                        onMouseOut={e => e.target.style.textDecoration = 'none'}
-                      >{job.customer_name}</strong>
+                      <Link to={`/job/${job.id}`} onClick={e => e.stopPropagation()} style={{ cursor: 'pointer', color: '#1a73e8', textDecoration: 'none', fontWeight: 'bold' }}
+                      >{job.customer_name}</Link>
                       {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
                       <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>{job.address}, {job.city}</span>
                     </div>
