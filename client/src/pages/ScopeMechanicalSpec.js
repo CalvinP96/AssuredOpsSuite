@@ -65,8 +65,9 @@ const Rec = ({ type, children }) => {
   return <div style={{ padding: '8px 12px', background: c.bg, border: `1px solid ${c.bd}`, borderRadius: 'var(--radius)', fontSize: 12, color: c.fg, marginTop: 6 }}>{children}</div>;
 };
 
-export default function ScopeMechanicalSpec({ scope, ss, sn, saveScope, canEdit }) {
-  const s = scope;
+export default function ScopeMechanicalSpec({ job, scopeData, onChange, canEdit }) {
+  const s = scopeData || {};
+  const sn = onChange;
 
   return (
     <>
@@ -100,9 +101,9 @@ export default function ScopeMechanicalSpec({ scope, ss, sn, saveScope, canEdit 
             const autoOn = age > 3 && s.htg?.fuel === 'Natural Gas' && !s.htg?.replaceRec;
             const val = s.htg?.cleanTuneOverride !== undefined ? s.htg.cleanTuneOverride : (autoOn || !!s.htg?.cleanTune);
             return <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <CK checked={val} onChange={v => { saveScope({ ...s, htg: { ...(s.htg || {}), cleanTune: v, cleanTuneOverride: v } }); }} label="Clean & Tune" />
+              <CK checked={val} onChange={v => { sn('htg', 'cleanTune', v); sn('htg', 'cleanTuneOverride', v); }} label="Clean & Tune" />
               {autoOn && s.htg?.cleanTuneOverride === undefined && <span style={{ fontSize: 8, color: 'var(--color-primary)' }}>auto</span>}
-              {s.htg?.cleanTuneOverride !== undefined && autoOn && <span style={{ fontSize: 8, color: 'var(--color-primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => { saveScope({ ...s, htg: { ...(s.htg || {}), cleanTuneOverride: undefined, cleanTune: true } }); }}>reset auto</span>}
+              {s.htg?.cleanTuneOverride !== undefined && autoOn && <span style={{ fontSize: 8, color: 'var(--color-primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => { sn('htg', 'cleanTuneOverride', undefined); sn('htg', 'cleanTune', true); }}>&#8635; auto</span>}
             </div>;
           })()}
         </div>
@@ -111,18 +112,18 @@ export default function ScopeMechanicalSpec({ scope, ss, sn, saveScope, canEdit 
           const recs = [];
           const afue = s.htg?.btuIn && s.htg?.btuOut ? Number(s.htg.btuOut) / Number(s.htg.btuIn) * 100 : null;
           const fuel = s.htg?.fuel; const sys = s.htg?.system;
-          if (fuel === 'Electric') recs.push({ t: 'rec', m: 'Electric resistance heat — eligible for heat pump replacement regardless of age/condition (ComEd).' });
+          if (fuel === 'Electric') recs.push({ t: 'rec', m: 'Electric resistance heat → eligible for heat pump replacement regardless of age/condition (ComEd).' });
           if (afue && afue < PROGRAM.furnaceMinAFUE && fuel === 'Natural Gas') recs.push({ t: 'info', m: `AFUE ${afue.toFixed(1)}% — below ${PROGRAM.furnaceMinAFUE}% min for new furnace. Replacement only if failed/H&S risk and repair >$${PROGRAM.furnaceRepairCap}.` });
           if (afue && afue >= PROGRAM.furnaceMinAFUE) recs.push({ t: 'rec', m: `AFUE ${afue.toFixed(1)}% meets ≥${PROGRAM.furnaceMinAFUE}% program standard.` });
           if (sys === 'Boiler' && afue && afue < PROGRAM.boilerMinAFUE) recs.push({ t: 'info', m: `Boiler AFUE ${afue.toFixed(1)}% — new boiler must be ≥${PROGRAM.boilerMinAFUE}%. Emergency replacement only.` });
           const furnAge = Number(s.htg?.year || 0) ? new Date().getFullYear() - Number(s.htg.year) : 0;
-          if (furnAge > 3 && fuel === 'Natural Gas' && !s.htg?.replaceRec) recs.push({ t: 'rec', m: `Furnace is ${furnAge} yrs old (>3 yrs) — Clean & Tune auto-selected per program rules.` });
+          if (furnAge > 3 && fuel === 'Natural Gas' && !s.htg?.replaceRec) recs.push({ t: 'rec', m: `Furnace is ${furnAge} yrs old (>3 yrs) → Clean & Tune auto-selected per program rules.` });
           if (s.htg?.cleanTune && fuel === 'Natural Gas') recs.push({ t: 'info', m: 'Furnace tune-up: must not have had tune-up within last 3 years.' });
-          if (s.htg?.replaceRec && sys === 'Boiler') recs.push({ t: 'rec', m: 'System is Boiler — Boiler Replacement will be auto-selected in measures (not Furnace Replacement).' });
-          if (s.htg?.replaceRec && sys !== 'Boiler') recs.push({ t: 'rec', m: 'System is Forced Air — Furnace Replacement will be auto-selected in measures. New furnace must be ≥95% AFUE.' });
-          const measures = s.measures || [];
-          if (sys === 'Boiler' && measures.includes('Furnace Replacement')) recs.push({ t: 'flag', m: 'Furnace Replacement is checked but system is Boiler — should be Boiler Replacement.' });
-          if (sys !== 'Boiler' && sys && measures.includes('Boiler Replacement')) recs.push({ t: 'flag', m: 'Boiler Replacement is checked but system is not a Boiler — should be Furnace Replacement.' });
+          if (s.htg?.replaceRec && sys === 'Boiler') recs.push({ t: 'rec', m: 'System is Boiler → Boiler Replacement will be auto-selected in measures (not Furnace Replacement).' });
+          if (s.htg?.replaceRec && sys !== 'Boiler') recs.push({ t: 'rec', m: 'System is Forced Air → Furnace Replacement will be auto-selected in measures. New furnace must be ≥95% AFUE.' });
+          const measures = (job || {}).measures || [];
+          if (sys === 'Boiler' && measures.includes('Furnace Replacement')) recs.push({ t: 'flag', m: '⚠ Furnace Replacement is checked but system is Boiler — should be Boiler Replacement.' });
+          if (sys !== 'Boiler' && sys && measures.includes('Boiler Replacement')) recs.push({ t: 'flag', m: '⚠ Boiler Replacement is checked but system is not a Boiler — should be Furnace Replacement.' });
           return recs.map((r, i) => <Rec key={i} type={r.t}>{r.m}</Rec>);
         })()}
       </Sec>
@@ -166,11 +167,11 @@ export default function ScopeMechanicalSpec({ scope, ss, sn, saveScope, canEdit 
         {(() => {
           const recs = [];
           const fuel = s.dhw?.fuel; const sys = s.dhw?.system;
-          if (fuel === 'Electric' && sys !== 'Heat Pump') recs.push({ t: 'rec', m: 'Electric resistance — eligible for Heat Pump WH replacement regardless of age/condition (ComEd). Must be Energy Star rated.' });
+          if (fuel === 'Electric' && sys !== 'Heat Pump') recs.push({ t: 'rec', m: 'Electric resistance → eligible for Heat Pump WH replacement regardless of age/condition (ComEd). Must be Energy Star rated.' });
           if (fuel === 'Electric' && sys === 'Heat Pump') recs.push({ t: 'info', m: 'Heat Pump WH already installed — no replacement needed.' });
           const key = `${fuel || ''}|${sys || ''}`;
           const eff = PROGRAM.dhwEff[key];
-          if (fuel === 'Natural Gas' && eff && eff / 100 < PROGRAM.dhwMinEF) recs.push({ t: 'warn', m: `Avg efficiency ${eff}% (EF ~${(eff / 100).toFixed(2)}) is below program minimum EF ≥0.67. If failed/H&S risk and repair >$650 — eligible for replacement.` });
+          if (fuel === 'Natural Gas' && eff && eff / 100 < PROGRAM.dhwMinEF) recs.push({ t: 'warn', m: `Avg efficiency ${eff}% (EF ~${(eff / 100).toFixed(2)}) is below program minimum EF ≥0.67. If failed/H&S risk and repair >$650 → eligible for replacement.` });
           if (fuel === 'Natural Gas' && eff && eff / 100 >= PROGRAM.dhwMinEF) recs.push({ t: 'info', m: 'Avg efficiency meets program minimum EF ≥0.67. Replacement only if failed/H&S and repair >$650.' });
           return recs.map((r, i) => <Rec key={i} type={r.t}>{r.m}</Rec>);
         })()}
