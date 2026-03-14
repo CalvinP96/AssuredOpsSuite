@@ -13,15 +13,31 @@ import ExportTab from './ExportTab';
 const JOB_STATUSES = ['assessment_scheduled', 'assessment_complete', 'pre_approval', 'approved', 'install_scheduled', 'install_in_progress', 'inspection', 'submitted', 'invoiced', 'complete', 'deferred'];
 const UTILITIES = ['ComEd', 'Nicor Gas', 'Peoples Gas', 'North Shore Gas'];
 
-const PHASE_STEPS = [
-  { key: 'inquiry', label: 'Inquiry', statuses: [] },
-  { key: 'assessment', label: 'Assessment', statuses: ['assessment_scheduled'] },
-  { key: 'scope', label: 'Scope', statuses: ['assessment_complete', 'pre_approval'] },
-  { key: 'install', label: 'Install', statuses: ['approved', 'install_scheduled', 'install_in_progress'] },
-  { key: 'inspection', label: 'Inspection', statuses: ['inspection'] },
-  { key: 'billing', label: 'Billing', statuses: ['submitted', 'invoiced'] },
-  { key: 'complete', label: 'Complete', statuses: ['complete'] },
+const PHASES = [
+  { key: 'intake', icon: '📥', label: 'Intake', tab: 'overview' },
+  { key: 'schedule', icon: '📅', label: 'Schedule', tab: 'overview' },
+  { key: 'assess', icon: '🔍', label: 'Assess', tab: 'assessment' },
+  { key: 'scope', icon: '📋', label: 'Scope', tab: 'scope' },
+  { key: 'approve', icon: '✅', label: 'Approve', tab: 'overview' },
+  { key: 'install', icon: '🏗️', label: 'Install', tab: 'install' },
+  { key: 'postqc', icon: '🔎', label: 'Post-QC', tab: 'inspection' },
+  { key: 'closeout', icon: '📦', label: 'Closeout', tab: 'export' },
 ];
+
+function getPhaseStatus(job) {
+  const d = job?.assessment_data || {};
+  const s = job?.scope_data || {};
+  return {
+    intake: true,
+    schedule: !!job?.assessment_scheduled_date,
+    assess: !!(d.assessor_name && d.weatherization_recommendations?.length > 0 && job?.authorization_signed_at),
+    scope: !!(s.measures?.length > 0 || s.selectedMeasures?.length > 0),
+    approve: ['approved','install_scheduled','install_in_progress','inspection','submitted','invoiced','complete'].includes(job?.status),
+    install: ['install_in_progress','inspection','submitted','invoiced','complete'].includes(job?.status),
+    postqc: ['inspection','submitted','invoiced','complete'].includes(job?.status),
+    closeout: ['submitted','invoiced','complete'].includes(job?.status)
+  };
+}
 
 const PHASE_COLORS = {
   inquiry: { bg: '#e2e8f0', text: '#475569' },
@@ -73,12 +89,11 @@ export default function JobDetail({ role }) {
 
   const utilities = (job.utility || '').split(',').map(u => u.trim()).filter(Boolean);
 
-  // Phase stepper state
-  const currentPhaseIdx = PHASE_STEPS.findIndex(p => p.statuses.includes(job.status));
-  const isDone = job.status === 'complete';
+  // Phase bar status
+  const phaseStatus = getPhaseStatus(job);
   const isDeferred = job.status === 'deferred';
-  const currentPhaseKey = isDeferred ? 'deferred' : isDone ? 'complete' : currentPhaseIdx >= 0 ? PHASE_STEPS[currentPhaseIdx].key : 'inquiry';
-  const phaseColor = PHASE_COLORS[currentPhaseKey] || PHASE_COLORS.inquiry;
+  const statusPhaseMap = { assessment_scheduled: 'assessment', assessment_complete: 'scope', pre_approval: 'scope', approved: 'install', install_scheduled: 'install', install_in_progress: 'install', inspection: 'inspection', submitted: 'billing', invoiced: 'billing', complete: 'complete', deferred: 'deferred' };
+  const phaseColor = PHASE_COLORS[statusPhaseMap[job.status] || 'inquiry'];
 
   // Tab config by role
   const getVisibleTabs = () => {
@@ -114,6 +129,7 @@ export default function JobDetail({ role }) {
       { key: 'photos', label: 'Photos' },
       { key: 'forms', label: 'Forms & Docs' },
       { key: 'export', label: 'Export' },
+      { key: 'log', label: 'Log' },
     ];
   };
 
@@ -147,32 +163,25 @@ export default function JobDetail({ role }) {
         </div>
       </div>
 
-      {/* Phase Timeline — Desktop Stepper */}
-      <div className="jd-stepper">
-        {PHASE_STEPS.map((step, i) => {
-          const isActive = i === currentPhaseIdx;
-          const isPast = isDone || (currentPhaseIdx >= 0 && i < currentPhaseIdx);
-          const state = isPast ? 'done' : isActive ? 'active' : 'future';
+      {/* Phase Bar */}
+      <div className="jd-phase-bar">
+        {PHASES.map((phase, i) => {
+          const done = phaseStatus[phase.key];
+          const firstFalseIdx = PHASES.findIndex(p => !phaseStatus[p.key]);
+          const isCurrent = i === firstFalseIdx;
+          const state = done ? 'done' : isCurrent ? 'current' : 'future';
           return (
-            <React.Fragment key={step.key}>
-              {i > 0 && <div className={`jd-step-line ${isPast ? 'done' : 'future'}`} />}
-              <div className="jd-step">
-                <div className={`jd-step-circle ${state}`}>
-                  {isPast ? '\u2713' : i + 1}
-                </div>
-                <div className={`jd-step-label ${state}`}>{step.label}</div>
-              </div>
-            </React.Fragment>
+            <button
+              key={phase.key}
+              className={`jd-phase-pill ${state}`}
+              onClick={() => { if (state !== 'future') setTab(phase.tab); }}
+            >
+              <span className="jd-phase-icon">{phase.icon}</span>
+              <span className="jd-phase-label">{phase.label}</span>
+            </button>
           );
         })}
-        {isDeferred && <div className="jd-deferred-badge">DEFERRED</div>}
-      </div>
-
-      {/* Phase Timeline — Mobile Compact */}
-      <div className="jd-stepper-mobile">
-        {isDeferred ? 'DEFERRED' : isDone ? 'Complete' : currentPhaseIdx >= 0
-          ? `Step ${currentPhaseIdx + 1} of ${PHASE_STEPS.length}: ${PHASE_STEPS[currentPhaseIdx].label}`
-          : 'Step 1 of 7: Inquiry'}
+        {isDeferred && <span className="jd-deferred-badge">DEFERRED</span>}
       </div>
 
       {/* Tab Bar */}
@@ -330,6 +339,7 @@ export default function JobDetail({ role }) {
       {tab === 'photos' && <PhotosTab {...tabProps} />}
       {tab === 'forms' && <FormsDocsTab {...tabProps} />}
       {tab === 'export' && <ExportTab {...tabProps} />}
+      {tab === 'log' && <div className="jd-card"><div className="jd-card-title">Activity Log</div><p className="empty-text">Activity log coming soon.</p></div>}
     </div>
   );
 }

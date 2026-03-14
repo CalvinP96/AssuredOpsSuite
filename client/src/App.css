@@ -624,11 +624,11 @@ tr:hover { background: var(--color-surface-alt); }
   white-space: nowrap;
 }
 
-/* Phase Stepper */
-.jd-stepper {
+/* Phase Bar */
+.jd-phase-bar {
   display: flex;
-  align-items: flex-start;
-  padding: 16px 20px;
+  gap: 6px;
+  padding: 12px 16px;
   background: var(--color-surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -638,60 +638,31 @@ tr:hover { background: var(--color-surface-alt); }
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-.jd-stepper::-webkit-scrollbar { display: none; }
-.jd-step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 80px;
-}
-.jd-step-circle {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+.jd-phase-bar::-webkit-scrollbar { display: none; }
+.jd-phase-pill {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: opacity 0.15s;
   flex-shrink: 0;
 }
-.jd-step-circle.done { background: var(--color-success); color: #fff; }
-.jd-step-circle.active {
+.jd-phase-pill.done { background: var(--color-success); color: #fff; }
+.jd-phase-pill.current {
   background: var(--color-primary);
   color: #fff;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
 }
-.jd-step-circle.future { background: #e2e8f0; color: var(--color-text-muted); }
-.jd-step-label {
-  font-size: 11px;
-  margin-top: 6px;
-  text-align: center;
-  white-space: nowrap;
-}
-.jd-step-label.done { color: var(--color-success); font-weight: 500; }
-.jd-step-label.active { color: var(--color-primary); font-weight: 700; }
-.jd-step-label.future { color: var(--color-text-muted); }
-.jd-step-line {
-  flex: 0 0 32px;
-  height: 2px;
-  align-self: center;
-  margin-top: -10px;
-}
-.jd-step-line.done { background: var(--color-success); }
-.jd-step-line.future { background: #e2e8f0; }
-.jd-stepper-mobile {
-  display: none;
-  background: var(--color-surface);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  border: 1px solid var(--color-border);
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-primary);
-}
+.jd-phase-pill.future { background: #1e293b; color: #64748b; cursor: default; }
+.jd-phase-pill:not(.future):hover { opacity: 0.85; }
+.jd-phase-icon { font-size: 15px; line-height: 1; }
+.jd-phase-label { font-size: 13px; }
 
 /* Tab Bar */
 .jd-tabs {
@@ -831,24 +802,26 @@ tr:hover { background: var(--color-surface-alt); }
   font-weight: 600;
 }
 
-/* Deferred badge in stepper */
+/* Deferred badge in phase bar */
 .jd-deferred-badge {
-  margin-left: 16px;
-  padding: 4px 12px;
+  margin-left: auto;
+  padding: 6px 12px;
   background: #fee2e2;
-  border-radius: 4px;
+  border-radius: 20px;
   font-size: 11px;
   color: #991b1b;
   font-weight: 700;
   align-self: center;
+  flex-shrink: 0;
 }
 
 @media (max-width: 768px) {
   .jd-page { padding: 16px; }
   .jd-header { flex-direction: column; gap: 12px; }
   .jd-header-name { font-size: 18px; }
-  .jd-stepper { display: none !important; }
-  .jd-stepper-mobile { display: block !important; }
+  .jd-phase-pill { padding: 6px 10px; }
+  .jd-phase-icon { font-size: 14px; }
+  .jd-phase-label { font-size: 11px; }
   .jd-field-grid { grid-template-columns: 1fr; }
   .jd-schedule-grid { grid-template-columns: 1fr; }
   .jd-permit-fields { grid-template-columns: 1fr; }
