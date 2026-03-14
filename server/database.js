@@ -361,6 +361,36 @@ async function initDatabase() {
       FOREIGN KEY (job_id) REFERENCES program_jobs(id)
     );
 
+    CREATE TABLE IF NOT EXISTS change_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER NOT NULL,
+      requested_by TEXT NOT NULL,
+      request_type TEXT NOT NULL DEFAULT 'scope_change',
+      description TEXT NOT NULL,
+      measures_to_add TEXT,
+      measures_to_remove TEXT,
+      reason TEXT,
+      status TEXT DEFAULT 'pending',
+      reviewed_by TEXT,
+      review_date TEXT,
+      review_notes TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (job_id) REFERENCES program_jobs(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS job_photos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER NOT NULL,
+      uploaded_by TEXT NOT NULL,
+      role TEXT NOT NULL,
+      phase TEXT NOT NULL,
+      measure_name TEXT,
+      description TEXT NOT NULL,
+      photo_ref TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (job_id) REFERENCES program_jobs(id)
+    );
+
     CREATE TABLE IF NOT EXISTS job_checklist_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       job_id INTEGER NOT NULL,

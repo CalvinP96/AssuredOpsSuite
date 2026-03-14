@@ -12,7 +12,7 @@ import EmployeeDetail from './pages/EmployeeDetail';
 import HESIEPage from './pages/HESIEPage';
 import './App.css';
 
-const ROLES = ['Admin', 'HR', 'IT', 'Warehouse', 'Finance', 'Operations', 'Program Manager'];
+const ROLES = ['Admin', 'HR', 'IT', 'Warehouse', 'Finance', 'Operations', 'Program Manager', 'Assessor', 'Installer', 'HVAC'];
 
 function App() {
   const [currentRole, setCurrentRole] = useState('Admin');

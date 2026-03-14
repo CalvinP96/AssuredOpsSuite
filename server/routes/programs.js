@@ -162,16 +162,18 @@ router.get('/:id/jobs', (req, res) => {
     `).all(j.id);
     j.checklist = db.prepare('SELECT * FROM job_checklist_items WHERE job_id = ? ORDER BY item_type, id').all(j.id);
     j.hvac_replacements = db.prepare('SELECT * FROM hvac_replacements WHERE job_id = ? ORDER BY created_at DESC').all(j.id);
+    j.change_orders = db.prepare('SELECT * FROM change_orders WHERE job_id = ? ORDER BY created_at DESC').all(j.id);
+    j.photos = db.prepare('SELECT * FROM job_photos WHERE job_id = ? ORDER BY created_at DESC').all(j.id);
   });
   res.json(jobs);
 });
 
 router.post('/:id/jobs', (req, res) => {
   const db = getDb();
-  const { job_number, customer_name, address, city, zip, utility, assigned_contractor, notes } = req.body;
+  const { job_number, customer_name, phone, email, address, city, zip, utility, notes } = req.body;
   const result = db.prepare(
-    'INSERT INTO program_jobs (program_id, job_number, customer_name, address, city, zip, utility, assigned_contractor, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(req.params.id, job_number || null, customer_name || null, address || null, city || null, zip || null, utility || null, assigned_contractor || null, notes || null);
+    'INSERT INTO program_jobs (program_id, job_number, customer_name, phone, email, address, city, zip, utility, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(req.params.id, job_number || null, customer_name || null, phone || null, email || null, address || null, city || null, zip || null, utility || null, notes || null);
 
   const job = db.prepare('SELECT * FROM program_jobs WHERE id = ?').get(result.lastInsertRowid);
 
@@ -285,6 +287,47 @@ router.put('/jobs/checklist/:itemId', (req, res) => {
   const completedDate = completed ? new Date().toISOString().split('T')[0] : null;
   db.prepare('UPDATE job_checklist_items SET completed=?, completed_date=?, completed_by=?, notes=? WHERE id=?').run(completed ? 1 : 0, completedDate, completed_by || null, notes || null, req.params.itemId);
   res.json({ success: true });
+});
+
+// --- Change Orders ---
+
+router.get('/jobs/:jobId/change-orders', (req, res) => {
+  const db = getDb();
+  res.json(db.prepare('SELECT * FROM change_orders WHERE job_id = ? ORDER BY created_at DESC').all(req.params.jobId));
+});
+
+router.post('/jobs/:jobId/change-orders', (req, res) => {
+  const db = getDb();
+  const { requested_by, request_type, description, measures_to_add, measures_to_remove, reason } = req.body;
+  db.prepare(
+    'INSERT INTO change_orders (job_id, requested_by, request_type, description, measures_to_add, measures_to_remove, reason) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run(req.params.jobId, requested_by, request_type || 'scope_change', description, measures_to_add || null, measures_to_remove || null, reason || null);
+  res.status(201).json({ success: true });
+});
+
+router.put('/change-orders/:coId', (req, res) => {
+  const db = getDb();
+  const { status, reviewed_by, review_notes } = req.body;
+  db.prepare(
+    'UPDATE change_orders SET status=?, reviewed_by=?, review_date=?, review_notes=? WHERE id=?'
+  ).run(status, reviewed_by, new Date().toISOString().split('T')[0], review_notes || null, req.params.coId);
+  res.json(db.prepare('SELECT * FROM change_orders WHERE id = ?').get(req.params.coId));
+});
+
+// --- Job Photos ---
+
+router.get('/jobs/:jobId/photos', (req, res) => {
+  const db = getDb();
+  res.json(db.prepare('SELECT * FROM job_photos WHERE job_id = ? ORDER BY created_at DESC').all(req.params.jobId));
+});
+
+router.post('/jobs/:jobId/photos', (req, res) => {
+  const db = getDb();
+  const { uploaded_by, role, phase, measure_name, description, photo_ref } = req.body;
+  db.prepare(
+    'INSERT INTO job_photos (job_id, uploaded_by, role, phase, measure_name, description, photo_ref) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run(req.params.jobId, uploaded_by, role, phase, measure_name || null, description, photo_ref || null);
+  res.status(201).json({ success: true });
 });
 
 // --- HVAC Replacements ---

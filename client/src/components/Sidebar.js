@@ -48,6 +48,15 @@ const NAV_ITEMS = {
     { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
     { path: '/kpi', icon: '🎯', label: 'KPI Tracking' },
   ],
+  Assessor: [
+    { path: '/hes-ie', icon: '📋', label: 'My Assessments' },
+  ],
+  Installer: [
+    { path: '/hes-ie', icon: '📋', label: 'My Jobs' },
+  ],
+  HVAC: [
+    { path: '/hes-ie', icon: '📋', label: 'HVAC Jobs' },
+  ],
 };
 
 export default function Sidebar({ currentRole, setCurrentRole, roles, open, toggle }) {

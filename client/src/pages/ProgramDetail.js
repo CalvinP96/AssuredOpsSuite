@@ -584,8 +584,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
         </div>
       )}
 
-      {/* JOBS TAB */}
-      {tab === 'jobs' && (
+      {/* JOBS TAB - Admin/Operations full view */}
+      {tab === 'jobs' && !['Assessor', 'Installer', 'HVAC'].includes(role) && (
         <div>
           {canEdit && (
             <div style={{ marginBottom: 15, display: 'flex', gap: 10 }}>
@@ -1322,6 +1322,500 @@ export default function ProgramDetail({ role, fixedProgramId }) {
           )}
         </div>
       )}
+
+      {/* ===================== ASSESSOR FIELD VIEW ===================== */}
+      {tab === 'jobs' && role === 'Assessor' && (
+        <div>
+          <h3 style={{ marginBottom: 12 }}>My Assessments</h3>
+          {jobs.filter(j => ['assessment_scheduled', 'assessment_complete'].includes(j.status)).length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: 30, color: '#888' }}>No assessments assigned to you.</div>
+          ) : (
+            jobs.filter(j => ['assessment_scheduled', 'assessment_complete', 'pre_approval'].includes(j.status)).map(job => {
+              const isExpanded = expandedJob === job.id;
+              const ad = getAssessment(job);
+              return (
+                <div key={job.id} className="card" style={{ marginBottom: 12, padding: 0, overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: job.status === 'assessment_scheduled' ? '#fff3e0' : '#e8f5e9' }}
+                    onClick={() => setExpandedJob(isExpanded ? null : job.id)}>
+                    <div>
+                      <strong>{job.customer_name || 'Unnamed'}</strong>
+                      {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
+                      <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>{job.address}, {job.city} {job.zip}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span className={`badge ${job.status === 'assessment_scheduled' ? 'pending' : 'active'}`}>{job.status.replace(/_/g, ' ')}</span>
+                      {job.assessment_date && <span style={{ fontSize: 12, color: '#666' }}>{job.assessment_date}</span>}
+                      <span style={{ color: '#888', fontSize: 18 }}>{isExpanded ? '\u25B2' : '\u25BC'}</span>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div style={{ padding: '12px 16px', borderTop: '1px solid #eee' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 12, marginBottom: 12 }}>
+                        <div><strong>Phone:</strong> {job.phone || '-'}</div>
+                        <div><strong>Email:</strong> {job.email || '-'}</div>
+                        <div><strong>Utility:</strong> {job.utility}</div>
+                      </div>
+
+                      {/* Assessment Date */}
+                      <div style={{ marginBottom: 12, fontSize: 12 }}>
+                        <strong>Assessment Date:</strong>{' '}
+                        <input type="date" value={job.assessment_date || ''} style={{ fontSize: 11, padding: '2px 4px' }}
+                          onChange={e => updateJobField(job, 'assessment_date', e.target.value)} />
+                        <button className="btn btn-sm btn-success" style={{ marginLeft: 8, fontSize: 11, padding: '3px 10px' }}
+                          onClick={() => updateJobField(job, 'status', 'assessment_complete')}>
+                          Mark Assessment Complete
+                        </button>
+                      </div>
+
+                      {/* Collapsible Assessment Form */}
+                      <div
+                        style={{ padding: '10px 12px', background: '#4a6741', color: '#fff', borderRadius: '6px 6px 0 0', cursor: 'pointer', marginTop: 8 }}
+                        onClick={() => setAssessmentOpen(assessmentOpen === job.id ? null : job.id)}>
+                        <h4 style={{ margin: 0, fontSize: 14 }}>Energy Assessment Field Data {assessmentOpen === job.id ? '\u25B2' : '\u25BC'}</h4>
+                      </div>
+                      {assessmentOpen === job.id && (() => {
+                        const set = (section, field, val) => {
+                          const updated = { ...ad, [section]: { ...(ad[section] || {}), [field]: val } };
+                          saveAssessment(job.id, updated);
+                        };
+                        const v = (section, field) => (ad[section] || {})[field] || '';
+                        const yn = (section, field) => (
+                          <span style={{ display: 'inline-flex', gap: 4 }}>
+                            <label style={{ fontSize: 11 }}><input type="radio" name={`a-${job.id}-${section}-${field}`} checked={v(section, field) === 'yes'} onChange={() => set(section, field, 'yes')} /> yes</label>
+                            <label style={{ fontSize: 11 }}><input type="radio" name={`a-${job.id}-${section}-${field}`} checked={v(section, field) === 'no'} onChange={() => set(section, field, 'no')} /> no</label>
+                          </span>
+                        );
+                        const txt = (section, field, placeholder, width) => (
+                          <input style={{ width: width || 100, fontSize: 11, padding: '2px 4px', border: '1px solid #ccc', borderRadius: 3 }}
+                            defaultValue={v(section, field)} placeholder={placeholder}
+                            onBlur={e => set(section, field, e.target.value)} />
+                        );
+                        const sel = (section, field, options) => (
+                          <select style={{ fontSize: 11, padding: '2px 4px' }} value={v(section, field)}
+                            onChange={e => set(section, field, e.target.value)}>
+                            <option value="">--</option>
+                            {options.map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                        );
+                        const gs = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '6px 16px', fontSize: 12 };
+                        const fs = { display: 'flex', alignItems: 'center', gap: 4, padding: '3px 0' };
+                        const hs = { background: '#8a8a8a', color: '#fff', padding: '6px 12px', fontWeight: 700, fontSize: 13 };
+                        const ss = { padding: '10px 12px', borderBottom: '1px solid #ddd' };
+
+                        return (
+                          <div style={{ border: '1px solid #ccc', borderTop: 'none', borderRadius: '0 0 6px 6px', background: '#fff' }}>
+                            <div style={hs}>EXTERIOR</div>
+                            <div style={ss}>
+                              <div style={gs}>
+                                <div style={fs}><strong>Style:</strong> {txt('exterior', 'style', 'Ranch...', 100)}</div>
+                                <div style={fs}><strong>Year Built:</strong> {txt('exterior', 'year_built', 'Year', 60)}</div>
+                                <div style={fs}><strong>Stories:</strong> {txt('exterior', 'stories', '#', 40)}</div>
+                                <div style={fs}><strong>Bedrooms:</strong> {txt('exterior', 'bedrooms', '#', 40)}</div>
+                                <div style={fs}><strong>SqFt:</strong> {txt('exterior', 'sq_footage', 'sqft', 70)}</div>
+                                <div style={fs}><strong>Roof:</strong> {sel('exterior', 'roof_condition', ['good', 'average', 'poor'])}</div>
+                              </div>
+                            </div>
+                            <div style={hs}>INTERIOR</div>
+                            <div style={ss}>
+                              <div style={gs}>
+                                <div style={fs}><strong>Mold:</strong> {yn('interior', 'mold')}</div>
+                                <div style={fs}><strong>Knob & Tube:</strong> {yn('interior', 'knob_tube')}</div>
+                                <div style={fs}><strong>Moisture:</strong> {yn('interior', 'moisture')}</div>
+                                <div style={fs}><strong>Roof Leaks:</strong> {yn('interior', 'roof_leaks')}</div>
+                                <div style={fs}><strong>Ceiling:</strong> {sel('interior', 'ceiling_condition', ['good', 'poor'])}</div>
+                                <div style={fs}><strong>Dryer Vented:</strong> {yn('interior', 'dryer_vented')}</div>
+                              </div>
+                            </div>
+                            <div style={hs}>ATTIC</div>
+                            <div style={ss}>
+                              <div style={gs}>
+                                <div style={fs}><strong>Type:</strong> {sel('attic', 'type', ['Finished', 'Unfinished', 'Flat'])}</div>
+                                <div style={fs}><strong>Pre R-Value:</strong> {txt('attic', 'pre_r_value', 'R', 40)}</div>
+                                <div style={fs}><strong>SqFt:</strong> {txt('attic', 'sq_footage', 'sqft', 60)}</div>
+                                <div style={fs}><strong>Ductwork:</strong> {yn('attic', 'ductwork')}</div>
+                              </div>
+                            </div>
+                            <div style={hs}>FOUNDATION / CRAWLSPACE</div>
+                            <div style={ss}>
+                              <div style={gs}>
+                                <div style={fs}><strong>Basement:</strong> {sel('foundation', 'basement_type', ['Finished', 'Unfinished w/framing', 'Unfinished', 'No basement/slab'])}</div>
+                                <div style={fs}><strong>Pre R-Value:</strong> {txt('foundation', 'pre_r_value', 'R', 40)}</div>
+                                <div style={fs}><strong>Insulation:</strong> {sel('foundation', 'insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
+                                <div style={fs}><strong>Band Joints:</strong> {yn('foundation', 'band_joints')}</div>
+                              </div>
+                            </div>
+                            <div style={hs}>MECHANICAL</div>
+                            <div style={ss}>
+                              <div style={gs}>
+                                <div style={fs}><strong>Heat Type:</strong> {sel('mechanical', 'heating_type', ['Gas Furnace', 'Boiler', 'Electric', 'Heat Pump'])}</div>
+                                <div style={fs}><strong>Make:</strong> {txt('mechanical', 'heating_make', 'Make', 80)}</div>
+                                <div style={fs}><strong>Age:</strong> {txt('mechanical', 'heating_age', 'Year', 50)}</div>
+                                <div style={fs}><strong>Condition:</strong> {sel('mechanical', 'heating_condition', ['Good', 'Fair', 'Poor', 'Failed'])}</div>
+                                <div style={fs}><strong>Tune & Clean Rec:</strong> {yn('mechanical', 'tune_clean_recommended')}</div>
+                                <div style={fs}><strong>Thermostat:</strong> {sel('mechanical', 'thermostat_type', ['Manual', 'Programmable', 'Smart/Advanced'])}</div>
+                              </div>
+                            </div>
+                            <div style={{ ...hs, background: '#4a6741' }}>RECOMMENDATIONS</div>
+                            <div style={{ ...ss, borderBottom: 'none' }}>
+                              <div style={gs}>
+                                {['attic_insulation', 'wall_insulation', 'basement_insulation', 'air_sealing', 'duct_sealing', 'rim_joist', 'hvac_tune_clean', 'thermostat', 'exhaust_fans', 'detectors', 'hs_repairs', 'deferral'].map(r => (
+                                  <div key={r} style={fs}><strong>{r.replace(/_/g, ' ')}:</strong> {yn('recommendations', r)}</div>
+                                ))}
+                              </div>
+                              <textarea style={{ width: '100%', fontSize: 11, padding: 4, minHeight: 60, marginTop: 8, border: '1px solid #ccc', borderRadius: 3 }}
+                                defaultValue={v('recommendations', 'details')} placeholder="Recommendation details, concerns, deferral reasons..."
+                                onBlur={e => set('recommendations', 'details', e.target.value)} />
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Assessor Photo Log */}
+                      <div style={{ marginTop: 14, padding: 12, background: '#f0f4ff', borderRadius: 6 }}>
+                        <h4 style={{ fontSize: 13, color: '#0f3460', marginBottom: 8 }}>Assessment Photos</h4>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                          {(job.photos || []).filter(p => p.phase === 'assessment').map(p => (
+                            <div key={p.id} style={{ fontSize: 11, padding: '4px 8px', background: '#e8fde8', borderRadius: 4, border: '1px solid #c8e6c9' }}>
+                              {p.description} {p.photo_ref && <span style={{ color: '#888' }}>({p.photo_ref})</span>}
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <input id={`assess-photo-desc-${job.id}`} style={{ flex: 1, fontSize: 11, padding: '4px 6px' }} placeholder="Photo description (e.g., Front of home, Furnace data tag)" />
+                          <input id={`assess-photo-ref-${job.id}`} style={{ width: 160, fontSize: 11, padding: '4px 6px' }} placeholder="Company Cam ref" />
+                          <button className="btn btn-sm btn-primary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={() => {
+                            const desc = document.getElementById(`assess-photo-desc-${job.id}`).value;
+                            if (!desc) return;
+                            const ref = document.getElementById(`assess-photo-ref-${job.id}`).value;
+                            fetch(`/api/programs/jobs/${job.id}/photos`, {
+                              method: 'POST', headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ uploaded_by: 'Assessor', role: 'Assessor', phase: 'assessment', description: desc, photo_ref: ref })
+                            }).then(() => { loadJobs(); document.getElementById(`assess-photo-desc-${job.id}`).value = ''; document.getElementById(`assess-photo-ref-${job.id}`).value = ''; });
+                          }}>+ Log Photo</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* ===================== INSTALLER FIELD VIEW ===================== */}
+      {tab === 'jobs' && role === 'Installer' && (
+        <div>
+          <h3 style={{ marginBottom: 12 }}>My Install Jobs</h3>
+          {jobs.filter(j => ['approved', 'install_scheduled', 'install_in_progress', 'inspection'].includes(j.status)).length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: 30, color: '#888' }}>No install jobs assigned.</div>
+          ) : (
+            jobs.filter(j => ['approved', 'install_scheduled', 'install_in_progress', 'inspection'].includes(j.status)).map(job => {
+              const isExpanded = expandedJob === job.id;
+              const sc = getScope(job);
+              const selectedMeasures = sc.selected_measures || [];
+              return (
+                <div key={job.id} className="card" style={{ marginBottom: 12, padding: 0, overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#e3f2fd' }}
+                    onClick={() => setExpandedJob(isExpanded ? null : job.id)}>
+                    <div>
+                      <strong>{job.customer_name}</strong>
+                      {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
+                      <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>{job.address}, {job.city}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span className="badge pending">{job.status.replace(/_/g, ' ')}</span>
+                      <span style={{ color: '#888', fontSize: 18 }}>{isExpanded ? '\u25B2' : '\u25BC'}</span>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div style={{ padding: '12px 16px', borderTop: '1px solid #eee' }}>
+                      {/* Customer info - read only */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 12, marginBottom: 12 }}>
+                        <div><strong>Phone:</strong> {job.phone || '-'}</div>
+                        <div><strong>Utility:</strong> {job.utility}</div>
+                        <div><strong>Permit:</strong> {job.needs_permit ? <span className={`badge ${job.permit_status === 'received' ? 'active' : 'pending'}`}>{job.permit_status}</span> : 'Not needed'}</div>
+                      </div>
+
+                      {/* Scheduled Dates - installer can see but not edit most */}
+                      <div style={{ marginBottom: 12 }}>
+                        <h4 style={{ fontSize: 13, color: '#0f3460', marginBottom: 6 }}>Schedule</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 6, fontSize: 12 }}>
+                          <div><strong>ABC Install:</strong> {job.abc_install_date || 'TBD'}</div>
+                          <div><strong>Wall Injection:</strong> {job.wall_injection_date || 'TBD'}</div>
+                          <div><strong>Patch Job:</strong> {job.patch_date || 'TBD'}</div>
+                        </div>
+                      </div>
+
+                      {/* Scope of Work - READ ONLY for installer */}
+                      <div style={{ marginBottom: 12, padding: 10, background: '#f0f4ff', borderRadius: 6 }}>
+                        <h4 style={{ fontSize: 13, color: '#0f3460', marginBottom: 6 }}>Scope of Work ({selectedMeasures.length} measures)</h4>
+                        {selectedMeasures.length > 0 ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {selectedMeasures.map(m => (
+                              <span key={m} style={{ fontSize: 11, padding: '4px 10px', background: '#e8fde8', borderRadius: 4, border: '1px solid #c8e6c9' }}>{m}</span>
+                            ))}
+                          </div>
+                        ) : <span style={{ fontSize: 12, color: '#888' }}>No scope built yet</span>}
+                        {sc.scope_notes && <p style={{ marginTop: 6, fontSize: 11, color: '#666' }}>{sc.scope_notes}</p>}
+                      </div>
+
+                      {/* Post-Install Photo Log */}
+                      <div style={{ marginBottom: 12, padding: 10, background: '#e8f5e9', borderRadius: 6 }}>
+                        <h4 style={{ fontSize: 13, color: '#2e7d32', marginBottom: 8 }}>Post-Install Photos</h4>
+                        {selectedMeasures.map(m => {
+                          const photosForMeasure = (job.photos || []).filter(p => p.phase === 'post_install' && p.measure_name === m);
+                          return (
+                            <div key={m} style={{ marginBottom: 8, padding: '6px 8px', background: '#fff', borderRadius: 4, border: '1px solid #ddd' }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{m}</div>
+                              {photosForMeasure.map(p => (
+                                <div key={p.id} style={{ fontSize: 11, color: '#27ae60', padding: '2px 0' }}>
+                                  {p.description} {p.photo_ref && <span style={{ color: '#888' }}>({p.photo_ref})</span>} - {p.created_at?.split('T')[0]}
+                                </div>
+                              ))}
+                              <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                                <input id={`inst-photo-${job.id}-${m}`} style={{ flex: 1, fontSize: 11, padding: '3px 6px' }} placeholder={`Post-install photo for ${m}`} />
+                                <input id={`inst-ref-${job.id}-${m}`} style={{ width: 120, fontSize: 11, padding: '3px 6px' }} placeholder="Cam ref" />
+                                <button className="btn btn-sm btn-success" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => {
+                                  const desc = document.getElementById(`inst-photo-${job.id}-${m}`).value;
+                                  if (!desc) return;
+                                  const ref = document.getElementById(`inst-ref-${job.id}-${m}`).value;
+                                  fetch(`/api/programs/jobs/${job.id}/photos`, {
+                                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ uploaded_by: 'Installer', role: 'Installer', phase: 'post_install', measure_name: m, description: desc, photo_ref: ref })
+                                  }).then(() => { loadJobs(); document.getElementById(`inst-photo-${job.id}-${m}`).value = ''; document.getElementById(`inst-ref-${job.id}-${m}`).value = ''; });
+                                }}>+ Photo</button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Change Order Request */}
+                      <div style={{ marginBottom: 12, padding: 10, background: '#fff3e0', borderRadius: 6 }}>
+                        <h4 style={{ fontSize: 13, color: '#e65100', marginBottom: 8 }}>Change Orders</h4>
+                        {(job.change_orders || []).map(co => (
+                          <div key={co.id} style={{ padding: 8, background: '#fff', borderRadius: 4, marginBottom: 6, border: '1px solid #ddd', fontSize: 12 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <strong>{co.description}</strong>
+                              <span className={`badge ${co.status === 'approved' ? 'active' : co.status === 'denied' ? 'terminated' : 'pending'}`}>{co.status}</span>
+                            </div>
+                            {co.reason && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#666' }}>Reason: {co.reason}</p>}
+                            {co.review_notes && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#2e7d32' }}>Review: {co.review_notes}</p>}
+                          </div>
+                        ))}
+                        <div style={{ display: 'flex', gap: 6, flexDirection: 'column', marginTop: 6 }}>
+                          <input id={`co-desc-${job.id}`} style={{ fontSize: 11, padding: '4px 6px' }} placeholder="What needs to change? (e.g., Add attic baffles, Remove wall insulation 2nd floor)" />
+                          <input id={`co-reason-${job.id}`} style={{ fontSize: 11, padding: '4px 6px' }} placeholder="Why? (e.g., Found mold behind wall, customer request)" />
+                          <button className="btn btn-sm btn-primary" style={{ alignSelf: 'flex-start', fontSize: 11 }} onClick={() => {
+                            const desc = document.getElementById(`co-desc-${job.id}`).value;
+                            if (!desc) return;
+                            const reason = document.getElementById(`co-reason-${job.id}`).value;
+                            fetch(`/api/programs/jobs/${job.id}/change-orders`, {
+                              method: 'POST', headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ requested_by: 'Installer', request_type: 'scope_change', description: desc, reason })
+                            }).then(() => { loadJobs(); document.getElementById(`co-desc-${job.id}`).value = ''; document.getElementById(`co-reason-${job.id}`).value = ''; });
+                          }}>Submit Change Order</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* ===================== HVAC TECH FIELD VIEW ===================== */}
+      {tab === 'jobs' && role === 'HVAC' && (
+        <div>
+          <h3 style={{ marginBottom: 12 }}>HVAC Jobs - Tune & Clean</h3>
+          {jobs.filter(j => {
+            const ad = getAssessment(j);
+            return (ad.mechanical || {}).tune_clean_recommended === 'yes' || (j.hvac_replacements || []).length > 0;
+          }).length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: 30, color: '#888' }}>No HVAC jobs requiring tune & clean or replacement.</div>
+          ) : (
+            jobs.filter(j => {
+              const ad = getAssessment(j);
+              return (ad.mechanical || {}).tune_clean_recommended === 'yes' || (j.hvac_replacements || []).length > 0;
+            }).map(job => {
+              const isExpanded = expandedJob === job.id;
+              const ad = getAssessment(job);
+              const mech = ad.mechanical || {};
+              return (
+                <div key={job.id} className="card" style={{ marginBottom: 12, padding: 0, overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fce4ec' }}
+                    onClick={() => setExpandedJob(isExpanded ? null : job.id)}>
+                    <div>
+                      <strong>{job.customer_name}</strong>
+                      {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
+                      <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>{job.address}, {job.city}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {mech.tune_clean_recommended === 'yes' && <span className="badge pending">Tune & Clean</span>}
+                      {job.hvac_tune_clean_date && <span style={{ fontSize: 12, color: '#666' }}>Scheduled: {job.hvac_tune_clean_date}</span>}
+                      <span style={{ color: '#888', fontSize: 18 }}>{isExpanded ? '\u25B2' : '\u25BC'}</span>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div style={{ padding: '12px 16px', borderTop: '1px solid #eee' }}>
+                      {/* Equipment Info from Assessment - READ ONLY */}
+                      <div style={{ marginBottom: 12, padding: 10, background: '#f5f5f5', borderRadius: 6 }}>
+                        <h4 style={{ fontSize: 13, color: '#333', marginBottom: 6 }}>Equipment Info (from Assessment)</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 6, fontSize: 12 }}>
+                          <div><strong>Type:</strong> {mech.heating_type || '-'}</div>
+                          <div><strong>Make:</strong> {mech.heating_make || '-'}</div>
+                          <div><strong>Model:</strong> {mech.heating_model || '-'}</div>
+                          <div><strong>Age:</strong> {mech.heating_age || '-'}</div>
+                          <div><strong>Condition:</strong> {mech.heating_condition || '-'}</div>
+                          <div><strong>Efficiency:</strong> {mech.heating_efficiency || '-'}</div>
+                          <div><strong>Last Serviced:</strong> {mech.heating_last_service || '-'}</div>
+                        </div>
+                      </div>
+
+                      {/* Tune & Clean Date */}
+                      <div style={{ marginBottom: 12, fontSize: 12 }}>
+                        <strong>Tune & Clean Date:</strong>{' '}
+                        <input type="date" value={job.hvac_tune_clean_date || ''} style={{ fontSize: 11, padding: '2px 4px' }}
+                          onChange={e => updateJobField(job, 'hvac_tune_clean_date', e.target.value)} />
+                      </div>
+
+                      {/* Tech Report - HVAC fills this out */}
+                      <div style={{ marginBottom: 12, padding: 10, background: '#fff8e1', borderRadius: 6 }}>
+                        <h4 style={{ fontSize: 13, color: '#e65100', marginBottom: 8 }}>Tech Report (IL TRM 2026)</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8, fontSize: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <strong>Combustion Pre:</strong>
+                            <input style={{ width: 60, fontSize: 11, padding: '2px 4px' }} defaultValue={(ad.diagnostics || {}).combustion_pre || ''} placeholder="%"
+                              onBlur={e => { const u = { ...ad, diagnostics: { ...(ad.diagnostics || {}), combustion_pre: e.target.value } }; saveAssessment(job.id, u); }} />
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <strong>Combustion Post:</strong>
+                            <input style={{ width: 60, fontSize: 11, padding: '2px 4px' }} defaultValue={(ad.diagnostics || {}).combustion_post || ''} placeholder="%"
+                              onBlur={e => { const u = { ...ad, diagnostics: { ...(ad.diagnostics || {}), combustion_post: e.target.value } }; saveAssessment(job.id, u); }} />
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <strong>CO Test (ppm):</strong>
+                            <input style={{ width: 60, fontSize: 11, padding: '2px 4px' }} defaultValue={(ad.diagnostics || {}).co_test || ''} placeholder="ppm"
+                              onBlur={e => { const u = { ...ad, diagnostics: { ...(ad.diagnostics || {}), co_test: e.target.value } }; saveAssessment(job.id, u); }} />
+                          </div>
+                        </div>
+                        <div style={{ marginTop: 8 }}>
+                          <strong style={{ fontSize: 12 }}>Issues Found / Decision Tree Result:</strong>
+                          <textarea style={{ width: '100%', fontSize: 11, padding: 4, minHeight: 60, marginTop: 4, border: '1px solid #ccc', borderRadius: 3 }}
+                            defaultValue={(ad.mechanical || {}).tech_report_notes || ''} placeholder="Document findings, decision tree results, replacement recommendations if any..."
+                            onBlur={e => { const u = { ...ad, mechanical: { ...(ad.mechanical || {}), tech_report_notes: e.target.value } }; saveAssessment(job.id, u); }} />
+                        </div>
+                        <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <input type="radio" name={`hvac-result-${job.id}`} checked={(ad.mechanical || {}).tech_report_result === 'no_issues'}
+                              onChange={() => { const u = { ...ad, mechanical: { ...(ad.mechanical || {}), tech_report_result: 'no_issues' } }; saveAssessment(job.id, u); }} />
+                            No Issues - Tune & Clean Complete
+                          </label>
+                          <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <input type="radio" name={`hvac-result-${job.id}`} checked={(ad.mechanical || {}).tech_report_result === 'replacement_needed'}
+                              onChange={() => { const u = { ...ad, mechanical: { ...(ad.mechanical || {}), tech_report_result: 'replacement_needed' } }; saveAssessment(job.id, u); }} />
+                            Replacement Recommended
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* HVAC Photos */}
+                      <div style={{ marginBottom: 12, padding: 10, background: '#f0f4ff', borderRadius: 6 }}>
+                        <h4 style={{ fontSize: 13, color: '#0f3460', marginBottom: 8 }}>HVAC Photos</h4>
+                        {(job.photos || []).filter(p => p.role === 'HVAC').map(p => (
+                          <div key={p.id} style={{ fontSize: 11, padding: '3px 0', color: '#333' }}>
+                            {p.description} {p.photo_ref && <span style={{ color: '#888' }}>({p.photo_ref})</span>} - {p.created_at?.split('T')[0]}
+                          </div>
+                        ))}
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                          <input id={`hvac-photo-${job.id}`} style={{ flex: 1, fontSize: 11, padding: '3px 6px' }} placeholder="Photo description (e.g., Furnace data tag, Combustion readings)" />
+                          <input id={`hvac-ref-${job.id}`} style={{ width: 120, fontSize: 11, padding: '3px 6px' }} placeholder="Cam ref" />
+                          <button className="btn btn-sm btn-primary" style={{ fontSize: 10 }} onClick={() => {
+                            const desc = document.getElementById(`hvac-photo-${job.id}`).value;
+                            if (!desc) return;
+                            const ref = document.getElementById(`hvac-ref-${job.id}`).value;
+                            fetch(`/api/programs/jobs/${job.id}/photos`, {
+                              method: 'POST', headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ uploaded_by: 'HVAC Tech', role: 'HVAC', phase: 'hvac', description: desc, photo_ref: ref })
+                            }).then(() => { loadJobs(); document.getElementById(`hvac-photo-${job.id}`).value = ''; document.getElementById(`hvac-ref-${job.id}`).value = ''; });
+                          }}>+ Photo</button>
+                        </div>
+                      </div>
+
+                      {/* HVAC Replacements - existing section */}
+                      {(job.hvac_replacements || []).length > 0 && (
+                        <div style={{ padding: 10, background: '#fef8f0', borderRadius: 6 }}>
+                          <h4 style={{ fontSize: 13, color: '#c0392b', marginBottom: 6 }}>Replacement Requests</h4>
+                          {job.hvac_replacements.map(hvac => (
+                            <div key={hvac.id} style={{ padding: 8, background: '#fff', borderRadius: 4, marginBottom: 6, border: '1px solid #ddd', fontSize: 12 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <strong>{hvac.equipment_type}</strong>
+                                <span className={`badge ${hvac.approval_status === 'approved' ? 'active' : hvac.approval_status === 'denied' ? 'terminated' : 'pending'}`}>{hvac.approval_status}</span>
+                              </div>
+                              <div style={{ marginTop: 4, color: '#666' }}>
+                                {hvac.existing_make} {hvac.existing_model} | {hvac.existing_condition} | Decision: {hvac.decision_tree_result || '-'}
+                              </div>
+                              {hvac.approval_status === 'approved' && (
+                                <div style={{ marginTop: 4, color: '#27ae60' }}>
+                                  Approved - {hvac.new_make} {hvac.new_model} ({hvac.new_efficiency})
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Change Order Review (Admin/Ops only) */}
+      {tab === 'jobs' && canEdit && (() => {
+        const pendingCOs = jobs.flatMap(j => (j.change_orders || []).filter(co => co.status === 'pending').map(co => ({ ...co, job })));
+        if (pendingCOs.length === 0) return null;
+        return (
+          <div className="card" style={{ marginBottom: 16, border: '2px solid #ff9800', background: '#fff8e1' }}>
+            <h4 style={{ color: '#e65100', marginBottom: 8 }}>Pending Change Orders ({pendingCOs.length})</h4>
+            {pendingCOs.map(co => (
+              <div key={co.id} style={{ padding: 10, background: '#fff', borderRadius: 6, marginBottom: 8, border: '1px solid #ddd' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <strong style={{ fontSize: 13 }}>{co.job.customer_name}</strong>
+                    <span style={{ fontSize: 11, color: '#888', marginLeft: 8 }}>#{co.job.job_number}</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: '#888' }}>By: {co.requested_by} | {co.created_at?.split('T')[0]}</span>
+                </div>
+                <p style={{ margin: '6px 0', fontSize: 12 }}><strong>Request:</strong> {co.description}</p>
+                {co.reason && <p style={{ margin: '2px 0', fontSize: 11, color: '#666' }}><strong>Reason:</strong> {co.reason}</p>}
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                  <input id={`co-review-${co.id}`} style={{ flex: 1, fontSize: 11, padding: '3px 6px' }} placeholder="Review notes..." />
+                  <button className="btn btn-sm btn-success" style={{ fontSize: 11 }} onClick={() => {
+                    const notes = document.getElementById(`co-review-${co.id}`).value;
+                    fetch(`/api/programs/change-orders/${co.id}`, {
+                      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ status: 'approved', reviewed_by: role, review_notes: notes })
+                    }).then(() => loadJobs());
+                  }}>Approve</button>
+                  <button className="btn btn-sm btn-danger" style={{ fontSize: 11 }} onClick={() => {
+                    const notes = document.getElementById(`co-review-${co.id}`).value;
+                    fetch(`/api/programs/change-orders/${co.id}`, {
+                      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ status: 'denied', reviewed_by: role, review_notes: notes })
+                    }).then(() => loadJobs());
+                  }}>Deny</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* PIPELINE / FORECAST TAB */}
       {tab === 'pipeline' && (
