@@ -397,129 +397,129 @@ BEGIN
   -- Single Family Assessment paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Single Family Assessment';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'Energy Audit Data Collection Form (Appendix D)', true, 0),
-  (mid, 'Customer Authorization Form - Signed (Appendix E)', true, 1),
-  (mid, 'Hazardous Conditions Form if deferral (Appendix I)', true, 2),
-  (mid, 'Scope of Work - Signed by Customer', true, 3),
-  (mid, 'All baseline data entered in RISE', true, 4),
-  (mid, 'LiDAR scan stored in SharePoint', true, 5),
-  (mid, 'MS Forms assessment checklist completed', true, 6);
+  (mid, 'Energy Audit Data Collection Form (Appendix D)', 1, 0),
+  (mid, 'Customer Authorization Form - Signed (Appendix E)', 1, 1),
+  (mid, 'Hazardous Conditions Form if deferral (Appendix I)', 1, 2),
+  (mid, 'Scope of Work - Signed by Customer', 1, 3),
+  (mid, 'All baseline data entered in RISE', 1, 4),
+  (mid, 'LiDAR scan stored in SharePoint', 1, 5),
+  (mid, 'MS Forms assessment checklist completed', 1, 6);
 
   -- Attic Insulation paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Attic Insulation';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'Pre/post insulation depth measurements in RISE', true, 0),
-  (mid, 'Ceiling inspection notes documented', true, 1);
+  (mid, 'Pre/post insulation depth measurements in RISE', 1, 0),
+  (mid, 'Ceiling inspection notes documented', 1, 1);
 
   -- Air Sealing paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Air Sealing';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'Pre/post blower door test results (CFM50) in RISE', true, 0),
-  (mid, 'ASHRAE 62.2 ventilation calculation', true, 1);
+  (mid, 'Pre/post blower door test results (CFM50) in RISE', 1, 0),
+  (mid, 'ASHRAE 62.2 ventilation calculation', 1, 1);
 
   -- Duct Sealing paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Duct Sealing';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'Pre/post duct blaster results (CFM25) in RISE', true, 0);
+  (mid, 'Pre/post duct blaster results (CFM25) in RISE', 1, 0);
 
   -- Gas Furnace Replacement paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Gas Furnace Replacement';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'Mechanical Replacement Decision Tree completed (Appendix H)', true, 0),
-  (mid, 'Tech report emailed to RI program contacts', true, 1),
-  (mid, 'RI replacement approval received', true, 2),
-  (mid, 'Manual J load calculation completed', true, 3),
-  (mid, 'Equipment sizing documentation', true, 4),
-  (mid, 'Manufacturer warranty info provided to customer', true, 5),
-  (mid, 'Sub-contractor estimate/invoice', true, 6);
+  (mid, 'Mechanical Replacement Decision Tree completed (Appendix H)', 1, 0),
+  (mid, 'Tech report emailed to RI program contacts', 1, 1),
+  (mid, 'RI replacement approval received', 1, 2),
+  (mid, 'Manual J load calculation completed', 1, 3),
+  (mid, 'Equipment sizing documentation', 1, 4),
+  (mid, 'Manufacturer warranty info provided to customer', 1, 5),
+  (mid, 'Sub-contractor estimate/invoice', 1, 6);
 
   -- Boiler Replacement paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Boiler Replacement';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'Mechanical Replacement Decision Tree completed (Appendix H)', true, 0),
-  (mid, 'Tech report emailed to RI program contacts', true, 1),
-  (mid, 'RI replacement approval received', true, 2),
-  (mid, 'Manufacturer warranty info provided to customer', true, 3),
-  (mid, 'Sub-contractor estimate/invoice', true, 4);
+  (mid, 'Mechanical Replacement Decision Tree completed (Appendix H)', 1, 0),
+  (mid, 'Tech report emailed to RI program contacts', 1, 1),
+  (mid, 'RI replacement approval received', 1, 2),
+  (mid, 'Manufacturer warranty info provided to customer', 1, 3),
+  (mid, 'Sub-contractor estimate/invoice', 1, 4);
 
   -- Natural Gas Water Heater Replacement paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Natural Gas Water Heater Replacement';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'Mechanical Replacement Decision Tree completed (Appendix H)', true, 0),
-  (mid, 'Tech report emailed to RI program contacts', true, 1),
-  (mid, 'RI replacement approval received', true, 2),
-  (mid, 'Manufacturer warranty info provided to customer', true, 3),
-  (mid, 'Sub-contractor estimate/invoice', true, 4);
+  (mid, 'Mechanical Replacement Decision Tree completed (Appendix H)', 1, 0),
+  (mid, 'Tech report emailed to RI program contacts', 1, 1),
+  (mid, 'RI replacement approval received', 1, 2),
+  (mid, 'Manufacturer warranty info provided to customer', 1, 3),
+  (mid, 'Sub-contractor estimate/invoice', 1, 4);
 
   -- Electric Water Heater Replacement (Heat Pump) paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Electric Water Heater Replacement (Heat Pump)';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'Customer approval to replace documented', true, 0),
-  (mid, 'Energy Star certification', true, 1),
-  (mid, 'Maintenance instructions provided to customer', true, 2),
-  (mid, 'Sub-contractor estimate/invoice', true, 3);
+  (mid, 'Customer approval to replace documented', 1, 0),
+  (mid, 'Energy Star certification', 1, 1),
+  (mid, 'Maintenance instructions provided to customer', 1, 2),
+  (mid, 'Sub-contractor estimate/invoice', 1, 3);
 
   -- Central Air Conditioner Replacement paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Central Air Conditioner Replacement';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'Mechanical Replacement Decision Tree completed (Appendix H)', true, 0),
-  (mid, 'Tech report emailed to RI program contacts', true, 1),
-  (mid, 'RI replacement approval received', true, 2),
-  (mid, 'Manual J load calculation completed', true, 3),
-  (mid, 'Existing unit SEER and manufacture date documented', true, 4),
-  (mid, 'Manufacturer warranty info provided to customer', true, 5),
-  (mid, 'Sub-contractor estimate/invoice', true, 6);
+  (mid, 'Mechanical Replacement Decision Tree completed (Appendix H)', 1, 0),
+  (mid, 'Tech report emailed to RI program contacts', 1, 1),
+  (mid, 'RI replacement approval received', 1, 2),
+  (mid, 'Manual J load calculation completed', 1, 3),
+  (mid, 'Existing unit SEER and manufacture date documented', 1, 4),
+  (mid, 'Manufacturer warranty info provided to customer', 1, 5),
+  (mid, 'Sub-contractor estimate/invoice', 1, 6);
 
   -- Room Air Conditioner Replacement paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Room Air Conditioner Replacement';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'Documentation that unit is nonfunctional', true, 0),
-  (mid, 'Energy Star certification of replacement', true, 1);
+  (mid, 'Documentation that unit is nonfunctional', 1, 0),
+  (mid, 'Energy Star certification of replacement', 1, 1);
 
   -- Gas Furnace Tune-Up paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Gas Furnace Tune-Up';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'Tech report compliant with IL TRM 2026', true, 0),
-  (mid, 'Combustion efficiency readings (before/after) in RISE', true, 1),
-  (mid, 'All IL TRM required tune and clean activities documented', true, 2),
-  (mid, 'Mechanical Decision Tree (Appendix H) completed if issues found', true, 3),
-  (mid, 'Replacement recommendation in tech report if decision tree indicates', true, 4);
+  (mid, 'Tech report compliant with IL TRM 2026', 1, 0),
+  (mid, 'Combustion efficiency readings (before/after) in RISE', 1, 1),
+  (mid, 'All IL TRM required tune and clean activities documented', 1, 2),
+  (mid, 'Mechanical Decision Tree (Appendix H) completed if issues found', 1, 3),
+  (mid, 'Replacement recommendation in tech report if decision tree indicates', 1, 4);
 
   -- Boiler Tune-Up paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Boiler Tune-Up';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'Tech report compliant with IL TRM 2026', true, 0),
-  (mid, 'Combustion efficiency readings (before/after) in RISE', true, 1),
-  (mid, 'All IL TRM required tune and clean activities documented', true, 2),
-  (mid, 'Mechanical Decision Tree (Appendix H) completed if issues found', true, 3),
-  (mid, 'Replacement recommendation in tech report if decision tree indicates', true, 4);
+  (mid, 'Tech report compliant with IL TRM 2026', 1, 0),
+  (mid, 'Combustion efficiency readings (before/after) in RISE', 1, 1),
+  (mid, 'All IL TRM required tune and clean activities documented', 1, 2),
+  (mid, 'Mechanical Decision Tree (Appendix H) completed if issues found', 1, 3),
+  (mid, 'Replacement recommendation in tech report if decision tree indicates', 1, 4);
 
   -- Kitchen Exhaust Fan paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Kitchen Exhaust Fan';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'RedCalc screenshot uploaded to RISE', true, 0),
-  (mid, 'ASHRAE 62.2 calculation (include basement area)', true, 1),
-  (mid, 'Fan flow rates on assessment report', true, 2);
+  (mid, 'RedCalc screenshot uploaded to RISE', 1, 0),
+  (mid, 'ASHRAE 62.2 calculation (include basement area)', 1, 1),
+  (mid, 'Fan flow rates on assessment report', 1, 2);
 
   -- Bathroom Exhaust Fan paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Bathroom Exhaust Fan';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'RedCalc screenshot uploaded to RISE', true, 0),
-  (mid, 'ASHRAE 62.2 calculation', true, 1),
-  (mid, 'Fan flow rates on assessment report', true, 2);
+  (mid, 'RedCalc screenshot uploaded to RISE', 1, 0),
+  (mid, 'ASHRAE 62.2 calculation', 1, 1),
+  (mid, 'Fan flow rates on assessment report', 1, 2);
 
   -- Bathroom Exhaust Fan w/ Light paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Bathroom Exhaust Fan w/ Light';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'RedCalc screenshot uploaded to RISE', true, 0),
-  (mid, 'ASHRAE 62.2 calculation', true, 1),
-  (mid, 'Fan flow rates on assessment report', true, 2);
+  (mid, 'RedCalc screenshot uploaded to RISE', 1, 0),
+  (mid, 'ASHRAE 62.2 calculation', 1, 1),
+  (mid, 'Fan flow rates on assessment report', 1, 2);
 
   -- Gas Mechanical Repairs paperwork
   SELECT id INTO mid FROM program_measures WHERE program_id = pid AND name = 'Gas Mechanical Repairs';
   INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES
-  (mid, 'Documentation of repair needed', true, 0),
-  (mid, 'Repair cost within $1,000 H&S cap', true, 1);
+  (mid, 'Documentation of repair needed', 1, 0),
+  (mid, 'Repair cost within $1,000 H&S cap', 1, 1);
 
   -- =====================
   -- PROCESS STEPS
