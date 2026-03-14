@@ -23,6 +23,7 @@ body {
   z-index: 100;
 }
 .sidebar.closed { width: 0; overflow: hidden; }
+.sidebar-overlay { display: none; }
 .sidebar-header {
   padding: 20px;
   background: #16213e;
@@ -261,9 +262,10 @@ tr:hover { background: #f8f9fa; }
 
 /* Responsive */
 @media (max-width: 768px) {
-  .sidebar { width: 0; overflow: hidden; }
+  .sidebar { width: 0; overflow: hidden; position: fixed; z-index: 200; }
   .sidebar.open { width: 250px; }
-  .main-content { margin-left: 0; }
+  .sidebar-overlay { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 150; }
+  .main-content { margin-left: 0 !important; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .form-grid { grid-template-columns: 1fr; }
 }

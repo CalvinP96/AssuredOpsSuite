@@ -2442,7 +2442,7 @@ export default function ProgramDetail({ role, fixedProgramId }) {
               <div className="form-grid">
                 <div className="form-group">
                   <label>Job Number</label>
-                  <input value={jobForm.job_number} onChange={e => setJobForm({...jobForm, job_number: e.target.value})} placeholder="e.g. HES-2026-001" />
+                  <input value={jobForm.job_number} onChange={e => setJobForm({...jobForm, job_number: e.target.value})} placeholder="Auto-generated (PID#-001)" />
                 </div>
                 <div className="form-group">
                   <label>Customer Name *</label>

@@ -171,9 +171,16 @@ router.get('/:id/jobs', (req, res) => {
 router.post('/:id/jobs', (req, res) => {
   const db = getDb();
   const { job_number, customer_name, phone, email, address, city, zip, utility, notes } = req.body;
+  // Auto-generate job number with PID prefix if not provided
+  let finalJobNumber = job_number || null;
+  if (!finalJobNumber) {
+    const pid = req.params.id;
+    const count = db.prepare('SELECT COUNT(*) as cnt FROM program_jobs WHERE program_id = ?').get(pid).cnt;
+    finalJobNumber = `PID${pid}-${String(count + 1).padStart(3, '0')}`;
+  }
   const result = db.prepare(
     'INSERT INTO program_jobs (program_id, job_number, customer_name, phone, email, address, city, zip, utility, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(req.params.id, job_number || null, customer_name || null, phone || null, email || null, address || null, city || null, zip || null, utility || null, notes || null);
+  ).run(req.params.id, finalJobNumber, customer_name || null, phone || null, email || null, address || null, city || null, zip || null, utility || null, notes || null);
 
   const job = db.prepare('SELECT * FROM program_jobs WHERE id = ?').get(result.lastInsertRowid);
 

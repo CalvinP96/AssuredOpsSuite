@@ -66,33 +66,37 @@ export default function Sidebar({ currentRole, setCurrentRole, roles, open, togg
   const items = NAV_ITEMS[currentRole] || NAV_ITEMS.Admin;
 
   return (
-    <nav className={`sidebar ${open ? '' : 'closed'}`}>
-      <div className="sidebar-header">
-        <h2>AssuredOpsSuite</h2>
-        <p>Company Operations Portal</p>
-      </div>
+    <>
+      {open && <div className="sidebar-overlay" onClick={toggle} />}
+      <nav className={`sidebar ${open ? 'open' : 'closed'}`}>
+        <div className="sidebar-header">
+          <h2>AssuredOpsSuite</h2>
+          <p>Company Operations Portal</p>
+        </div>
 
-      <div className="role-selector">
-        <label>Current Role View</label>
-        <select value={currentRole} onChange={e => setCurrentRole(e.target.value)}>
-          {roles.map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
-      </div>
+        <div className="role-selector">
+          <label>Current Role View</label>
+          <select value={currentRole} onChange={e => setCurrentRole(e.target.value)}>
+            {roles.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
 
-      <div className="nav-section">
-        <div className="nav-section-title">Navigation</div>
-        {items.map(item => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={item.path === '/'}
-            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-          >
-            <span className="nav-icon">{item.icon}</span>
-            {item.label}
-          </NavLink>
-        ))}
-      </div>
-    </nav>
+        <div className="nav-section">
+          <div className="nav-section-title">Navigation</div>
+          {items.map(item => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.path === '/'}
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              onClick={() => { if (window.innerWidth <= 768) toggle(); }}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
+    </>
   );
 }
