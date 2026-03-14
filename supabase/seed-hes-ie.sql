@@ -15,8 +15,8 @@ VALUES (
 -- 2. Main DO block for all dependent inserts
 DO $$
 DECLARE
-  pid bigint;
-  mid bigint;
+  pid uuid;
+  mid uuid;
   measure_count INT;
 BEGIN
   -- Get the program ID
