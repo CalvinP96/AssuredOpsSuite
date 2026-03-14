@@ -9,8 +9,7 @@ import KPIPage from './pages/KPIPage';
 import FinancePage from './pages/FinancePage';
 import BillingPage from './pages/BillingPage';
 import EmployeeDetail from './pages/EmployeeDetail';
-import ProgramsPage from './pages/ProgramsPage';
-import ProgramDetail from './pages/ProgramDetail';
+import HESIEPage from './pages/HESIEPage';
 import './App.css';
 
 const ROLES = ['Admin', 'HR', 'IT', 'Warehouse', 'Finance', 'Operations', 'Program Manager'];
@@ -56,8 +55,9 @@ function App() {
               {(currentRole === 'Admin' || currentRole === 'Finance' || currentRole === 'HR') && (
                 <Route path="/billing" element={<BillingPage role={currentRole} />} />
               )}
-              <Route path="/programs" element={<ProgramsPage role={currentRole} />} />
-              <Route path="/program/:id" element={<ProgramDetail role={currentRole} />} />
+              <Route path="/hes-ie" element={<HESIEPage role={currentRole} />} />
+              <Route path="/programs" element={<Navigate to="/hes-ie" />} />
+              <Route path="/program/:id" element={<Navigate to="/hes-ie" />} />
               <Route path="/employee/:id" element={<EmployeeDetail role={currentRole} />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

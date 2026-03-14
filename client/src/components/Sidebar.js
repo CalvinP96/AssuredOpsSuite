@@ -4,7 +4,7 @@ import { NavLink } from 'react-router-dom';
 const NAV_ITEMS = {
   Admin: [
     { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/programs', icon: '📋', label: 'Programs' },
+    { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
     { path: '/hr', icon: '👥', label: 'HR - Employees' },
     { path: '/it', icon: '💻', label: 'IT - Equipment' },
     { path: '/warehouse', icon: '📦', label: 'Warehouse' },
@@ -14,38 +14,38 @@ const NAV_ITEMS = {
   ],
   HR: [
     { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/programs', icon: '📋', label: 'Programs' },
+    { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
     { path: '/hr', icon: '👥', label: 'HR - Employees' },
     { path: '/billing', icon: '🧾', label: 'Termination Billing' },
     { path: '/kpi', icon: '🎯', label: 'KPI Tracking' },
   ],
   IT: [
     { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/programs', icon: '📋', label: 'Programs' },
+    { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
     { path: '/it', icon: '💻', label: 'IT - Equipment' },
     { path: '/kpi', icon: '🎯', label: 'KPI Tracking' },
   ],
   Warehouse: [
     { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/programs', icon: '📋', label: 'Programs' },
+    { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
     { path: '/warehouse', icon: '📦', label: 'Warehouse' },
     { path: '/kpi', icon: '🎯', label: 'KPI Tracking' },
   ],
   Finance: [
     { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/programs', icon: '📋', label: 'Programs' },
+    { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
     { path: '/finance', icon: '💰', label: 'Finance' },
     { path: '/billing', icon: '🧾', label: 'Termination Billing' },
     { path: '/kpi', icon: '🎯', label: 'KPI Tracking' },
   ],
   Operations: [
     { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/programs', icon: '📋', label: 'Programs' },
+    { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
     { path: '/kpi', icon: '🎯', label: 'KPI Management' },
   ],
   'Program Manager': [
     { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/programs', icon: '📋', label: 'My Programs' },
+    { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
     { path: '/kpi', icon: '🎯', label: 'KPI Tracking' },
   ],
 };

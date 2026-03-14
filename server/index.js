@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { initDatabase } = require('./database');
+const { ensureHESIEProgram } = require('./seed-hes-ie');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -12,11 +13,23 @@ app.use(express.json());
 async function start() {
   await initDatabase();
 
+  // Auto-seed HES IE program on startup - no manual loading needed
+  const hesProgram = ensureHESIEProgram();
+  console.log('HES IE program ready (id: ' + hesProgram.id + ')');
+
   const employeesRouter = require('./routes/employees');
   const equipmentRouter = require('./routes/equipment');
   const kpisRouter = require('./routes/kpis');
   const billingRouter = require('./routes/billing');
   const programsRouter = require('./routes/programs');
+
+  // Endpoint to get the HES IE program ID (used by frontend)
+  app.get('/api/hes-ie-program', (req, res) => {
+    const { getDb } = require('./database');
+    const db = getDb();
+    const program = db.prepare("SELECT * FROM programs WHERE code = ?").get('HES-IE');
+    res.json(program);
+  });
 
   app.use('/api/employees', employeesRouter);
   app.use('/api/equipment', equipmentRouter);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 const DOC_TYPES = ['Policy', 'Procedure', 'Form', 'Report', 'Audit', 'Compliance', 'Training', 'SOP', 'Manual', 'Checklist', 'Other'];
 const DOC_STATUSES = ['draft', 'in_review', 'approved', 'active', 'archived'];
@@ -8,11 +8,11 @@ const TASK_STATUSES = ['todo', 'in_progress', 'review', 'done'];
 const JOB_STATUSES = ['assessment_scheduled', 'assessment_complete', 'pre_approval', 'approved', 'install_scheduled', 'install_in_progress', 'inspection', 'submitted', 'invoiced', 'complete', 'deferred'];
 const UTILITIES = ['ComEd', 'Nicor Gas', 'Peoples Gas', 'North Shore Gas'];
 
-export default function ProgramDetail({ role }) {
-  const { id } = useParams();
-  const navigate = useNavigate();
+export default function ProgramDetail({ role, fixedProgramId }) {
+  const params = useParams();
+  const id = fixedProgramId || params.id;
   const [program, setProgram] = useState(null);
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState('jobs');
   const [showDocModal, setShowDocModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showMsModal, setShowMsModal] = useState(false);
@@ -24,7 +24,6 @@ export default function ProgramDetail({ role }) {
   const [rulesFilter, setRulesFilter] = useState('all');
   const [rulesSubTab, setRulesSubTab] = useState('measures');
   const [jobs, setJobs] = useState([]);
-  const [seeding, setSeeding] = useState(false);
   const [showHvacModal, setShowHvacModal] = useState(null);
   const [hvacForm, setHvacForm] = useState({ equipment_type: 'Gas Furnace', existing_make: '', existing_model: '', existing_condition: '', existing_efficiency: '', existing_age: '', decision_tree_result: '', notes: '' });
 
@@ -41,7 +40,7 @@ export default function ProgramDetail({ role }) {
     fetch(`/api/programs/${id}/jobs`).then(r => r.json()).then(setJobs).catch(() => {});
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); loadJobs(); }, [load, loadJobs]);
   useEffect(() => { if (tab === 'jobs') loadJobs(); }, [tab, loadJobs]);
 
   // Document handlers
@@ -186,14 +185,6 @@ export default function ProgramDetail({ role }) {
     loadJobs();
   };
 
-  // Seed HES rules
-  const seedRules = async () => {
-    setSeeding(true);
-    await fetch(`/api/programs/${id}/seed-hes-rules`, { method: 'POST' });
-    setSeeding(false);
-    load();
-  };
-
   if (!program) return <div className="card"><p>Loading...</p></div>;
 
   const canEdit = role === 'Admin' || role === 'Operations';
@@ -218,7 +209,6 @@ export default function ProgramDetail({ role }) {
           <h2>{program.name} <span className="badge active">{program.code}</span></h2>
           {program.manager_name && <p style={{ color: '#888', marginTop: 4 }}>Manager: {program.manager_name} {program.manager_title ? `(${program.manager_title})` : ''}</p>}
         </div>
-        <button className="btn btn-secondary" onClick={() => navigate('/programs')}>Back to Programs</button>
       </div>
 
       {program.description && <div className="card"><p>{program.description}</p></div>}
@@ -239,16 +229,6 @@ export default function ProgramDetail({ role }) {
             <div className="stat-card green"><div className="stat-value">{jobs.length || 0}</div><div className="stat-label">Jobs</div></div>
             <div className="stat-card"><div className="stat-value">{program.documents?.length || 0}</div><div className="stat-label">Documents</div></div>
           </div>
-
-          {measures.length === 0 && canEdit && (
-            <div className="card" style={{ textAlign: 'center', padding: 30 }}>
-              <h3>No Program Rules Loaded</h3>
-              <p style={{ color: '#888', margin: '10px 0 20px' }}>Load the HES IE program rules from the 2026 manual to get started.</p>
-              <button className="btn btn-primary" onClick={seedRules} disabled={seeding}>
-                {seeding ? 'Loading Rules...' : 'Load HES IE Rules'}
-              </button>
-            </div>
-          )}
 
           {measures.length > 0 && (
             <div className="card">
@@ -285,15 +265,6 @@ export default function ProgramDetail({ role }) {
       {/* RULES TAB */}
       {tab === 'rules' && (
         <div>
-          {measures.length === 0 && canEdit && (
-            <div className="card" style={{ textAlign: 'center', padding: 30 }}>
-              <p style={{ color: '#888', marginBottom: 15 }}>No program rules loaded yet.</p>
-              <button className="btn btn-primary" onClick={seedRules} disabled={seeding}>
-                {seeding ? 'Loading Rules...' : 'Load HES IE Rules from Manual'}
-              </button>
-            </div>
-          )}
-
           {measures.length > 0 && (
             <>
               <div style={{ display: 'flex', gap: 10, marginBottom: 15, flexWrap: 'wrap', alignItems: 'center' }}>
