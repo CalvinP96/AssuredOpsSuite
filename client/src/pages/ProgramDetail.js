@@ -455,6 +455,36 @@ export default function ProgramDetail({ role }) {
                     </div>
                   </div>
 
+                  <div className="card" style={{ marginBottom: 15 }}>
+                    <h3 style={{ marginBottom: 10 }}>Mechanical Replacement Decision Trees</h3>
+                    <p style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>Emergency replacement is the only condition under which mechanical systems can be replaced. If equipment is NOT failed and can be repaired within the threshold, it is NOT eligible for replacement.</p>
+                    <div className="table-container">
+                      <table>
+                        <thead>
+                          <tr><th>Equipment</th><th>Failed?</th><th>H&S Risk?</th><th>Repair Threshold</th><th>Result</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr><td><strong>Gas Furnace</strong></td><td>YES</td><td>-</td><td>-</td><td><span className="badge active">Eligible for Replacement</span></td></tr>
+                          <tr style={{ background: '#f8f9fa' }}><td></td><td>NO</td><td>YES</td><td>&lt; $950</td><td><span className="badge terminated">Not Eligible (Repair)</span></td></tr>
+                          <tr><td></td><td>NO</td><td>YES</td><td>&ge; $950</td><td><span className="badge active">Eligible for Replacement</span></td></tr>
+                          <tr style={{ background: '#e8f4fd' }}><td><strong>Electric Resistance Heat</strong></td><td>Any</td><td>Any</td><td>N/A</td><td><span className="badge active">Eligible for Heat Pump</span></td></tr>
+                          <tr><td><strong>Boiler</strong></td><td>YES</td><td>-</td><td>-</td><td><span className="badge active">Eligible for Replacement</span></td></tr>
+                          <tr style={{ background: '#f8f9fa' }}><td></td><td>NO</td><td>YES</td><td>&lt; $700</td><td><span className="badge terminated">Not Eligible (Repair)</span></td></tr>
+                          <tr><td></td><td>NO</td><td>YES</td><td>&ge; $700</td><td><span className="badge active">Eligible for Replacement</span></td></tr>
+                          <tr><td><strong>Water Heater (Gas)</strong></td><td>YES</td><td>-</td><td>-</td><td><span className="badge active">Eligible for Replacement</span></td></tr>
+                          <tr style={{ background: '#f8f9fa' }}><td></td><td>NO</td><td>YES</td><td>&lt; $650</td><td><span className="badge terminated">Not Eligible (Repair)</span></td></tr>
+                          <tr><td></td><td>NO</td><td>YES</td><td>&ge; $650</td><td><span className="badge active">Eligible for Replacement</span></td></tr>
+                          <tr style={{ background: '#e8f4fd' }}><td><strong>Electric Water Heater</strong></td><td>Any</td><td>Any</td><td>N/A</td><td><span className="badge active">Eligible for Heat Pump WH</span></td></tr>
+                          <tr><td><strong>Central AC</strong></td><td>YES</td><td>-</td><td>-</td><td><span className="badge active">Eligible for Replacement</span></td></tr>
+                          <tr style={{ background: '#f8f9fa' }}><td></td><td>NO</td><td>YES</td><td>&lt; $190/ton</td><td><span className="badge terminated">Not Eligible (Repair)</span></td></tr>
+                          <tr><td></td><td>NO</td><td>YES</td><td>&ge; $190/ton</td><td><span className="badge active">Eligible for Replacement</span></td></tr>
+                          <tr><td><strong>Room AC</strong></td><td>YES</td><td>-</td><td>-</td><td><span className="badge active">Eligible for Replacement</span></td></tr>
+                          <tr style={{ background: '#f8f9fa' }}><td></td><td>NO</td><td>-</td><td>-</td><td><span className="badge terminated">Not Eligible</span></td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
                   <h3 style={{ marginBottom: 10 }}>Health & Safety Measures</h3>
                   {measures.filter(m => m.category === 'Health & Safety').map(m => (
                     <div key={m.id} className="card" style={{ marginBottom: 8, padding: '12px 16px' }}>

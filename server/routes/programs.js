@@ -188,15 +188,23 @@ router.post('/:id/jobs', (req, res) => {
     });
   });
 
-  // Add job-level paperwork items
+  // Add job-level paperwork items (from Appendix J Documentation Checklist)
   const jobPaperwork = [
-    'Signed Customer Authorization Form',
-    'Signed Scope of Work',
-    'Signed Final Inspection Form',
-    'Customer Satisfaction Survey Left with Customer',
+    'Assessment Report completed',
+    'Hazardous Conditions Form (if applicable)',
+    'Customer Authorization Form - Signed (Appendix E)',
+    'Customer-Signed Scope of Work',
+    'Sub-Contractor Estimates attached',
+    'Final Inspection Form with CAZ results (Appendix F)',
+    'Final Invoice including sub-contractor invoices',
+    'All pre-installation photos uploaded (zip or Company Cam link)',
+    'All post-installation photos uploaded (zip or Company Cam link)',
+    'Documents named with address and legible',
     'All data entered in RISE',
-    'Photos uploaded as zip or Company Cam link',
-    'Documents named with address'
+    'LiDAR scan stored in SharePoint',
+    'Customer Satisfaction Survey left with customer (Appendix K)',
+    'HVAC tech reports sent and approvals received (if applicable)',
+    'Manual J completed for HVAC replacements (if applicable)'
   ];
   jobPaperwork.forEach(item => {
     db.prepare('INSERT INTO job_checklist_items (job_id, item_type, description) VALUES (?, ?, ?)').run(job.id, 'job_paperwork', item);
@@ -293,14 +301,14 @@ router.post('/:id/seed-hes-rules', (req, res) => {
     { cat: 'Air Sealing & Duct Sealing', name: 'Air Sealing', desc: 'Reduce air infiltration with goal of 25%+ CFM50 reduction.', baseline: 'CFM50 reading ≥110% of conditioned square footage.', eff: 'Goal: 25% or greater overall reduction in CFM50.', install: 'Per BPI specifications. Not completed where unsafe (CAZ issue, indoor air quality concern, improper ventilation, medical conditions). Must be accompanied by proper ventilation (ASHRAE 62.2).', emergency: 0, sort: 30 },
     { cat: 'Air Sealing & Duct Sealing', name: 'Duct Sealing', desc: 'Seal ducts in unconditioned and semi-conditioned spaces using mastic.', baseline: 'Leaky ductwork in unconditioned or semi-conditioned spaces.', eff: 'Must have CFM25 pre/post readings. Seal plenums, main ducts, takeoffs, and boots minimum.', install: 'Use mastic sealant, DuctEZ, or HVAC tape. Measure total leakage at CFM25 before and after with duct blaster. Duct system needing repairs requires sufficient H&S budget.', emergency: 0, sort: 31 },
     // Mechanicals
-    { cat: 'Mechanicals', name: 'Gas Furnace Replacement', desc: 'Emergency replacement of gas furnace. Must have ≥95% efficiency.', baseline: 'See Mechanical Replacement Decision Trees (Appendix H).', eff: 'New furnace must be ≥95% efficiency.', install: 'Emergency replacement only. Install by qualified contractor per manufacturer specs and local/regional/state codes. Should not be performed unless accompanying air sealing and insulation measures. Recommended to install after other measures complete.', emergency: 1, sort: 40 },
-    { cat: 'Mechanicals', name: 'Boiler Replacement', desc: 'Emergency replacement of boiler. New boiler efficiency ≥95%.', baseline: 'See Mechanical Replacement Decision Trees (Appendix H).', eff: 'New boiler efficiency ≥95%.', install: 'Emergency replacement only. Install by qualified contractor per manufacturer specs and codes.', emergency: 1, sort: 41 },
-    { cat: 'Mechanicals', name: 'Natural Gas Water Heater Replacement', desc: 'Emergency replacement. Energy factor ≥0.67.', baseline: 'See Mechanical Replacement Decision Trees (Appendix H).', eff: 'Energy factor of new water heater must be ≥0.67.', install: 'Emergency replacement only. Install by qualified contractor per manufacturer specs and codes.', emergency: 1, sort: 42 },
-    { cat: 'Mechanicals', name: 'Electric Water Heater Replacement (Heat Pump)', desc: 'Replace electric resistance water heaters with Heat Pump Water Heaters regardless of age/condition.', baseline: 'Any existing electric resistance water heater.', eff: 'Must be Energy Star rated Heat Pump Water Heater.', install: 'Consult homeowner, especially if recently replaced. Provide customer education on heat pump WH routine maintenance. Do not proceed if customer cannot keep up with regular maintenance.', emergency: 0, sort: 43 },
-    { cat: 'Mechanicals', name: 'Central Air Conditioner Replacement', desc: 'Emergency replacement. Must be ≤SEER 10 and manufactured before 2000.', baseline: 'CAC must be ≤SEER 10 and manufactured before 2000.', eff: 'New CAC must have SEER 2 ≥15.2 (16 SEER equivalent).', install: 'Emergency replacement only. See Mechanical Replacement Decision Trees (Appendix H).', emergency: 1, sort: 44 },
+    { cat: 'Mechanicals', name: 'Gas Furnace Replacement', desc: 'Emergency replacement of gas furnace. Must have ≥95% efficiency. DECISION TREE: Is equipment failed? → If YES → Eligible for Replacement. If NO → Does it pose H&S risk? → If YES → Is it repairable under $950? → If YES → Not Eligible (repair instead). If NO → Eligible for Replacement. If electric resistance heat → Eligible for heat pump replacement regardless.', baseline: 'Equipment failed OR poses H&S risk AND repair cost ≥$950. Electric resistance heat systems always eligible for heat pump replacement.', eff: 'New furnace must be ≥95% efficiency.', install: 'Emergency replacement only. Install by qualified contractor per manufacturer specs and local/regional/state codes. Should not be performed unless accompanying air sealing and insulation measures. Recommended to install after other measures complete. Submit tech report to RI for approval. Complete Manual J for sizing.', emergency: 1, sort: 40 },
+    { cat: 'Mechanicals', name: 'Boiler Replacement', desc: 'Emergency replacement of boiler. New boiler efficiency ≥95%. DECISION TREE: Is equipment failed? → If YES → Eligible for Replacement. If NO → Does it pose H&S risk? → If YES → Is it repairable under $700? → If YES → Not Eligible (repair instead). If NO → Eligible for Replacement.', baseline: 'Equipment failed OR poses H&S risk AND repair cost ≥$700.', eff: 'New boiler efficiency ≥95%.', install: 'Emergency replacement only. Install by qualified contractor per manufacturer specs and codes. Submit tech report to RI for approval.', emergency: 1, sort: 41 },
+    { cat: 'Mechanicals', name: 'Natural Gas Water Heater Replacement', desc: 'Emergency replacement. Energy factor ≥0.67. DECISION TREE: Is equipment failed? → If YES → Eligible for Replacement. If NO → Does it pose H&S risk? → If YES → Is it repairable under $650? → If YES → Not Eligible (repair instead). If NO → Eligible for Replacement. If electric resistance → Eligible for heat pump WH regardless.', baseline: 'Equipment failed OR poses H&S risk AND repair cost ≥$650. Electric resistance water heaters always eligible for heat pump WH replacement.', eff: 'Energy factor of new water heater must be ≥0.67.', install: 'Emergency replacement only. Install by qualified contractor per manufacturer specs and codes. Submit tech report to RI for approval.', emergency: 1, sort: 42 },
+    { cat: 'Mechanicals', name: 'Electric Water Heater Replacement (Heat Pump)', desc: 'Replace electric resistance water heaters with Heat Pump Water Heaters regardless of age/condition. ComEd can replace ANY existing electric HVAC/DHW with heat pumps - does NOT need to be TOS/emergency.', baseline: 'Any existing electric resistance water heater - no age or condition requirement. ComEd funded.', eff: 'Must be Energy Star rated Heat Pump Water Heater.', install: 'Consult homeowner, especially if recently replaced. Provide customer education on heat pump WH routine maintenance. Do not proceed if customer cannot keep up with regular maintenance.', emergency: 0, sort: 43 },
+    { cat: 'Mechanicals', name: 'Central Air Conditioner Replacement', desc: 'Emergency replacement. DECISION TREE: Is equipment failed? → If YES → Eligible for Replacement. If NO → Does it pose H&S risk? → If YES → Is it repairable under $190/ton? → If YES → Not Eligible (repair instead). If NO → Eligible for Replacement. Must be ≤SEER 10 and manufactured before 2000.', baseline: 'CAC must be ≤SEER 10 and manufactured before 2000. Equipment failed OR poses H&S risk AND repair cost ≥$190/ton.', eff: 'New CAC must have SEER 2 ≥15.2 (16 SEER equivalent).', install: 'Emergency replacement only. Submit tech report to RI for approval. Complete Manual J for sizing.', emergency: 1, sort: 44 },
     { cat: 'Mechanicals', name: 'Gas Furnace Tune-Up', desc: 'Tune-up for gas furnaces not serviced in 3+ years.', baseline: 'Must not have received tune-up within last 3 years. Not allowed on propane furnaces.', eff: 'Per IL TRM requirements.', install: 'Measure combustion efficiency. Check/clean blower assembly. Lubricate motor, inspect fan belt. Inspect for gas leaks. Clean burner, adjust. Check ignition/safety systems. Check/clean heat exchanger. Inspect exhaust/flue. Inspect control box/wiring. Check air filter. Inspect ductwork. Measure temperature rise. Check volts/amps. Check thermostat operation. Perform CO test and adjust.', emergency: 0, sort: 45 },
     { cat: 'Mechanicals', name: 'Boiler Tune-Up', desc: 'Tune-up for boilers not serviced in 3+ years.', baseline: 'Must not have received tune-up within last 3 years.', eff: 'Per IL TRM requirements.', install: 'Measure combustion efficiency. Adjust airflow/stack temps. Adjust burner and gas input. Check venting, piping insulation, safety controls, combustion air. Clean fireside surfaces. Inspect refractory, gaskets, doors. Clean water cut-off controls. Flush boiler. Clean burner and pilot. Check electrode. Clean damper/blower. Check motor starter contacts. Perform flame safeguard checks. Troubleshoot problems.', emergency: 0, sort: 46 },
-    { cat: 'Mechanicals', name: 'Room Air Conditioner Replacement', desc: 'Emergency replacement of nonfunctional room AC.', baseline: 'Room AC must be nonfunctional.', eff: 'Replace with Energy Star efficiency.', install: 'Emergency replacement only.', emergency: 1, sort: 47 },
+    { cat: 'Mechanicals', name: 'Room Air Conditioner Replacement', desc: 'Emergency replacement of nonfunctional room AC. DECISION TREE: Is equipment failed? → If YES → Eligible for Replacement. If NO → Not Eligible.', baseline: 'Room AC must be nonfunctional (failed). Simple pass/fail - no repair threshold.', eff: 'Replace with Energy Star efficiency.', install: 'Emergency replacement only.', emergency: 1, sort: 47 },
     { cat: 'Mechanicals', name: 'EC Motors', desc: 'Electronically commutated motor for older but running HVAC systems.', baseline: 'System is older but running well.', eff: 'Static pressure taken to ensure system functioning as specified.', install: 'Take static pressure reading before and after.', emergency: 0, sort: 48 },
     // Health & Safety
     { cat: 'Health & Safety', name: 'Kitchen Exhaust Fan', desc: 'Install per ASHRAE 62.2 mechanical ventilation requirements.', baseline: 'As required to meet ASHRAE 62.2 ventilation rates.', eff: 'Meet required ventilation rates plus spot ventilation for moisture.', install: 'Install minimum fans needed. Use existing exterior exhaust runs where possible. ASHRAE 62.2 allows whole-house ventilation to cover spot deficiencies. Upload RedCalc screenshot to RISE. Include basement area in ASHRAE calc. Include fan flow rates on assessment report.', emergency: 0, sort: 50, hsExempt: 1 },
@@ -332,30 +340,70 @@ router.post('/:id/seed-hes-rules', (req, res) => {
     measureIds[row.name] = row.id;
   });
 
-  // --- PHOTO REQUIREMENTS ---
+  // --- PHOTO REQUIREMENTS (from Appendix J - Documentation and Photo Checklist) ---
   const photoReqs = [
-    { measure: 'Single Family Assessment', photos: ['Front of home exterior', 'Utility meter(s)', 'Existing HVAC system nameplate', 'Existing water heater nameplate', 'Existing thermostat', 'Attic access point', 'Existing attic insulation (with ruler for depth)', 'Basement/crawlspace overview', 'Rim joist area', 'Ductwork condition', 'Electrical panel', 'All health & safety concerns found'] },
-    { measure: 'Programmable Thermostat', photos: ['Existing thermostat (before)', 'New thermostat installed (after)', 'Thermostat programming display', 'Furnace switch in OFF position (during install)'] },
-    { measure: 'Advanced Thermostat', photos: ['Existing thermostat (before)', 'New thermostat installed (after)', 'Thermostat display/programming', 'Furnace switch in OFF position (during install)'] },
-    { measure: 'Attic Insulation', photos: ['Existing insulation with ruler showing depth (before)', 'Attic access point', 'Ceiling condition from below', 'Ceiling fans secured to structure (if present)', 'Chimney dam installed', 'Insulation depth rulers at multiple points (after)', 'Completed insulation coverage (after)'] },
+    // Assessment - Home Exterior (per Appendix J)
+    { measure: 'Single Family Assessment', photos: [
+      'Front of home with address', 'Pre-existing damage (exterior)', 'Roof overall condition', '3 other sides of home',
+      'AC Condenser', 'AC Condenser data tag', 'Vent terminations (exterior)', 'Gutters (downspouts, elbows, extensions)',
+      // Foundation
+      'Foundation insulation opportunities (exterior wall/rim joist/crawl wall/ceiling)', 'Plumbing DI retrofits',
+      'Pre-existing damage (foundation)', 'Furnace with venting', 'Water heater with venting',
+      'Dryer vent/termination/cap', 'Bulk moisture/mold (foundation)',
+      // Attic
+      'Existing attic insulation (wide angle, full attic)', 'Major bypasses', 'Baffle needs (soffit or fire dam)',
+      'Exhaust terminations (attic)', 'Attic hatch', 'Roof decking condition', 'Pre-existing damage (attic)', 'Bulk moisture/mold (attic)',
+      // CAZ
+      'Smoke/CO detectors', 'DHW flue pipes configuration/exhaust terminations', 'Water heater data tag',
+      'Furnace flue configuration/exhaust terminations', 'Furnace data tag',
+      // Top Floor
+      'Top floor insulation opportunities (exterior wall/knee wall)', 'Top floor plumbing DI retrofits', 'Pre-existing damage (top floor)',
+      // Main Floor
+      'Main floor insulation opportunities (exterior wall/knee wall)', 'Main floor plumbing DI retrofits', 'Pre-existing damage (main floor)', 'Existing thermostat'
+    ]},
+    // Thermostats
+    { measure: 'Programmable Thermostat', photos: ['Existing thermostat (before)', 'New thermostat installed (after)', 'Thermostat programming display'] },
+    { measure: 'Advanced Thermostat', photos: ['Existing thermostat (before)', 'New smart thermostat installed (after)', 'Thermostat display/programming'] },
+    // Attic
+    { measure: 'Attic Insulation', photos: ['Pre insulation (full attic, wide angle)', 'Post insulation (full attic, wide angle)', 'Insulation depth rulers at multiple points (after)', 'Chimney dam installed'] },
+    // Insulation measures
     { measure: 'Basement/Crawlspace Wall Insulation', photos: ['Bare walls (before)', 'Completed wall insulation (after)'] },
     { measure: 'Floor Insulation Above Crawlspace', photos: ['Exposed floor (before)', 'Completed floor insulation (after)'] },
-    { measure: 'Wall Insulation', photos: ['Wall cavity (before)', 'Drill holes filled/patched (after)', 'Dense-pack verification'] },
+    { measure: 'Wall Insulation', photos: ['Wall cavity (before)', 'Drill holes filled/patched (after)'] },
+    { measure: 'Wall Insulation (Knee Wall)', photos: ['Knee wall before insulation', 'Knee wall after insulation'] },
     { measure: 'Rim Joist Insulation', photos: ['Exposed rim joist (before)', 'Sealed penetrations', 'Completed rim joist insulation (after)'] },
-    { measure: 'Air Sealing', photos: ['Blower door setup', 'Pre-test CFM50 reading on manometer', 'Key air sealing locations (top plates, penetrations, etc.)', 'Post-test CFM50 reading on manometer'] },
-    { measure: 'Duct Sealing', photos: ['Duct blaster setup', 'Pre-test CFM25 reading', 'Ducts before sealing', 'Mastic/sealant applied to joints', 'Post-test CFM25 reading'] },
-    { measure: 'Gas Furnace Replacement', photos: ['Existing furnace nameplate (before)', 'Existing furnace condition', 'New furnace installed (after)', 'New furnace nameplate', 'Venting/exhaust connection', 'Gas line connection'] },
-    { measure: 'Boiler Replacement', photos: ['Existing boiler nameplate (before)', 'New boiler installed (after)', 'New boiler nameplate', 'Venting connections'] },
-    { measure: 'Natural Gas Water Heater Replacement', photos: ['Existing water heater nameplate (before)', 'New water heater installed (after)', 'New water heater nameplate', 'Venting connection', 'T&P valve and discharge pipe'] },
-    { measure: 'Electric Water Heater Replacement (Heat Pump)', photos: ['Existing electric water heater (before)', 'New heat pump water heater installed (after)', 'Energy Star label', 'Condensate drain connection'] },
-    { measure: 'Central Air Conditioner Replacement', photos: ['Existing CAC nameplate showing SEER and manufacture date (before)', 'New CAC unit installed (after)', 'New CAC nameplate showing SEER 2 rating', 'Line set connections'] },
-    { measure: 'Gas Furnace Tune-Up', photos: ['Furnace nameplate', 'Combustion analyzer readings (before)', 'Combustion analyzer readings (after)', 'Clean burner assembly', 'Filter replaced'] },
-    { measure: 'Boiler Tune-Up', photos: ['Boiler nameplate', 'Combustion analyzer readings (before)', 'Combustion analyzer readings (after)'] },
-    { measure: 'Kitchen Exhaust Fan', photos: ['Existing ventilation (before)', 'New fan installed (after)', 'Exterior termination', 'RedCalc screenshot'] },
-    { measure: 'Bathroom Exhaust Fan', photos: ['Existing ventilation (before)', 'New fan installed (after)', 'Exterior termination', 'RedCalc screenshot'] },
+    // Low-e Storm Windows (per Appendix J)
+    { measure: 'Low-e Storm Windows', photos: ['Broken/missing window pane (before)', 'Low-e storm window installed (after)'] },
+    // AC Covers (per Appendix J)
+    { measure: 'AC Covers', photos: ['Pre picture of window unit', 'Post picture of covered unit with foam gaskets or sealed edges'] },
+    // Air Sealing (per Appendix J)
+    { measure: 'Air Sealing', photos: ['Blower door setup with manometer', 'Pre CFM50 manometer reading', 'Common penetrations in thermal boundary (top plates, plumbing, drop soffits, duct & flue penetrations)', 'Post CFM50 manometer reading'] },
+    // Duct Sealing (per Appendix J)
+    { measure: 'Duct Sealing', photos: ['Pre-CFM25 manometer reading (include on assessment report)', 'Mastic/tape on ducts/joints', 'Post-CFM25 manometer reading (include on assessment report)'] },
+    // HVAC Replacements - New Products (per Appendix J)
+    { measure: 'Gas Furnace Replacement', photos: ['Existing furnace with data tag (before)', 'New furnace installed with data tag (after)', 'Venting/exhaust connection'] },
+    { measure: 'Boiler Replacement', photos: ['Existing boiler with data tag (before)', 'New boiler installed with data tag (after)', 'Venting connections'] },
+    { measure: 'Natural Gas Water Heater Replacement', photos: ['Existing water heater with data tag (before)', 'New water heater installed with data tag (after)', 'Venting connection'] },
+    { measure: 'Electric Water Heater Replacement (Heat Pump)', photos: ['Existing electric water heater (before)', 'New heat pump water heater installed with data tag (after)', 'Energy Star label'] },
+    { measure: 'Central Air Conditioner Replacement', photos: ['Existing CAC with data tag showing SEER and manufacture date (before)', 'New CAC unit installed with data tag (after)'] },
+    // Tune-ups
+    { measure: 'Gas Furnace Tune-Up', photos: ['Furnace data tag', 'Combustion analyzer readings (before)', 'Combustion analyzer readings (after)'] },
+    { measure: 'Boiler Tune-Up', photos: ['Boiler data tag', 'Combustion analyzer readings (before)', 'Combustion analyzer readings (after)'] },
+    // EC Motors (per Appendix J)
+    { measure: 'EC Motors', photos: ['Existing motor with data tag', 'Installed EC motor', 'Replacement part details (data tag or specs)'] },
+    // ASHRAE Fans (per Appendix J)
+    { measure: 'Kitchen Exhaust Fan', photos: ['Fan specs on box with model #', 'Fan installed', 'Switch', 'Exterior termination', 'RedCalc screenshot'] },
+    { measure: 'Bathroom Exhaust Fan', photos: ['Fan specs on box with model #', 'Fan installed', 'Switch', 'Exterior termination', 'RedCalc screenshot'] },
+    { measure: 'Bathroom Exhaust Fan w/ Light', photos: ['Fan specs on box with model #', 'Fan with light installed', 'Switch', 'Exterior termination', 'RedCalc screenshot'] },
+    // Detectors
     { measure: 'Smoke Detector - Change Out', photos: ['Old detector (before)', 'New detector installed (after)'] },
+    { measure: 'Smoke Detector - Hardwired', photos: ['New hardwired detector installed'] },
     { measure: 'CO Detector', photos: ['New CO detector installed'] },
-    { measure: 'Dryer Vent Pipe', photos: ['Existing dryer vent condition (before)', 'New dryer vent installed (after)', 'Exterior termination'] }
+    { measure: 'CO Detector Hardwired', photos: ['New hardwired CO detector installed'] },
+    { measure: 'CO/Smoke Combo - Hardwired', photos: ['New combo detector installed'] },
+    // Dryer vent
+    { measure: 'Dryer Vent Pipe', photos: ['Existing dryer vent condition (before)', 'New dryer vent installed (after)', 'Exterior termination'] },
+    { measure: 'Dryer Vent Termination', photos: ['Existing termination (before)', 'New termination installed (after)'] }
   ];
 
   photoReqs.forEach(pr => {
@@ -366,21 +414,68 @@ router.post('/:id/seed-hes-rules', (req, res) => {
     });
   });
 
-  // --- PAPERWORK REQUIREMENTS ---
+  // --- PAPERWORK REQUIREMENTS (from Appendix J Documentation Checklist) ---
   const paperReqs = [
-    { measure: 'Single Family Assessment', docs: ['Energy Audit Data Collection Form (Appendix D)', 'Customer Authorization Form - Signed (Appendix E)', 'Hazardous Conditions Form if deferral (Appendix I)', 'Scope of Work - Signed by Customer', 'All baseline data entered in RISE'] },
+    { measure: 'Single Family Assessment', docs: [
+      'Energy Audit Data Collection Form (Appendix D)',
+      'Customer Authorization Form - Signed (Appendix E)',
+      'Hazardous Conditions Form if deferral (Appendix I)',
+      'Scope of Work - Signed by Customer',
+      'All baseline data entered in RISE',
+      'LiDAR scan stored in SharePoint',
+      'MS Forms assessment checklist completed'
+    ]},
     { measure: 'Attic Insulation', docs: ['Pre/post insulation depth measurements in RISE', 'Ceiling inspection notes documented'] },
     { measure: 'Air Sealing', docs: ['Pre/post blower door test results (CFM50) in RISE', 'ASHRAE 62.2 ventilation calculation'] },
     { measure: 'Duct Sealing', docs: ['Pre/post duct blaster results (CFM25) in RISE'] },
-    { measure: 'Gas Furnace Replacement', docs: ['Mechanical Replacement Decision Tree documentation (Appendix H)', 'Manufacturer warranty info provided to customer', 'Equipment specs entered in RISE'] },
-    { measure: 'Boiler Replacement', docs: ['Mechanical Replacement Decision Tree documentation (Appendix H)', 'Manufacturer warranty info provided to customer'] },
-    { measure: 'Natural Gas Water Heater Replacement', docs: ['Mechanical Replacement Decision Tree documentation (Appendix H)', 'Manufacturer warranty info provided to customer'] },
-    { measure: 'Electric Water Heater Replacement (Heat Pump)', docs: ['Customer approval to replace documented', 'Energy Star certification', 'Maintenance instructions provided to customer'] },
-    { measure: 'Central Air Conditioner Replacement', docs: ['Mechanical Replacement Decision Tree documentation (Appendix H)', 'Existing unit SEER and manufacture date documented', 'Manufacturer warranty info provided to customer'] },
+    { measure: 'Gas Furnace Replacement', docs: [
+      'Mechanical Replacement Decision Tree completed (Appendix H)',
+      'Tech report emailed to RI program contacts',
+      'RI replacement approval received',
+      'Manual J load calculation completed',
+      'Equipment sizing documentation',
+      'Manufacturer warranty info provided to customer',
+      'Sub-contractor estimate/invoice'
+    ]},
+    { measure: 'Boiler Replacement', docs: [
+      'Mechanical Replacement Decision Tree completed (Appendix H)',
+      'Tech report emailed to RI program contacts',
+      'RI replacement approval received',
+      'Manufacturer warranty info provided to customer',
+      'Sub-contractor estimate/invoice'
+    ]},
+    { measure: 'Natural Gas Water Heater Replacement', docs: [
+      'Mechanical Replacement Decision Tree completed (Appendix H)',
+      'Tech report emailed to RI program contacts',
+      'RI replacement approval received',
+      'Manufacturer warranty info provided to customer',
+      'Sub-contractor estimate/invoice'
+    ]},
+    { measure: 'Electric Water Heater Replacement (Heat Pump)', docs: [
+      'Customer approval to replace documented',
+      'Energy Star certification',
+      'Maintenance instructions provided to customer',
+      'Sub-contractor estimate/invoice'
+    ]},
+    { measure: 'Central Air Conditioner Replacement', docs: [
+      'Mechanical Replacement Decision Tree completed (Appendix H)',
+      'Tech report emailed to RI program contacts',
+      'RI replacement approval received',
+      'Manual J load calculation completed',
+      'Existing unit SEER and manufacture date documented',
+      'Manufacturer warranty info provided to customer',
+      'Sub-contractor estimate/invoice'
+    ]},
+    { measure: 'Room Air Conditioner Replacement', docs: [
+      'Documentation that unit is nonfunctional',
+      'Energy Star certification of replacement'
+    ]},
     { measure: 'Gas Furnace Tune-Up', docs: ['Combustion efficiency readings (before/after) in RISE', 'All IL TRM required tune-up activities documented'] },
     { measure: 'Boiler Tune-Up', docs: ['Combustion efficiency readings (before/after) in RISE', 'All IL TRM required tune-up activities documented'] },
     { measure: 'Kitchen Exhaust Fan', docs: ['RedCalc screenshot uploaded to RISE', 'ASHRAE 62.2 calculation (include basement area)', 'Fan flow rates on assessment report'] },
-    { measure: 'Bathroom Exhaust Fan', docs: ['RedCalc screenshot uploaded to RISE', 'ASHRAE 62.2 calculation', 'Fan flow rates on assessment report'] }
+    { measure: 'Bathroom Exhaust Fan', docs: ['RedCalc screenshot uploaded to RISE', 'ASHRAE 62.2 calculation', 'Fan flow rates on assessment report'] },
+    { measure: 'Bathroom Exhaust Fan w/ Light', docs: ['RedCalc screenshot uploaded to RISE', 'ASHRAE 62.2 calculation', 'Fan flow rates on assessment report'] },
+    { measure: 'Gas Mechanical Repairs', docs: ['Documentation of repair needed', 'Repair cost within $1,000 H&S cap'] }
   ];
 
   paperReqs.forEach(pr => {
