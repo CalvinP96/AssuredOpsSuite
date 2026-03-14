@@ -848,3 +848,40 @@ export async function updateJobMeasure(jmId, data) {
   const { error } = await supabase.from('job_measures').update(data).eq('id', jmId);
   if (error) throw error;
 }
+
+// ========== AUDIT LOG ==========
+
+export async function logAudit(entry) {
+  const { error } = await supabase.from('audit_log').insert([{
+    user_id: entry.userId || null,
+    user_name: entry.userName || 'Unknown',
+    entity_type: entry.entityType,
+    entity_id: String(entry.entityId || ''),
+    entity_label: entry.entityLabel || '',
+    action: entry.action,
+    field_name: entry.fieldName || null,
+    old_value: entry.oldValue != null ? String(entry.oldValue) : null,
+    new_value: entry.newValue != null ? String(entry.newValue) : null,
+    notes: entry.notes || null
+  }])
+  if (error) console.warn('Audit log error:', error)
+}
+
+export async function getAuditLog(filters = {}) {
+  let q = supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(500)
+  if (filters.entityType) q = q.eq('entity_type', filters.entityType)
+  if (filters.dateFrom) q = q.gte('created_at', filters.dateFrom)
+  if (filters.dateTo) q = q.lte('created_at', filters.dateTo)
+  const { data } = await q
+  return data || []
+}
+
+export async function saveCustomerAuth(jobId, authData) {
+  const { error } = await supabase.from('program_jobs').update({
+    customer_signature: authData.signature,
+    customer_printed_name: authData.printed_name,
+    authorization_signed_at: authData.signed_at,
+    authorization_signed_by: authData.signed_by_name
+  }).eq('id', jobId)
+  return !error
+}

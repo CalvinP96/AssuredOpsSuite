@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
 const ALL_NAV_ITEMS = [
   { path: '/', icon: '📊', label: 'Dashboard', category: 'Overview', roles: null },
@@ -10,51 +11,26 @@ const ALL_NAV_ITEMS = [
   { path: '/kpi', icon: '🎯', label: 'KPI Management', category: 'Operations', roles: ['Admin', 'HR', 'IT', 'Warehouse', 'Finance', 'Operations', 'Program Manager'] },
   { path: '/finance', icon: '💰', label: 'Finance', category: 'Management', roles: ['Admin', 'Finance'] },
   { path: '/billing', icon: '🧾', label: 'Termination Billing', category: 'Management', roles: ['Admin', 'Finance', 'HR'] },
+  { path: '/audit', icon: '📋', label: 'Audit Log', category: 'Management', roles: ['Admin'] },
 ];
 
 const CATEGORY_ORDER = ['Overview', 'Programs', 'Operations', 'Management'];
 
-export default function Sidebar({ currentRoles, setCurrentRoles, allRoles, open, toggle }) {
-  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClick(e) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setRoleDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  // Filter nav items based on selected roles
+export default function Sidebar({ user, currentRoles, open, toggle }) {
   const visibleItems = ALL_NAV_ITEMS.filter(item => {
     if (!item.roles) return true;
     return currentRoles.includes('Admin') || item.roles.some(r => currentRoles.includes(r));
   });
 
-  // Group by category
   const grouped = {};
   visibleItems.forEach(item => {
     if (!grouped[item.category]) grouped[item.category] = [];
     grouped[item.category].push(item);
   });
 
-  const toggleRole = (role) => {
-    setCurrentRoles(prev => {
-      if (prev.includes(role)) {
-        if (prev.length === 1) return prev;
-        return prev.filter(r => r !== role);
-      }
-      return [...prev, role];
-    });
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
   };
-
-  const roleDisplayText = currentRoles.length <= 2
-    ? currentRoles.join(', ')
-    : `${currentRoles.length} roles selected`;
 
   return (
     <>
@@ -65,33 +41,37 @@ export default function Sidebar({ currentRoles, setCurrentRoles, allRoles, open,
           <p>Company Operations Portal</p>
         </div>
 
-        <div className="role-selector" ref={dropdownRef}>
-          <label>Active Roles</label>
-          <button
-            type="button"
-            className="role-dropdown-toggle"
-            onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-          >
-            <span className="role-dropdown-text">{roleDisplayText}</span>
-            <span className="role-dropdown-arrow">{roleDropdownOpen ? '\u25B2' : '\u25BC'}</span>
-          </button>
-          {roleDropdownOpen && (
-            <div className="role-dropdown-menu">
-              {allRoles.map(r => (
-                <label key={r} className={`role-checkbox-label ${currentRoles.includes(r) ? 'checked' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={currentRoles.includes(r)}
-                    onChange={() => toggleRole(r)}
-                  />
-                  <span>{r}</span>
-                </label>
-              ))}
+        {user && (
+          <div style={{
+            padding: '12px 16px',
+            margin: '0 12px 12px',
+            background: 'var(--color-surface-alt, rgba(0,0,0,0.05))',
+            borderRadius: 'var(--radius)',
+          }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>
+              {user.full_name}
             </div>
-          )}
-        </div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
+              {user.email}
+            </div>
+            <span style={{
+              display: 'inline-block',
+              marginTop: 6,
+              padding: '2px 8px',
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              background: 'var(--color-primary)',
+              color: '#fff',
+              borderRadius: 'var(--radius)',
+            }}>
+              Admin
+            </span>
+          </div>
+        )}
 
-        <div className="sidebar-nav">
+        <div className="sidebar-nav" style={{ flex: 1 }}>
           {CATEGORY_ORDER.filter(cat => grouped[cat]).map(cat => (
             <div className="nav-section" key={cat}>
               <div className="nav-section-title">{cat}</div>
@@ -109,6 +89,29 @@ export default function Sidebar({ currentRoles, setCurrentRoles, allRoles, open,
               ))}
             </div>
           ))}
+        </div>
+
+        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--color-border)' }}>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            style={{
+              width: '100%',
+              padding: '10px 16px',
+              fontSize: 14,
+              fontWeight: 600,
+              background: 'transparent',
+              color: 'var(--color-danger, #dc2626)',
+              border: '1px solid var(--color-danger, #dc2626)',
+              borderRadius: 'var(--radius)',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { e.target.style.background = 'var(--color-danger, #dc2626)'; e.target.style.color = '#fff'; }}
+            onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = 'var(--color-danger, #dc2626)'; }}
+          >
+            Sign Out
+          </button>
         </div>
       </nav>
     </>

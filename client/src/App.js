@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { supabase } from './supabaseClient';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import HRPage from './pages/HRPage';
@@ -11,23 +12,55 @@ import BillingPage from './pages/BillingPage';
 import EmployeeDetail from './pages/EmployeeDetail';
 import HESIEPage from './pages/HESIEPage';
 import JobDetail from './pages/JobDetail';
+import LoginPage from './pages/LoginPage';
+import AuditLogPage from './pages/AuditLogPage';
 import './App.css';
 
 const ROLES = ['Admin', 'HR', 'IT', 'Warehouse', 'Finance', 'Operations', 'Program Manager', 'Assessor', 'Scope Creator', 'Installer', 'HVAC'];
 
 function App() {
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [currentRoles, setCurrentRoles] = useState(['Admin']);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const hasRole = (...roles) => currentRoles.includes('Admin') || roles.some(r => currentRoles.includes(r));
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
-  // Backward-compatible single role for pages not yet updated to multi-role
+  if (authLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div className="spinner" />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <LoginPage />;
+  }
+
+  const user = {
+    id: session.user.id,
+    email: session.user.email,
+    full_name: session.user.user_metadata?.full_name || session.user.email,
+  };
+
+  const hasRole = (...roles) => currentRoles.includes('Admin') || roles.some(r => currentRoles.includes(r));
   const primaryRole = currentRoles.includes('Admin') ? 'Admin' : currentRoles[0];
 
   return (
     <Router>
       <div className="app">
         <Sidebar
+          user={user}
           currentRoles={currentRoles}
           setCurrentRoles={setCurrentRoles}
           allRoles={ROLES}
@@ -68,6 +101,7 @@ function App() {
               <Route path="/programs" element={<Navigate to="/hes-ie" />} />
               <Route path="/program/:id" element={<Navigate to="/hes-ie" />} />
               <Route path="/employee/:id" element={<EmployeeDetail role={primaryRole} />} />
+              <Route path="/audit" element={<AuditLogPage user={user} />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>
