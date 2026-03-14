@@ -585,6 +585,20 @@ export async function saveScopeData(jobId, scopeData) {
   if (error) throw error;
 }
 
+export async function saveInspectionData(jobId, inspectionData) {
+  const { error } = await supabase.from('program_jobs')
+    .update({ inspection_data: typeof inspectionData === 'string' ? inspectionData : JSON.stringify(inspectionData) })
+    .eq('id', jobId);
+  if (error) throw error;
+}
+
+export async function saveInstallData(jobId, installData) {
+  const { error } = await supabase.from('program_jobs')
+    .update({ install_data: typeof installData === 'string' ? installData : JSON.stringify(installData) })
+    .eq('id', jobId);
+  if (error) throw error;
+}
+
 export async function updateChecklist(itemId, data) {
   const updates = { ...data };
   if (data.completed) {
