@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import * as api from '../api';
 
 export default function ProgramsPage({ role }) {
   const [programs, setPrograms] = useState([]);
@@ -6,17 +7,14 @@ export default function ProgramsPage({ role }) {
   const [form, setForm] = useState({ name: '', code: '', description: '', manager_name: '', manager_title: '' });
 
   const load = useCallback(() => {
-    fetch('/api/programs').then(r => r.json()).then(setPrograms).catch(() => {});
+    api.getPrograms().then(setPrograms).catch(() => {});
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await fetch('/api/programs', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
-    });
+    await api.createProgram(form);
     setShowModal(false);
     setForm({ name: '', code: '', description: '', manager_name: '', manager_title: '' });
     load();

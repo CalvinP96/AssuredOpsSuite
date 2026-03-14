@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as api from '../api';
 
 const DEPARTMENTS = ['IT', 'Warehouse', 'HR', 'Finance', 'Operations', 'Sales', 'HVAC', 'Insulation', 'Support'];
 
@@ -14,19 +15,15 @@ export default function HRPage({ role }) {
   const navigate = useNavigate();
 
   const load = useCallback(() => {
-    const params = filter !== 'all' ? `?status=${filter}` : '';
-    fetch(`/api/employees${params}`).then(r => r.json()).then(setEmployees).catch(() => {});
+    const status = filter !== 'all' ? filter : undefined;
+    api.getEmployees(status).then(setEmployees).catch(() => {});
   }, [filter]);
 
   useEffect(() => { load(); }, [load]);
 
   const handleHire = async (e) => {
     e.preventDefault();
-    await fetch('/api/employees', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
-    });
+    await api.createEmployee(form);
     setShowModal(false);
     setForm({ first_name: '', last_name: '', email: '', phone: '', department: 'IT', position: '', hire_date: '', notes: '' });
     load();
@@ -35,13 +32,9 @@ export default function HRPage({ role }) {
   const handleTerminate = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    await fetch(`/api/employees/${showTerminate.id}/terminate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        termination_date: formData.get('termination_date'),
-        notes: formData.get('notes')
-      })
+    await api.terminateEmployee(showTerminate.id, {
+      termination_date: formData.get('termination_date'),
+      notes: formData.get('notes')
     });
     setShowTerminate(null);
     load();

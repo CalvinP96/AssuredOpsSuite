@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as api from '../api';
 
 export default function BillingPage({ role }) {
   const [bills, setBills] = useState([]);
@@ -6,21 +7,18 @@ export default function BillingPage({ role }) {
   const [billDetail, setBillDetail] = useState(null);
 
   useEffect(() => {
-    fetch('/api/billing').then(r => r.json()).then(setBills).catch(() => {});
+    api.getBills().then(setBills).catch(() => {});
   }, []);
 
   const viewBill = async (bill) => {
     setSelectedBill(bill);
-    const res = await fetch(`/api/billing/${bill.id}`);
-    setBillDetail(await res.json());
+    const detail = await api.getBill(bill.id);
+    setBillDetail(detail);
   };
 
   const updateBillStatus = async (id, status) => {
-    await fetch(`/api/billing/${id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, amount_due: billDetail?.amount_due, notes: billDetail?.notes })
-    });
-    fetch('/api/billing').then(r => r.json()).then(setBills).catch(() => {});
+    await api.updateBill(id, { status, amount_due: billDetail?.amount_due, notes: billDetail?.notes });
+    api.getBills().then(setBills).catch(() => {});
     setSelectedBill(null);
     setBillDetail(null);
   };

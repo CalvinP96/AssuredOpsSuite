@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import * as api from '../api';
+import LazyPhoto from '../components/LazyPhoto';
 
 const DOC_TYPES = ['Policy', 'Procedure', 'Form', 'Report', 'Audit', 'Compliance', 'Training', 'SOP', 'Manual', 'Checklist', 'Other'];
 const DOC_STATUSES = ['draft', 'in_review', 'approved', 'active', 'archived'];
@@ -36,11 +38,11 @@ export default function ProgramDetail({ role, fixedProgramId }) {
   const [scopeOpen, setScopeOpen] = useState(null);
 
   const load = useCallback(() => {
-    fetch(`/api/programs/${id}`).then(r => r.json()).then(setProgram).catch(() => {});
+    api.getProgram(id).then(setProgram).catch(() => {});
   }, [id]);
 
   const loadJobs = useCallback(() => {
-    fetch(`/api/programs/${id}/jobs`).then(r => r.json()).then(setJobs).catch(() => {});
+    api.getJobs(id).then(setJobs).catch(() => {});
   }, [id]);
 
   useEffect(() => { load(); loadJobs(); }, [load, loadJobs]);
@@ -50,31 +52,22 @@ export default function ProgramDetail({ role, fixedProgramId }) {
   const submitDoc = async (e) => {
     e.preventDefault();
     if (editDoc) {
-      await fetch(`/api/programs/documents/${editDoc.id}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...editDoc, ...docForm })
-      });
+      await api.updateDocument(editDoc.id, { ...editDoc, ...docForm });
     } else {
-      await fetch(`/api/programs/${id}/documents`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(docForm)
-      });
+      await api.createDocument(id, docForm);
     }
     closeDocModal();
     load();
   };
 
   const updateDocStatus = async (doc, status) => {
-    await fetch(`/api/programs/documents/${doc.id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...doc, status })
-    });
+    await api.updateDocument(doc.id, { ...doc, status });
     load();
   };
 
   const deleteDoc = async (docId) => {
     if (!window.confirm('Delete this document?')) return;
-    await fetch(`/api/programs/documents/${docId}`, { method: 'DELETE' });
+    await api.deleteDocument(docId);
     load();
   };
 
@@ -90,25 +83,16 @@ export default function ProgramDetail({ role, fixedProgramId }) {
   const submitTask = async (e) => {
     e.preventDefault();
     if (editTask) {
-      await fetch(`/api/programs/tasks/${editTask.id}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...editTask, ...taskForm })
-      });
+      await api.updateTask(editTask.id, { ...editTask, ...taskForm });
     } else {
-      await fetch(`/api/programs/${id}/tasks`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(taskForm)
-      });
+      await api.createTask(id, taskForm);
     }
     closeTaskModal();
     load();
   };
 
   const updateTaskStatus = async (task, status) => {
-    await fetch(`/api/programs/tasks/${task.id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...task, status })
-    });
+    await api.updateTask(task.id, { ...task, status });
     load();
   };
 
@@ -123,76 +107,52 @@ export default function ProgramDetail({ role, fixedProgramId }) {
   // Milestone handlers
   const submitMs = async (e) => {
     e.preventDefault();
-    await fetch(`/api/programs/${id}/milestones`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(msForm)
-    });
+    await api.createMilestone(id, msForm);
     setShowMsModal(false);
     setMsForm({ title: '', target_date: '', notes: '' });
     load();
   };
 
   const completeMilestone = async (ms) => {
-    await fetch(`/api/programs/milestones/${ms.id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...ms, status: 'completed', completed_date: new Date().toISOString().split('T')[0] })
-    });
+    await api.updateMilestone(ms.id, { ...ms, status: 'completed', completed_date: new Date().toISOString().split('T')[0] });
     load();
   };
 
   // Job handlers
   const submitJob = async (e) => {
     e.preventDefault();
-    await fetch(`/api/programs/${id}/jobs`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(jobForm)
-    });
+    await api.createJob(id, jobForm);
     setShowJobModal(false);
     setJobForm({ job_number: '', customer_name: '', phone: '', email: '', address: '', city: '', zip: '', utility: 'ComEd', notes: '' });
     loadJobs();
   };
 
   const updateJobStatus = async (job, status) => {
-    await fetch(`/api/programs/jobs/${job.id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...job, status })
-    });
+    await api.updateJob(job.id, { ...job, status });
     loadJobs();
   };
 
   const toggleChecklist = async (item) => {
-    await fetch(`/api/programs/jobs/checklist/${item.id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ completed: !item.completed, completed_by: role })
-    });
+    await api.updateChecklist(item.id, { completed: !item.completed, completed_by: role });
     loadJobs();
   };
 
   // HVAC Replacement handlers
   const submitHvac = async (e) => {
     e.preventDefault();
-    await fetch(`/api/programs/jobs/${showHvacModal}/hvac`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(hvacForm)
-    });
+    await api.createHvac(showHvacModal, hvacForm);
     setShowHvacModal(null);
     setHvacForm({ equipment_type: 'Gas Furnace', existing_make: '', existing_model: '', existing_condition: '', existing_efficiency: '', existing_age: '', decision_tree_result: '', notes: '' });
     loadJobs();
   };
 
   const updateHvac = async (hvacId, updates) => {
-    await fetch(`/api/programs/hvac/${hvacId}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates)
-    });
+    await api.updateHvac(hvacId, updates);
     loadJobs();
   };
 
   const updateJobField = async (job, field, value) => {
-    await fetch(`/api/programs/jobs/${job.id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...job, [field]: value })
-    });
+    await api.updateJob(job.id, { ...job, [field]: value });
     loadJobs();
   };
 
@@ -202,28 +162,19 @@ export default function ProgramDetail({ role, fixedProgramId }) {
   const [forecastTo, setForecastTo] = useState('');
 
   const loadForecast = useCallback((from, to) => {
-    const params = new URLSearchParams();
-    if (from) params.set('from', from);
-    if (to) params.set('to', to);
-    fetch(`/api/programs/${id}/jobs/forecast?${params}`).then(r => r.json()).then(setForecast).catch(() => {});
+    api.getForecast(id, from, to).then(setForecast).catch(() => {});
   }, [id]);
 
   // Auto-load forecast when pipeline tab opens
   useEffect(() => { if (tab === 'pipeline') loadForecast(forecastFrom, forecastTo); }, [tab]); // eslint-disable-line
 
   const saveAssessment = async (jobId, data) => {
-    await fetch(`/api/programs/jobs/${jobId}/assessment`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ assessment_data: data })
-    });
+    await api.saveAssessmentData(jobId, data);
     loadJobs();
   };
 
   const saveScope = async (jobId, data) => {
-    await fetch(`/api/programs/jobs/${jobId}/scope`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scope_data: data })
-    });
+    await api.saveScopeData(jobId, data);
     loadJobs();
   };
 
@@ -1555,10 +1506,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                               const side = document.getElementById(`assess-side-${job.id}`).value;
                               const reader = new FileReader();
                               reader.onload = ev => {
-                                fetch(`/api/programs/jobs/${job.id}/photos`, {
-                                  method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ uploaded_by: 'Assessor', role: 'Assessor', phase: 'assessment', house_side: side, description: desc, photo_data: ev.target.result, file_name: file.name })
-                                }).then(() => { loadJobs(); document.getElementById(`assess-photo-desc-${job.id}`).value = ''; });
+                                api.uploadPhoto(job.id, { uploaded_by: 'Assessor', role: 'Assessor', phase: 'assessment', house_side: side, description: desc, photo_data: ev.target.result, file_name: file.name })
+                                .then(() => { loadJobs(); document.getElementById(`assess-photo-desc-${job.id}`).value = ''; });
                               };
                               reader.readAsDataURL(file);
                             }} />
@@ -1572,10 +1521,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                               const side = document.getElementById(`assess-side-${job.id}`).value;
                               const reader = new FileReader();
                               reader.onload = ev => {
-                                fetch(`/api/programs/jobs/${job.id}/photos`, {
-                                  method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ uploaded_by: 'Assessor', role: 'Assessor', phase: 'assessment', house_side: side, description: desc, photo_data: ev.target.result, file_name: file.name })
-                                }).then(() => { loadJobs(); document.getElementById(`assess-photo-desc-${job.id}`).value = ''; });
+                                api.uploadPhoto(job.id, { uploaded_by: 'Assessor', role: 'Assessor', phase: 'assessment', house_side: side, description: desc, photo_data: ev.target.result, file_name: file.name })
+                                .then(() => { loadJobs(); document.getElementById(`assess-photo-desc-${job.id}`).value = ''; });
                               };
                               reader.readAsDataURL(file);
                             }} />
@@ -1585,10 +1532,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                             if (!desc) return;
                             const ref = document.getElementById(`assess-photo-ref-${job.id}`).value;
                             const side = document.getElementById(`assess-side-${job.id}`).value;
-                            fetch(`/api/programs/jobs/${job.id}/photos`, {
-                              method: 'POST', headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ uploaded_by: 'Assessor', role: 'Assessor', phase: 'assessment', house_side: side, description: desc, photo_ref: ref })
-                            }).then(() => { loadJobs(); document.getElementById(`assess-photo-desc-${job.id}`).value = ''; document.getElementById(`assess-photo-ref-${job.id}`).value = ''; });
+                            api.uploadPhoto(job.id, { uploaded_by: 'Assessor', role: 'Assessor', phase: 'assessment', house_side: side, description: desc, photo_ref: ref })
+                            .then(() => { loadJobs(); document.getElementById(`assess-photo-desc-${job.id}`).value = ''; document.getElementById(`assess-photo-ref-${job.id}`).value = ''; });
                           }}>+ Log Ref</button>
                         </div>
                       </div>
@@ -1709,7 +1654,7 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                   {instPhotos.map(p => (
                                     <div key={p.id} style={{ width: 110, border: '1px solid #ddd', borderRadius: 6, overflow: 'hidden', background: '#fff', fontSize: 10 }}>
                                       {p.has_photo ? (
-                                        <img src={`/api/programs/photos/${p.id}/image`} alt={p.description} style={{ width: '100%', height: 80, objectFit: 'cover' }} />
+                                        <LazyPhoto id={p.id} alt={p.description} style={{ width: '100%', height: 80, objectFit: 'cover' }} />
                                       ) : (
                                         <div style={{ width: '100%', height: 80, background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>No image</div>
                                       )}
@@ -1739,10 +1684,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                         const side = document.getElementById(`inst-side-${job.id}-${m}`).value;
                                         const reader = new FileReader();
                                         reader.onload = () => {
-                                          fetch(`/api/programs/jobs/${job.id}/photos`, {
-                                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ uploaded_by: 'Installer', role: 'Installer', phase: 'post_install', measure_name: m, description: desc, house_side: side, photo_data: reader.result, file_name: file.name })
-                                          }).then(() => loadJobs());
+                                          api.uploadPhoto(job.id, { uploaded_by: 'Installer', role: 'Installer', phase: 'post_install', measure_name: m, description: desc, house_side: side, photo_data: reader.result, file_name: file.name })
+                                          .then(() => loadJobs());
                                         };
                                         reader.readAsDataURL(file); e.target.value = '';
                                       }} />
@@ -1755,10 +1698,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                         const side = document.getElementById(`inst-side-${job.id}-${m}`).value;
                                         const reader = new FileReader();
                                         reader.onload = () => {
-                                          fetch(`/api/programs/jobs/${job.id}/photos`, {
-                                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ uploaded_by: 'Installer', role: 'Installer', phase: 'post_install', measure_name: m, description: desc, house_side: side, photo_data: reader.result, file_name: file.name })
-                                          }).then(() => loadJobs());
+                                          api.uploadPhoto(job.id, { uploaded_by: 'Installer', role: 'Installer', phase: 'post_install', measure_name: m, description: desc, house_side: side, photo_data: reader.result, file_name: file.name })
+                                          .then(() => loadJobs());
                                         };
                                         reader.readAsDataURL(file); e.target.value = '';
                                       }} />
@@ -1791,10 +1732,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                             const desc = document.getElementById(`co-desc-${job.id}`).value;
                             if (!desc) return;
                             const reason = document.getElementById(`co-reason-${job.id}`).value;
-                            fetch(`/api/programs/jobs/${job.id}/change-orders`, {
-                              method: 'POST', headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ requested_by: 'Installer', request_type: 'scope_change', description: desc, reason })
-                            }).then(() => { loadJobs(); document.getElementById(`co-desc-${job.id}`).value = ''; document.getElementById(`co-reason-${job.id}`).value = ''; });
+                            api.createChangeOrder(job.id, { requested_by: 'Installer', request_type: 'scope_change', description: desc, reason })
+                            .then(() => { loadJobs(); document.getElementById(`co-desc-${job.id}`).value = ''; document.getElementById(`co-reason-${job.id}`).value = ''; });
                           }}>Submit Change Order</button>
                         </div>
                       </div>
@@ -1914,7 +1853,7 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                   {hvacPhotos.map(p => (
                                     <div key={p.id} style={{ width: 110, border: '1px solid #ddd', borderRadius: 6, overflow: 'hidden', background: '#fff', fontSize: 10 }}>
                                       {p.has_photo ? (
-                                        <img src={`/api/programs/photos/${p.id}/image`} alt={p.description} style={{ width: '100%', height: 80, objectFit: 'cover' }} />
+                                        <LazyPhoto id={p.id} alt={p.description} style={{ width: '100%', height: 80, objectFit: 'cover' }} />
                                       ) : (
                                         <div style={{ width: '100%', height: 80, background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>No image</div>
                                       )}
@@ -1935,10 +1874,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                     const desc = document.getElementById(`hvac-desc-${job.id}`).value || 'HVAC equipment photo';
                                     const reader = new FileReader();
                                     reader.onload = () => {
-                                      fetch(`/api/programs/jobs/${job.id}/photos`, {
-                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ uploaded_by: 'HVAC Tech', role: 'HVAC', phase: 'hvac', description: desc, photo_data: reader.result, file_name: file.name })
-                                      }).then(() => loadJobs());
+                                      api.uploadPhoto(job.id, { uploaded_by: 'HVAC Tech', role: 'HVAC', phase: 'hvac', description: desc, photo_data: reader.result, file_name: file.name })
+                                      .then(() => loadJobs());
                                     };
                                     reader.readAsDataURL(file); e.target.value = '';
                                   }} />
@@ -1950,10 +1887,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                     const desc = document.getElementById(`hvac-desc-${job.id}`).value || 'HVAC equipment photo';
                                     const reader = new FileReader();
                                     reader.onload = () => {
-                                      fetch(`/api/programs/jobs/${job.id}/photos`, {
-                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ uploaded_by: 'HVAC Tech', role: 'HVAC', phase: 'hvac', description: desc, photo_data: reader.result, file_name: file.name })
-                                      }).then(() => loadJobs());
+                                      api.uploadPhoto(job.id, { uploaded_by: 'HVAC Tech', role: 'HVAC', phase: 'hvac', description: desc, photo_data: reader.result, file_name: file.name })
+                                      .then(() => loadJobs());
                                     };
                                     reader.readAsDataURL(file); e.target.value = '';
                                   }} />
@@ -2017,17 +1952,13 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                   <input id={`co-review-${co.id}`} style={{ flex: 1, fontSize: 11, padding: '3px 6px' }} placeholder="Review notes..." />
                   <button className="btn btn-sm btn-success" style={{ fontSize: 11 }} onClick={() => {
                     const notes = document.getElementById(`co-review-${co.id}`).value;
-                    fetch(`/api/programs/change-orders/${co.id}`, {
-                      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ status: 'approved', reviewed_by: role, review_notes: notes })
-                    }).then(() => loadJobs());
+                    api.updateChangeOrder(co.id, { status: 'approved', reviewed_by: role, review_notes: notes })
+                    .then(() => loadJobs());
                   }}>Approve</button>
                   <button className="btn btn-sm btn-danger" style={{ fontSize: 11 }} onClick={() => {
                     const notes = document.getElementById(`co-review-${co.id}`).value;
-                    fetch(`/api/programs/change-orders/${co.id}`, {
-                      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ status: 'denied', reviewed_by: role, review_notes: notes })
-                    }).then(() => loadJobs());
+                    api.updateChangeOrder(co.id, { status: 'denied', reviewed_by: role, review_notes: notes })
+                    .then(() => loadJobs());
                   }}>Deny</button>
                 </div>
               </div>

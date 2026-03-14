@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as api from '../api';
 import ProgramDetail from './ProgramDetail';
 
 export default function HESIEPage({ role }) {
@@ -6,8 +7,7 @@ export default function HESIEPage({ role }) {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch('/api/hes-ie-program')
-      .then(r => r.json())
+    api.getHesIeProgram()
       .then(p => {
         if (p && p.id) setProgramId(p.id);
         else setError(true);

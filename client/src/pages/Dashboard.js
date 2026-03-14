@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as api from '../api';
 
 export default function Dashboard({ role }) {
   const [empStats, setEmpStats] = useState(null);
@@ -6,9 +7,9 @@ export default function Dashboard({ role }) {
   const [billStats, setBillStats] = useState(null);
 
   useEffect(() => {
-    fetch('/api/employees/stats/summary').then(r => r.json()).then(setEmpStats).catch(() => {});
-    fetch('/api/kpis/stats/dashboard').then(r => r.json()).then(setKpiStats).catch(() => {});
-    fetch('/api/billing/stats/summary').then(r => r.json()).then(setBillStats).catch(() => {});
+    api.getEmployeeStats().then(setEmpStats).catch(() => {});
+    api.getKpiDashboard().then(setKpiStats).catch(() => {});
+    api.getBillStats().then(setBillStats).catch(() => {});
   }, []);
 
   return (

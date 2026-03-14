@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import * as api from '../api';
 
 export default function ITPage({ role }) {
   const [catalog, setCatalog] = useState([]);
@@ -13,19 +14,16 @@ export default function ITPage({ role }) {
   const IT_CATEGORIES = ['Laptop', 'Desktop', 'Monitor', 'Phone', 'Tablet', 'Software License', 'Peripheral', 'Network Equipment', 'Other IT'];
 
   const load = useCallback(() => {
-    fetch('/api/equipment/catalog').then(r => r.json()).then(setCatalog).catch(() => {});
-    fetch('/api/equipment/assignments?department=IT').then(r => r.json()).then(setAssignments).catch(() => {});
-    fetch('/api/employees?status=active').then(r => r.json()).then(setEmployees).catch(() => {});
+    api.getCatalog().then(setCatalog).catch(() => {});
+    api.getAssignments({ department: 'IT' }).then(setAssignments).catch(() => {});
+    api.getEmployees('active').then(setEmployees).catch(() => {});
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
   const addCatalogItem = async (e) => {
     e.preventDefault();
-    await fetch('/api/equipment/catalog', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...catalogForm, unit_cost: parseFloat(catalogForm.unit_cost) })
-    });
+    await api.createCatalogItem({ ...catalogForm, unit_cost: parseFloat(catalogForm.unit_cost) });
     setShowCatalogModal(false);
     setCatalogForm({ name: '', category: 'Laptop', unit_cost: '', description: '' });
     load();
@@ -33,20 +31,14 @@ export default function ITPage({ role }) {
 
   const assignEquipment = async (e) => {
     e.preventDefault();
-    await fetch('/api/equipment/assignments', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...assignForm, department: 'IT' })
-    });
+    await api.createAssignment({ ...assignForm, department: 'IT' });
     setShowAssignModal(false);
     setAssignForm({ employee_id: '', equipment_catalog_id: '', serial_number: '', assigned_date: '', assigned_by: '', notes: '' });
     load();
   };
 
   const returnEquipment = async (id) => {
-    await fetch(`/api/equipment/assignments/${id}/return`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ returned_date: new Date().toISOString().split('T')[0] })
-    });
+    await api.returnAssignment(id, { returned_date: new Date().toISOString().split('T')[0] });
     load();
   };
 

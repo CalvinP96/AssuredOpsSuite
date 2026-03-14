@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import * as api from '../api';
 
 export default function EmployeeDetail({ role }) {
   const { id } = useParams();
@@ -8,8 +9,8 @@ export default function EmployeeDetail({ role }) {
   const [costSummary, setCostSummary] = useState(null);
 
   useEffect(() => {
-    fetch(`/api/employees/${id}`).then(r => r.json()).then(setEmployee).catch(() => {});
-    fetch(`/api/equipment/cost-summary/${id}`).then(r => r.json()).then(setCostSummary).catch(() => {});
+    api.getEmployee(id).then(setEmployee).catch(() => {});
+    api.getCostSummary(id).then(setCostSummary).catch(() => {});
   }, [id]);
 
   if (!employee) return <div className="card"><p>Loading...</p></div>;

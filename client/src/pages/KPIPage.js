@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import * as api from '../api';
 
 const CATEGORIES = ['Revenue', 'Operations', 'Customer', 'Employee', 'Safety', 'Quality', 'Efficiency'];
 const DEPARTMENTS = ['IT', 'Warehouse', 'HR', 'Finance', 'Operations', 'Sales', 'HVAC', 'Insulation', 'Support', 'Company-Wide'];
@@ -13,8 +14,8 @@ export default function KPIPage({ role }) {
   });
 
   const load = useCallback(() => {
-    const params = filterDept ? `?department=${filterDept}` : '';
-    fetch(`/api/kpis${params}`).then(r => r.json()).then(setKpis).catch(() => {});
+    const filters = filterDept ? { department: filterDept } : {};
+    api.getKpis(filters).then(setKpis).catch(() => {});
   }, [filterDept]);
 
   useEffect(() => { load(); }, [load]);
@@ -28,23 +29,17 @@ export default function KPIPage({ role }) {
     };
 
     if (editKpi) {
-      await fetch(`/api/kpis/${editKpi.id}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      await api.updateKpi(editKpi.id, payload);
     } else {
-      await fetch('/api/kpis', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      await api.createKpi(payload);
     }
     closeModal();
     load();
   };
 
-  const deleteKpi = async (id) => {
+  const handleDeleteKpi = async (id) => {
     if (!window.confirm('Delete this KPI?')) return;
-    await fetch(`/api/kpis/${id}`, { method: 'DELETE' });
+    await api.deleteKpi(id);
     load();
   };
 
@@ -116,7 +111,7 @@ export default function KPIPage({ role }) {
                     <td>
                       <div style={{ display: 'flex', gap: 5 }}>
                         <button className="btn btn-sm btn-secondary" onClick={() => openEdit(kpi)}>Edit</button>
-                        <button className="btn btn-sm btn-danger" onClick={() => deleteKpi(kpi.id)}>Del</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDeleteKpi(kpi.id)}>Del</button>
                       </div>
                     </td>
                   )}

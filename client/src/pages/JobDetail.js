@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import * as api from '../api';
+import LazyPhoto from '../components/LazyPhoto';
 
 const JOB_STATUSES = ['assessment_scheduled', 'assessment_complete', 'pre_approval', 'approved', 'install_scheduled', 'install_in_progress', 'inspection', 'submitted', 'invoiced', 'complete', 'deferred'];
 const UTILITIES = ['ComEd', 'Nicor Gas', 'Peoples Gas', 'North Shore Gas'];
@@ -24,14 +26,12 @@ export default function JobDetail({ role }) {
   const canEdit = ['Admin', 'Operations', 'Program Manager', 'Assessor', 'Installer', 'HVAC'].includes(role);
 
   const load = useCallback(() => {
-    fetch(`/api/programs/jobs/${jobId}/detail`).then(r => r.json()).then(setJob).catch(() => {});
+    api.getJobDetail(jobId).then(setJob).catch(() => {});
   }, [jobId]);
 
   const loadProgram = useCallback(() => {
-    fetch('/api/hes-ie-program').then(r => r.json()).then(p => {
-      if (p && p.id) {
-        fetch(`/api/programs/${p.id}`).then(r => r.json()).then(setProgram);
-      }
+    api.getHesIeProgram().then(p => {
+      if (p && p.id) api.getProgram(p.id).then(setProgram);
     });
   }, []);
 
@@ -40,25 +40,16 @@ export default function JobDetail({ role }) {
   const updateField = async (field, value) => {
     const updated = { ...job, [field]: value };
     setJob(updated);
-    await fetch(`/api/programs/jobs/${jobId}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updated)
-    });
+    await api.updateJob(jobId, updated);
     load();
   };
 
   const saveAssessment = async (data) => {
-    await fetch(`/api/programs/jobs/${jobId}/assessment`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ assessment_data: data })
-    });
+    await api.saveAssessmentData(jobId, data);
   };
 
   const saveScope = async (data) => {
-    await fetch(`/api/programs/jobs/${jobId}/scope`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scope_data: data })
-    });
+    await api.saveScopeData(jobId, data);
   };
 
   const getAssessment = () => {
@@ -113,19 +104,16 @@ export default function JobDetail({ role }) {
 
   const submitPhoto = async (phase, description, houseSide, measureName) => {
     if (!capturedPhoto && !photoModal?.ref) return;
-    await fetch(`/api/programs/jobs/${jobId}/photos`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        uploaded_by: role,
-        role: role,
-        phase: phase,
-        measure_name: measureName || null,
-        house_side: houseSide || null,
-        description: description,
-        photo_data: capturedPhoto || null,
-        photo_ref: photoModal?.ref || null,
-        file_name: `${phase}_${houseSide || 'general'}_${Date.now()}.jpg`
-      })
+    await api.uploadPhoto(jobId, {
+      uploaded_by: role,
+      role: role,
+      phase: phase,
+      measure_name: measureName || null,
+      house_side: houseSide || null,
+      description: description,
+      photo_data: capturedPhoto || null,
+      photo_ref: photoModal?.ref || null,
+      file_name: `${phase}_${houseSide || 'general'}_${Date.now()}.jpg`
     });
     setCapturedPhoto(null);
     setPhotoModal(null);
@@ -133,7 +121,7 @@ export default function JobDetail({ role }) {
   };
 
   const loadExport = async () => {
-    const data = await fetch(`/api/programs/jobs/${jobId}/export`).then(r => r.json());
+    const data = await api.getJobExport(jobId);
     setExportData(data);
   };
 
@@ -782,7 +770,7 @@ export default function JobDetail({ role }) {
                     return (
                       <div key={p.id} style={{ border: '1px solid #ddd', borderRadius: 6, overflow: 'hidden', background: '#fff' }}>
                         {p.has_photo ? (
-                          <img src={`/api/programs/photos/${p.id}/image`} alt={p.description} style={{ width: '100%', height: 130, objectFit: 'cover' }} />
+                          <LazyPhoto id={p.id} alt={p.description} style={{ width: '100%', height: 130, objectFit: 'cover' }} />
                         ) : (
                           <div style={{ height: 130, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: 12 }}>
                             {p.photo_ref || 'No image'}
@@ -855,10 +843,7 @@ export default function JobDetail({ role }) {
                   <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '4px 0', cursor: canEdit ? 'pointer' : 'default' }}>
                     <input type="checkbox" checked={!!item.completed} disabled={!canEdit}
                       onChange={async () => {
-                        await fetch(`/api/programs/jobs/checklist/${item.id}`, {
-                          method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ completed: !item.completed, completed_by: role })
-                        });
+                        await api.updateChecklist(item.id, { completed: !item.completed, completed_by: role });
                         load();
                       }} />
                     <span style={{ textDecoration: item.completed ? 'line-through' : 'none', color: item.completed ? '#888' : '#333' }}>
@@ -923,17 +908,11 @@ export default function JobDetail({ role }) {
                 {co.status === 'pending' && canEdit && ['Admin', 'Operations'].includes(role) && (
                   <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                     <button className="btn btn-sm btn-success" style={{ fontSize: 11 }} onClick={async () => {
-                      await fetch(`/api/programs/change-orders/${co.id}`, {
-                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ status: 'approved', reviewed_by: role })
-                      });
+                      await api.updateChangeOrder(co.id, { status: 'approved', reviewed_by: role });
                       load();
                     }}>Approve</button>
                     <button className="btn btn-sm btn-danger" style={{ fontSize: 11 }} onClick={async () => {
-                      await fetch(`/api/programs/change-orders/${co.id}`, {
-                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ status: 'denied', reviewed_by: role })
-                      });
+                      await api.updateChangeOrder(co.id, { status: 'denied', reviewed_by: role });
                       load();
                     }}>Deny</button>
                   </div>
@@ -975,7 +954,7 @@ export default function JobDetail({ role }) {
                     <strong style={{ fontSize: 12, textTransform: 'capitalize' }}>{side} ({photos.length})</strong>
                     {photos.map(p => (
                       <div key={p.id} style={{ fontSize: 11, padding: '2px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {p.has_photo && <img src={`/api/programs/photos/${p.id}/image`} alt="" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 3 }} />}
+                        {p.has_photo && <LazyPhoto id={p.id} alt="" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 3 }} />}
                         <span>{p.description}</span>
                       </div>
                     ))}
@@ -991,7 +970,7 @@ export default function JobDetail({ role }) {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 6, marginTop: 4 }}>
                     {photos.map(p => (
                       <div key={p.id} style={{ textAlign: 'center' }}>
-                        {p.has_photo && <img src={`/api/programs/photos/${p.id}/image`} alt="" style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 4 }} />}
+                        {p.has_photo && <LazyPhoto id={p.id} alt="" style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 4 }} />}
                         <div style={{ fontSize: 10, marginTop: 2 }}>{p.description}</div>
                       </div>
                     ))}

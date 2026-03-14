@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import * as api from '../api';
 
 export default function FinancePage({ role }) {
   const [assignments, setAssignments] = useState([]);
   const [billStats, setBillStats] = useState(null);
 
   useEffect(() => {
-    fetch('/api/equipment/assignments').then(r => r.json()).then(setAssignments).catch(() => {});
-    fetch('/api/billing/stats/summary').then(r => r.json()).then(setBillStats).catch(() => {});
+    api.getAssignments().then(setAssignments).catch(() => {});
+    api.getBillStats().then(setBillStats).catch(() => {});
   }, []);
 
   const totalEquipCost = assignments.reduce((sum, a) => sum + (a.unit_cost || 0), 0);
