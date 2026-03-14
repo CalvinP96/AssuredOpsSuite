@@ -21,8 +21,8 @@ export default function LoginPage({ onLogin }) {
   };
 
   return (
-    <div style={styles.wrapper}>
-      <form onSubmit={handleSubmit} style={styles.card}>
+    <div className="login-wrapper" style={styles.wrapper}>
+      <form onSubmit={handleSubmit} className="login-card" style={styles.card}>
         <h1 style={styles.title}>AssuredOpsSuite</h1>
         <p style={styles.subtitle}>Company Operations Portal</p>
 

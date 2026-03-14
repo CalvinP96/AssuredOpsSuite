@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
@@ -28,6 +28,12 @@ export default function Sidebar({ user, currentRoles, open, toggle }) {
     grouped[item.category].push(item);
   });
 
+  // Close sidebar on mobile initial load
+  useLayoutEffect(() => {
+    if (window.innerWidth <= 768 && open) toggle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
   };
@@ -39,6 +45,7 @@ export default function Sidebar({ user, currentRoles, open, toggle }) {
         <div className="sidebar-header">
           <h2>AssuredOpsSuite</h2>
           <p>Company Operations Portal</p>
+          <button className="sidebar-close-btn" onClick={toggle} aria-label="Close menu">&times;</button>
         </div>
 
         {user && (
