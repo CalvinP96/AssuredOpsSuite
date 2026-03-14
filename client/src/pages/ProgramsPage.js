@@ -14,10 +14,12 @@ export default function ProgramsPage({ role }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await api.createProgram(form);
-    setShowModal(false);
-    setForm({ name: '', code: '', description: '', manager_name: '', manager_title: '' });
-    load();
+    try {
+      await api.createProgram(form);
+      setShowModal(false);
+      setForm({ name: '', code: '', description: '', manager_name: '', manager_title: '' });
+      load();
+    } catch (err) { alert('Failed to create program: ' + err.message); }
   };
 
   const canEdit = role === 'Admin' || role === 'Operations';

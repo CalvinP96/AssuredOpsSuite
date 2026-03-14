@@ -1,17 +1,10 @@
 {
   "name": "assured-ops-suite",
   "version": "1.0.0",
-  "description": "Company site with KPI management, HR tracking, and IT/Warehouse equipment billing",
+  "description": "Company operations portal with KPI management, HR tracking, and IT/Warehouse equipment billing",
+  "private": true,
   "scripts": {
-    "server": "node server/index.js",
-    "client": "cd client && npx react-scripts start",
-    "build": "cd client && npx react-scripts build",
-    "start": "node server/index.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "sql.js": "^1.10.3",
-    "cors": "^2.8.5",
-    "uuid": "^9.0.0"
+    "build": "cd client && npm install && npm run build",
+    "dev": "cd client && npm start"
   }
 }

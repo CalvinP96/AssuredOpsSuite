@@ -11,16 +11,20 @@ export default function BillingPage({ role }) {
   }, []);
 
   const viewBill = async (bill) => {
-    setSelectedBill(bill);
-    const detail = await api.getBill(bill.id);
-    setBillDetail(detail);
+    try {
+      setSelectedBill(bill);
+      const detail = await api.getBill(bill.id);
+      setBillDetail(detail);
+    } catch (err) { alert('Failed to load bill: ' + err.message); }
   };
 
   const updateBillStatus = async (id, status) => {
-    await api.updateBill(id, { status, amount_due: billDetail?.amount_due, notes: billDetail?.notes });
-    api.getBills().then(setBills).catch(() => {});
-    setSelectedBill(null);
-    setBillDetail(null);
+    try {
+      await api.updateBill(id, { status, amount_due: billDetail?.amount_due, notes: billDetail?.notes });
+      api.getBills().then(setBills).catch(() => {});
+      setSelectedBill(null);
+      setBillDetail(null);
+    } catch (err) { alert('Failed to update bill: ' + err.message); }
   };
 
   return (

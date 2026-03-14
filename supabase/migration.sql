@@ -333,6 +333,10 @@ BEGIN
     ])
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS "Allow all select" ON %I', t);
+    EXECUTE format('DROP POLICY IF EXISTS "Allow all insert" ON %I', t);
+    EXECUTE format('DROP POLICY IF EXISTS "Allow all update" ON %I', t);
+    EXECUTE format('DROP POLICY IF EXISTS "Allow all delete" ON %I', t);
     EXECUTE format('CREATE POLICY "Allow all select" ON %I FOR SELECT USING (true)', t);
     EXECUTE format('CREATE POLICY "Allow all insert" ON %I FOR INSERT WITH CHECK (true)', t);
     EXECUTE format('CREATE POLICY "Allow all update" ON %I FOR UPDATE USING (true) WITH CHECK (true)', t);

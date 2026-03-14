@@ -23,23 +23,29 @@ export default function WarehousePage({ role }) {
 
   const addCatalogItem = async (e) => {
     e.preventDefault();
-    await api.createCatalogItem({ ...catalogForm, unit_cost: parseFloat(catalogForm.unit_cost) });
-    setShowCatalogModal(false);
-    setCatalogForm({ name: '', category: 'Tools', unit_cost: '', description: '' });
-    load();
+    try {
+      await api.createCatalogItem({ ...catalogForm, unit_cost: parseFloat(catalogForm.unit_cost) });
+      setShowCatalogModal(false);
+      setCatalogForm({ name: '', category: 'Tools', unit_cost: '', description: '' });
+      load();
+    } catch (err) { alert('Failed to add catalog item: ' + err.message); }
   };
 
   const assignEquipment = async (e) => {
     e.preventDefault();
-    await api.createAssignment({ ...assignForm, department: 'Warehouse' });
-    setShowAssignModal(false);
-    setAssignForm({ employee_id: '', equipment_catalog_id: '', serial_number: '', assigned_date: '', assigned_by: '', notes: '' });
-    load();
+    try {
+      await api.createAssignment({ ...assignForm, department: 'Warehouse' });
+      setShowAssignModal(false);
+      setAssignForm({ employee_id: '', equipment_catalog_id: '', serial_number: '', assigned_date: '', assigned_by: '', notes: '' });
+      load();
+    } catch (err) { alert('Failed to assign equipment: ' + err.message); }
   };
 
   const returnEquipment = async (id) => {
-    await api.returnAssignment(id, { returned_date: new Date().toISOString().split('T')[0] });
-    load();
+    try {
+      await api.returnAssignment(id, { returned_date: new Date().toISOString().split('T')[0] });
+      load();
+    } catch (err) { alert('Failed to return equipment: ' + err.message); }
   };
 
   const whCatalog = catalog.filter(c => WH_CATEGORIES.includes(c.category));
