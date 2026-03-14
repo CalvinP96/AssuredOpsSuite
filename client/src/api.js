@@ -771,6 +771,22 @@ export async function uploadPhoto(jobId, data) {
   if (error) throw error;
 }
 
+export async function uploadJobPhoto(jobId, zone, label, timing, file) {
+  const ext = file.name.split('.').pop();
+  const path = `job-photos/${jobId}/${zone}/${Date.now()}.${ext}`;
+  const { data: upload, error: uploadErr } = await supabase.storage.from('job-photos').upload(path, file);
+  if (uploadErr) throw uploadErr;
+  const { data: { publicUrl } } = supabase.storage.from('job-photos').getPublicUrl(path);
+  const { error } = await supabase.from('job_photos').insert([{ job_id: jobId, phase: timing, house_side: zone, photo_url: publicUrl, label }]);
+  if (error) throw error;
+  return publicUrl;
+}
+
+export async function getJobPhotos(jobId) {
+  const { data } = await supabase.from('job_photos').select('*').eq('job_id', jobId).order('created_at');
+  return data || [];
+}
+
 export async function getPhotoData(photoId) {
   const { data, error } = await supabase.from('job_photos').select('photo_data').eq('id', photoId).single();
   if (error) throw error;
@@ -870,6 +886,7 @@ export async function logAudit(entry) {
 export async function getAuditLog(filters = {}) {
   let q = supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(500)
   if (filters.entityType) q = q.eq('entity_type', filters.entityType)
+  if (filters.entityId) q = q.eq('entity_id', String(filters.entityId))
   if (filters.dateFrom) q = q.gte('created_at', filters.dateFrom)
   if (filters.dateTo) q = q.lte('created_at', filters.dateTo)
   const { data } = await q

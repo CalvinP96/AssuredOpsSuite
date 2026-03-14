@@ -1,6 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as api from '../api';
-import LazyPhoto from '../components/LazyPhoto';
 
 const PHOTO_CHECKLIST = [
   {
@@ -132,104 +131,134 @@ const TIMING_COLORS = {
   MEASURE: { bg: '#f3e5f5', text: '#6a1b9a', label: 'MEASURE' },
 };
 
-function matchPhoto(photos, zone, itemName, timing) {
+function isPreTiming(t) { return t === 'PRE' || t === 'BOTH' || t === 'DURING' || t === 'MEASURE'; }
+function isPostTiming(t) { return t === 'POST' || t === 'BOTH'; }
+
+function matchPhoto(photos, zone, itemName) {
   const zoneLC = zone.toLowerCase();
   const nameLC = itemName.toLowerCase();
   return photos.filter(p => {
-    const desc = (p.description || '').toLowerCase();
-    return desc.includes(nameLC) || (desc.includes(zoneLC) && desc.includes(nameLC.split(' ')[0]));
+    const hs = (p.house_side || '').toLowerCase();
+    const lbl = (p.label || p.description || '').toLowerCase();
+    return (hs === zoneLC && lbl.includes(nameLC)) ||
+           (lbl.includes(zoneLC) && lbl.includes(nameLC.split(' ')[0])) ||
+           (lbl.includes(`[${zoneLC}] ${nameLC}`));
   });
 }
 
 export default function PhotosTab({ job, program, canEdit, onUpdate, role }) {
-  const [uploadModal, setUploadModal] = useState(null);
-  const [capturedPhoto, setCapturedPhoto] = useState(null);
-  const [cameraStream, setCameraStream] = useState(null);
-  const cameraRef = useRef(null);
-  const canvasRef = useRef(null);
+  const [viewMode, setViewMode] = useState('all');
+  const [collapsed, setCollapsed] = useState({});
+  const [lightbox, setLightbox] = useState(null);
+  const [lbIndex, setLbIndex] = useState(0);
+  const [uploading, setUploading] = useState(null);
+  const [photos, setPhotos] = useState([]);
+  const fileRef = useRef(null);
 
-  const photos = job.photos || [];
-
-  const startCamera = async () => {
+  const loadPhotos = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
-      });
-      setCameraStream(stream);
-      if (cameraRef.current) cameraRef.current.srcObject = stream;
+      const data = await api.getJobPhotos(job.id);
+      setPhotos(data);
     } catch {
-      alert('Camera access denied. You can still upload from gallery.');
+      setPhotos(job.photos || []);
     }
-  };
+  }, [job.id, job.photos]);
 
-  const captureFromCamera = () => {
-    if (!cameraRef.current || !canvasRef.current) return;
-    const video = cameraRef.current;
-    const canvas = canvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    setCapturedPhoto(canvas.toDataURL('image/jpeg', 0.85));
-    stopCamera();
-  };
+  useEffect(() => { loadPhotos(); }, [loadPhotos]);
 
-  const stopCamera = () => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(t => t.stop());
-      setCameraStream(null);
-    }
-  };
+  const toggleZone = (zone) => setCollapsed(c => ({ ...c, [zone]: !c[zone] }));
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
+  const handleUpload = async (zone, itemName, timing, file) => {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setCapturedPhoto(ev.target.result);
-    reader.readAsDataURL(file);
-  };
-
-  const submitPhoto = async () => {
-    if (!capturedPhoto || !uploadModal) return;
+    setUploading(`${zone}-${itemName}`);
     try {
-      await api.uploadPhoto(job.id, {
-        uploaded_by: role,
-        role: role,
-        phase: uploadModal.timing === 'POST' ? 'post_install' : 'assessment',
-        measure_name: null,
-        house_side: null,
-        description: `[${uploadModal.zone}] ${uploadModal.item}`,
-        photo_data: capturedPhoto,
-        photo_ref: null,
-        file_name: `${uploadModal.zone.toLowerCase().replace(/\s+/g, '_')}_${uploadModal.item.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.jpg`,
-      });
-      setCapturedPhoto(null);
-      setUploadModal(null);
-      onUpdate('_reload');
+      await api.uploadJobPhoto(job.id, zone, itemName, timing.toLowerCase(), file);
+      await loadPhotos();
+      if (onUpdate) onUpdate('_reload');
     } catch (err) {
-      alert('Failed to upload: ' + err.message);
+      alert('Upload failed: ' + err.message);
+    } finally {
+      setUploading(null);
     }
   };
 
-  // Count completed items per zone
-  const getZoneProgress = (zoneData) => {
-    let done = 0;
-    zoneData.items.forEach(item => {
-      const matched = matchPhoto(photos, zoneData.zone, item.name, item.timing);
-      if (matched.length > 0) done++;
-    });
-    return { done, total: zoneData.items.length };
+  // Build flat list for lightbox navigation
+  const allPhotosFlat = photos.filter(p => p.photo_url || p.photo_data || p.photo_ref);
+
+  const openLightbox = (photo) => {
+    setLightbox(photo);
+    setLbIndex(allPhotosFlat.findIndex(p => p.id === photo.id));
   };
 
-  // Overall progress
-  const totalItems = PHOTO_CHECKLIST.reduce((sum, z) => sum + z.items.length, 0);
-  const totalDone = PHOTO_CHECKLIST.reduce((sum, z) => sum + getZoneProgress(z).done, 0);
+  const lbPrev = () => {
+    if (lbIndex > 0) { setLbIndex(lbIndex - 1); setLightbox(allPhotosFlat[lbIndex - 1]); }
+  };
+  const lbNext = () => {
+    if (lbIndex < allPhotosFlat.length - 1) { setLbIndex(lbIndex + 1); setLightbox(allPhotosFlat[lbIndex + 1]); }
+  };
+
+  useEffect(() => {
+    if (!lightbox) return;
+    const handler = (e) => {
+      if (e.key === 'Escape') setLightbox(null);
+      if (e.key === 'ArrowLeft') lbPrev();
+      if (e.key === 'ArrowRight') lbNext();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  });
+
+  const getPhotoUrl = (p) => p.photo_url || (p.photo_data ? `data:image/jpeg;base64,${p.photo_data}` : null);
+
+  // Progress
+  const totalItems = PHOTO_CHECKLIST.reduce((s, z) => s + z.items.length, 0);
+  const totalDone = PHOTO_CHECKLIST.reduce((s, z) => {
+    return s + z.items.filter(item => matchPhoto(photos, z.zone, item.name).length > 0).length;
+  }, 0);
+
+  // Filter items per view mode
+  const getFilteredZones = () => {
+    if (viewMode === 'all') return PHOTO_CHECKLIST;
+    if (viewMode === 'pre') return PHOTO_CHECKLIST.map(z => ({
+      ...z, items: z.items.filter(i => isPreTiming(i.timing))
+    })).filter(z => z.items.length > 0);
+    if (viewMode === 'post') return PHOTO_CHECKLIST.map(z => ({
+      ...z, items: z.items.filter(i => isPostTiming(i.timing))
+    })).filter(z => z.items.length > 0);
+    return PHOTO_CHECKLIST;
+  };
+
+  // Side-by-side pairs
+  const buildPairs = () => {
+    const pairs = [];
+    PHOTO_CHECKLIST.forEach(z => {
+      z.items.forEach(item => {
+        if (!isPreTiming(item.timing) && !isPostTiming(item.timing)) return;
+        const matched = matchPhoto(photos, z.zone, item.name);
+        const prePhotos = matched.filter(p => ['assessment', 'pre_install', 'pre', 'during', 'measure'].includes((p.phase || '').toLowerCase()));
+        const postPhotos = matched.filter(p => ['post_install', 'post', 'post_installation'].includes((p.phase || '').toLowerCase()));
+        if (prePhotos.length > 0 || postPhotos.length > 0) {
+          pairs.push({ zone: z.zone, color: z.color, label: item.name, prePhotos, postPhotos });
+        }
+      });
+    });
+    return pairs;
+  };
+
+  const viewBtnStyle = (mode) => ({
+    flex: 1, padding: '8px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
+    fontSize: 12, fontWeight: viewMode === mode ? 700 : 500,
+    background: viewMode === mode ? 'var(--color-primary)' : 'var(--color-surface-alt)',
+    color: viewMode === mode ? '#fff' : 'var(--color-text-muted)',
+    transition: 'all 0.15s',
+  });
 
   return (
     <div>
       {/* Progress header */}
       <div className="jd-card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <h3 style={{ margin: 0, fontSize: 16 }}>Photo Documentation Checklist</h3>
+          <h3 style={{ margin: 0, fontSize: 16 }}>Photo Documentation</h3>
           <span style={{ fontSize: 13, fontWeight: 600, color: totalDone === totalItems ? '#2e7d32' : '#e65100' }}>
             {totalDone}/{totalItems} items
           </span>
@@ -237,131 +266,202 @@ export default function PhotosTab({ job, program, canEdit, onUpdate, role }) {
         <div style={{ background: '#e0e0e0', borderRadius: 4, height: 8, overflow: 'hidden' }}>
           <div style={{ width: `${totalItems > 0 ? (totalDone / totalItems) * 100 : 0}%`, height: '100%', background: totalDone === totalItems ? '#4caf50' : '#ff9800', transition: 'width 0.3s' }} />
         </div>
+
+        {/* View toggles */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+          <button style={viewBtnStyle('all')} onClick={() => setViewMode('all')}>All Photos</button>
+          <button style={viewBtnStyle('pre')} onClick={() => setViewMode('pre')}>Pre-Install</button>
+          <button style={viewBtnStyle('post')} onClick={() => setViewMode('post')}>Post-Install</button>
+          <button style={viewBtnStyle('side')} onClick={() => setViewMode('side')}>Side by Side</button>
+        </div>
+
+        {/* Zone summary chips */}
         <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
           {PHOTO_CHECKLIST.map(z => {
-            const { done, total } = getZoneProgress(z);
+            const done = z.items.filter(i => matchPhoto(photos, z.zone, i.name).length > 0).length;
             return (
-              <span key={z.zone} style={{ fontSize: 10, padding: '2px 8px', background: done === total ? '#e8f5e9' : z.bg, color: done === total ? '#2e7d32' : z.color, borderRadius: 3, border: `1px solid ${done === total ? '#c8e6c9' : 'transparent'}` }}>
-                {z.zone} {done}/{total}
+              <span key={z.zone} style={{ fontSize: 10, padding: '2px 8px', background: done === z.items.length ? '#e8f5e9' : z.bg, color: done === z.items.length ? '#2e7d32' : z.color, borderRadius: 3, border: `1px solid ${done === z.items.length ? '#c8e6c9' : 'transparent'}` }}>
+                {z.zone} {done}/{z.items.length}
               </span>
             );
           })}
         </div>
       </div>
 
-      {/* Zone sections */}
-      {PHOTO_CHECKLIST.map(zoneData => {
-        const { done, total } = getZoneProgress(zoneData);
+      {/* === SIDE BY SIDE VIEW === */}
+      {viewMode === 'side' && (() => {
+        const pairs = buildPairs();
+        if (pairs.length === 0) return (
+          <div className="jd-card" style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>↔</div>
+            <div style={{ fontSize: 14 }}>No photos to compare yet. Upload pre and post photos to see side-by-side.</div>
+          </div>
+        );
+        let currentZone = '';
+        return pairs.map((pair, pi) => {
+          const showHeader = pair.zone !== currentZone;
+          currentZone = pair.zone;
+          return (
+            <React.Fragment key={pi}>
+              {showHeader && (
+                <div style={{ fontSize: 13, fontWeight: 700, color: pair.color, margin: '16px 0 8px', padding: '4px 0', borderBottom: `2px solid ${pair.color}` }}>
+                  {pair.zone}
+                </div>
+              )}
+              <div className="jd-card" style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--color-border)' }}>
+                  <div style={{ padding: '6px 12px', background: '#fff3e0', fontSize: 11, fontWeight: 700, color: '#e65100', textAlign: 'center' }}>
+                    PRE — {pair.label}
+                  </div>
+                  <div style={{ padding: '6px 12px', background: '#e8f5e9', fontSize: 11, fontWeight: 700, color: '#2e7d32', textAlign: 'center' }}>
+                    POST — {pair.label}
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 120 }}>
+                  <div style={{ borderRight: '1px solid var(--color-border)', padding: 8, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center', justifyContent: 'center' }}>
+                    {pair.prePhotos.length > 0 ? pair.prePhotos.map((p, i) => {
+                      const url = getPhotoUrl(p);
+                      return url ? (
+                        <img key={i} src={url} alt="" onClick={() => openLightbox(p)}
+                          style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 4, cursor: 'pointer' }} />
+                      ) : null;
+                    }) : <div style={{ color: '#999', fontSize: 12, padding: 20 }}>No pre photo</div>}
+                  </div>
+                  <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center', justifyContent: 'center' }}>
+                    {pair.postPhotos.length > 0 ? pair.postPhotos.map((p, i) => {
+                      const url = getPhotoUrl(p);
+                      return url ? (
+                        <img key={i} src={url} alt="" onClick={() => openLightbox(p)}
+                          style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 4, cursor: 'pointer' }} />
+                      ) : null;
+                    }) : <div style={{ color: '#999', fontSize: 12, padding: 20 }}>No post photo</div>}
+                  </div>
+                </div>
+              </div>
+            </React.Fragment>
+          );
+        });
+      })()}
+
+      {/* === ALL / PRE / POST VIEWS === */}
+      {viewMode !== 'side' && getFilteredZones().map(zoneData => {
+        const done = zoneData.items.filter(i => matchPhoto(photos, zoneData.zone, i.name).length > 0).length;
+        const isCollapsed = collapsed[zoneData.zone];
+
         return (
           <div key={zoneData.zone} className="jd-card" style={{ marginBottom: 12, padding: 0, overflow: 'hidden' }}>
-            {/* Zone header */}
-            <div style={{ padding: '8px 14px', background: zoneData.color, color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <strong style={{ fontSize: 13 }}>{zoneData.zone}</strong>
-              <span style={{ fontSize: 11, opacity: 0.9 }}>{done}/{total}</span>
+            {/* Zone header - clickable to collapse */}
+            <div
+              onClick={() => toggleZone(zoneData.zone)}
+              style={{ padding: '10px 14px', background: zoneData.color, color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}>
+              <strong style={{ fontSize: 13 }}>
+                <span style={{ marginRight: 8, fontSize: 10, display: 'inline-block', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>&#9660;</span>
+                {zoneData.zone}
+              </strong>
+              <span style={{ fontSize: 11, opacity: 0.9 }}>
+                {done === zoneData.items.length && <span style={{ marginRight: 4 }}>{'\u2713'}</span>}
+                {done}/{zoneData.items.length}
+              </span>
             </div>
 
             {/* Photo items */}
-            <div style={{ padding: '6px 0' }}>
-              {zoneData.items.map((item, idx) => {
-                const matched = matchPhoto(photos, zoneData.zone, item.name, item.timing);
-                const hasPhoto = matched.length > 0;
-                const timingInfo = TIMING_COLORS[item.timing] || TIMING_COLORS.PRE;
+            {!isCollapsed && (
+              <div style={{ padding: '6px 0' }}>
+                {zoneData.items.map((item, idx) => {
+                  const matched = matchPhoto(photos, zoneData.zone, item.name);
+                  const hasPhotoMatch = matched.length > 0;
+                  const timingInfo = TIMING_COLORS[item.timing] || TIMING_COLORS.PRE;
+                  const isUploading = uploading === `${zoneData.zone}-${item.name}`;
 
-                return (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px', borderBottom: idx < zoneData.items.length - 1 ? '1px solid #f0f0f0' : 'none', background: hasPhoto ? '#fafff9' : '#fff' }}>
-                    {/* Checkbox */}
-                    <div style={{ width: 20, height: 20, borderRadius: 4, border: hasPhoto ? '2px solid #4caf50' : '2px solid #ccc', background: hasPhoto ? '#4caf50' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {hasPhoto && <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>{'\u2713'}</span>}
-                    </div>
-
-                    {/* Thumbnail if uploaded */}
-                    {hasPhoto && matched[0].has_photo && (
-                      <LazyPhoto id={matched[0].id} alt={item.name} style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
-                    )}
-
-                    {/* Item details */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: hasPhoto ? '#333' : '#555' }}>
-                        {item.name}
+                  return (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px', borderBottom: idx < zoneData.items.length - 1 ? '1px solid #f0f0f0' : 'none', background: hasPhotoMatch ? '#fafff9' : '#fff' }}>
+                      {/* Checkbox indicator */}
+                      <div style={{ width: 20, height: 20, borderRadius: 4, border: hasPhotoMatch ? '2px solid #4caf50' : '2px solid #ccc', background: hasPhotoMatch ? '#4caf50' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {hasPhotoMatch && <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>{'\u2713'}</span>}
                       </div>
-                      {item.note && (
-                        <div style={{ fontSize: 10, color: '#888' }}>{item.note}</div>
+
+                      {/* Thumbnails */}
+                      {hasPhotoMatch && matched.slice(0, 3).map((p, i) => {
+                        const url = getPhotoUrl(p);
+                        return url ? (
+                          <img key={i} src={url} alt={item.name} onClick={() => openLightbox(p)}
+                            style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, flexShrink: 0, cursor: 'pointer', border: '1px solid #e0e0e0' }} />
+                        ) : null;
+                      })}
+                      {matched.length > 3 && <span style={{ fontSize: 10, color: '#666', flexShrink: 0 }}>+{matched.length - 3}</span>}
+
+                      {/* Item details */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: hasPhotoMatch ? '#333' : '#555' }}>
+                          {item.name}
+                        </div>
+                        {item.note && <div style={{ fontSize: 10, color: '#888' }}>{item.note}</div>}
+                      </div>
+
+                      {/* Timing badge */}
+                      <span style={{ fontSize: 9, padding: '2px 6px', background: timingInfo.bg, color: timingInfo.text, borderRadius: 3, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                        {timingInfo.label}
+                      </span>
+
+                      {/* Upload button */}
+                      {canEdit && (
+                        <label style={{ fontSize: 10, padding: '4px 10px', background: hasPhotoMatch ? '#e8f5e9' : '#1976d2', color: hasPhotoMatch ? '#2e7d32' : '#fff', border: 'none', borderRadius: 4, cursor: isUploading ? 'wait' : 'pointer', flexShrink: 0, whiteSpace: 'nowrap', fontWeight: 600, display: 'inline-block' }}>
+                          {isUploading ? 'Uploading...' : hasPhotoMatch ? '+ Add' : 'Upload'}
+                          <input type="file" accept="image/*" style={{ display: 'none' }} disabled={isUploading}
+                            onChange={(e) => { handleUpload(zoneData.zone, item.name, item.timing, e.target.files[0]); e.target.value = ''; }} />
+                        </label>
                       )}
                     </div>
-
-                    {/* Timing badge */}
-                    <span style={{ fontSize: 9, padding: '2px 6px', background: timingInfo.bg, color: timingInfo.text, borderRadius: 3, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>
-                      {timingInfo.label}
-                    </span>
-
-                    {/* Upload button */}
-                    {canEdit && !hasPhoto && (
-                      <button
-                        onClick={() => setUploadModal({ zone: zoneData.zone, item: item.name, timing: item.timing })}
-                        style={{ fontSize: 10, padding: '4px 10px', background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                        Upload
-                      </button>
-                    )}
-                    {canEdit && hasPhoto && (
-                      <span style={{ fontSize: 10, color: '#4caf50', fontWeight: 600, flexShrink: 0 }}>Done</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })}
 
-      {/* Upload modal */}
-      {uploadModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 12, padding: 20, maxWidth: 500, width: '95%', maxHeight: '90vh', overflow: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 15 }}>Upload Photo</h3>
-                <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>{uploadModal.zone} &mdash; {uploadModal.item}</div>
+      {/* === LIGHTBOX === */}
+      {lightbox && (() => {
+        const url = getPhotoUrl(lightbox);
+        return (
+          <>
+            <div onClick={() => setLightbox(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 5000 }} />
+            <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 5001, padding: 20 }}>
+              {/* Close */}
+              <button onClick={() => setLightbox(null)} style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%', color: '#fff', cursor: 'pointer', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5002 }}>
+                &#10005;
+              </button>
+
+              {/* Image */}
+              {url && <img src={url} alt="" style={{ maxWidth: '90vw', maxHeight: '75vh', objectFit: 'contain', borderRadius: 8 }} />}
+
+              {/* Prev */}
+              {lbIndex > 0 && (
+                <button onClick={lbPrev} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%', color: '#fff', cursor: 'pointer', fontSize: 22, zIndex: 5002, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  &#8592;
+                </button>
+              )}
+
+              {/* Next */}
+              {lbIndex < allPhotosFlat.length - 1 && (
+                <button onClick={lbNext} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%', color: '#fff', cursor: 'pointer', fontSize: 22, zIndex: 5002, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  &#8594;
+                </button>
+              )}
+
+              {/* Info bar */}
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)', padding: '40px 20px 20px', textAlign: 'center', color: '#fff' }}>
+                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
+                  {lightbox.label || lightbox.description || 'Photo'}
+                </div>
+                <div style={{ fontSize: 12, color: '#aaa' }}>
+                  {lightbox.house_side || lightbox.phase || ''} {lightbox.created_at ? new Date(lightbox.created_at).toLocaleString() : ''}
+                </div>
               </div>
-              <button onClick={() => { stopCamera(); setCapturedPhoto(null); setUploadModal(null); }} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}>X</button>
             </div>
-
-            <div style={{ background: '#000', borderRadius: 8, overflow: 'hidden', marginBottom: 12, position: 'relative', minHeight: 180 }}>
-              {cameraStream && !capturedPhoto && (
-                <video ref={cameraRef} autoPlay playsInline style={{ width: '100%', display: 'block' }}
-                  onLoadedMetadata={() => { if (cameraRef.current) cameraRef.current.play(); }} />
-              )}
-              {capturedPhoto && <img src={capturedPhoto} alt="Captured" style={{ width: '100%', display: 'block' }} />}
-              {!cameraStream && !capturedPhoto && (
-                <div style={{ color: '#aaa', textAlign: 'center', padding: 40, fontSize: 14 }}>Use camera or upload a photo</div>
-              )}
-            </div>
-            <canvas ref={canvasRef} style={{ display: 'none' }} />
-
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-              {!cameraStream && !capturedPhoto && (
-                <>
-                  <button className="btn btn-primary" onClick={startCamera} style={{ fontSize: 12, padding: '6px 14px' }}>Open Camera</button>
-                  <label className="btn btn-secondary" style={{ fontSize: 12, padding: '6px 14px', cursor: 'pointer' }}>
-                    Upload from Gallery
-                    <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
-                  </label>
-                </>
-              )}
-              {cameraStream && !capturedPhoto && (
-                <button className="btn btn-success" onClick={captureFromCamera} style={{ fontSize: 12, padding: '8px 20px' }}>Take Photo</button>
-              )}
-              {capturedPhoto && (
-                <button className="btn btn-warning" onClick={() => setCapturedPhoto(null)} style={{ fontSize: 12, padding: '6px 14px' }}>Retake</button>
-              )}
-            </div>
-
-            <button className="btn btn-success" disabled={!capturedPhoto} onClick={submitPhoto}
-              style={{ width: '100%', padding: 10, fontSize: 14 }}>
-              Save Photo
-            </button>
-          </div>
-        </div>
-      )}
+          </>
+        );
+      })()}
     </div>
   );
 }
