@@ -565,3 +565,291 @@ tr:hover { background: var(--color-surface-alt); }
   .stats-grid { grid-template-columns: 1fr; }
   .role-badge { display: none; }
 }
+
+/* ========== JobDetail Page ========== */
+.jd-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.jd-header {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.jd-header-left {
+  min-width: 0;
+  flex: 1;
+}
+.jd-header-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.3px;
+  margin: 0 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jd-header-meta {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jd-header-meta span { margin-right: 12px; }
+.jd-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.jd-status-pill {
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+/* Phase Stepper */
+.jd-stepper {
+  display: flex;
+  align-items: flex-start;
+  padding: 16px 20px;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--color-border);
+  margin-bottom: 16px;
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.jd-stepper::-webkit-scrollbar { display: none; }
+.jd-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+.jd-step-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.jd-step-circle.done { background: var(--color-success); color: #fff; }
+.jd-step-circle.active {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+.jd-step-circle.future { background: #e2e8f0; color: var(--color-text-muted); }
+.jd-step-label {
+  font-size: 11px;
+  margin-top: 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+.jd-step-label.done { color: var(--color-success); font-weight: 500; }
+.jd-step-label.active { color: var(--color-primary); font-weight: 700; }
+.jd-step-label.future { color: var(--color-text-muted); }
+.jd-step-line {
+  flex: 0 0 32px;
+  height: 2px;
+  align-self: center;
+  margin-top: -10px;
+}
+.jd-step-line.done { background: var(--color-success); }
+.jd-step-line.future { background: #e2e8f0; }
+.jd-stepper-mobile {
+  display: none;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--color-border);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Tab Bar */
+.jd-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--color-border);
+  margin-bottom: 16px;
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.jd-tabs::-webkit-scrollbar { display: none; }
+.jd-tab {
+  padding: 10px 18px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.jd-tab:hover { color: var(--color-text); }
+.jd-tab.active {
+  color: var(--color-primary);
+  font-weight: 700;
+  border-bottom-color: var(--color-primary);
+}
+
+/* JD Cards */
+.jd-card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--color-border);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.jd-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  padding-bottom: 10px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* JD Form Fields */
+.jd-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+.jd-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.jd-field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.jd-field input,
+.jd-field select,
+.jd-field textarea {
+  height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.jd-field textarea { height: auto; min-height: 60px; resize: vertical; }
+.jd-field input:focus,
+.jd-field select:focus,
+.jd-field textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* JD Date Picker */
+.jd-date-input {
+  height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.jd-date-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Scheduling Grid */
+.jd-schedule-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* Permit Fields */
+.jd-permit-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius);
+}
+
+/* Summary pills */
+.jd-summary-pills {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.jd-summary-pill {
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Deferred badge in stepper */
+.jd-deferred-badge {
+  margin-left: 16px;
+  padding: 4px 12px;
+  background: #fee2e2;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #991b1b;
+  font-weight: 700;
+  align-self: center;
+}
+
+@media (max-width: 768px) {
+  .jd-page { padding: 16px; }
+  .jd-header { flex-direction: column; gap: 12px; }
+  .jd-header-name { font-size: 18px; }
+  .jd-stepper { display: none !important; }
+  .jd-stepper-mobile { display: block !important; }
+  .jd-field-grid { grid-template-columns: 1fr; }
+  .jd-schedule-grid { grid-template-columns: 1fr; }
+  .jd-permit-fields { grid-template-columns: 1fr; }
+}
