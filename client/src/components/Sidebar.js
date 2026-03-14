@@ -31,7 +31,7 @@ export default function Sidebar({ user, currentRoles, open, toggle }) {
   // Close sidebar on mobile initial load
   useLayoutEffect(() => {
     if (window.innerWidth <= 768 && open) toggle();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line
   }, []);
 
   const handleSignOut = async () => {
