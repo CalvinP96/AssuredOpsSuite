@@ -323,11 +323,86 @@ router.get('/jobs/:jobId/photos', (req, res) => {
 
 router.post('/jobs/:jobId/photos', (req, res) => {
   const db = getDb();
-  const { uploaded_by, role, phase, measure_name, description, photo_ref } = req.body;
+  const { uploaded_by, role, phase, measure_name, house_side, description, photo_ref, photo_data, file_name } = req.body;
   db.prepare(
-    'INSERT INTO job_photos (job_id, uploaded_by, role, phase, measure_name, description, photo_ref) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).run(req.params.jobId, uploaded_by, role, phase, measure_name || null, description, photo_ref || null);
+    'INSERT INTO job_photos (job_id, uploaded_by, role, phase, measure_name, house_side, description, photo_ref, photo_data, file_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(req.params.jobId, uploaded_by, role, phase, measure_name || null, house_side || null, description, photo_ref || null, photo_data || null, file_name || null);
   res.status(201).json({ success: true });
+});
+
+router.delete('/photos/:photoId', (req, res) => {
+  const db = getDb();
+  db.prepare('DELETE FROM job_photos WHERE id = ?').run(req.params.photoId);
+  res.json({ success: true });
+});
+
+// --- Single Job Detail (with all related data) ---
+
+router.get('/jobs/:jobId/detail', (req, res) => {
+  const db = getDb();
+  const job = db.prepare('SELECT * FROM program_jobs WHERE id = ?').get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  job.measures = db.prepare(`
+    SELECT jm.*, pm.name as measure_name, pm.category as measure_category, pm.description as measure_desc
+    FROM job_measures jm JOIN program_measures pm ON jm.measure_id = pm.id WHERE jm.job_id = ?
+  `).all(job.id);
+  job.checklist = db.prepare('SELECT * FROM job_checklist_items WHERE job_id = ? ORDER BY item_type, id').all(job.id);
+  job.hvac_replacements = db.prepare('SELECT * FROM hvac_replacements WHERE job_id = ? ORDER BY created_at DESC').all(job.id);
+  job.change_orders = db.prepare('SELECT * FROM change_orders WHERE job_id = ? ORDER BY created_at DESC').all(job.id);
+  job.photos = db.prepare('SELECT * FROM job_photos WHERE job_id = ? ORDER BY created_at DESC').all(job.id);
+  // Don't send photo_data in list - too heavy. Only IDs + metadata.
+  job.photos.forEach(p => { p.has_photo = !!p.photo_data; delete p.photo_data; });
+  res.json(job);
+});
+
+// --- Photo image endpoint ---
+router.get('/photos/:photoId/image', (req, res) => {
+  const db = getDb();
+  const photo = db.prepare('SELECT photo_data, file_name FROM job_photos WHERE id = ?').get(req.params.photoId);
+  if (!photo || !photo.photo_data) return res.status(404).json({ error: 'No photo data' });
+  // photo_data is base64 data URI like "data:image/jpeg;base64,..."
+  const matches = photo.photo_data.match(/^data:(.+);base64,(.+)$/);
+  if (matches) {
+    const mimeType = matches[1];
+    const buffer = Buffer.from(matches[2], 'base64');
+    res.set('Content-Type', mimeType);
+    res.send(buffer);
+  } else {
+    res.status(400).json({ error: 'Invalid photo data format' });
+  }
+});
+
+// --- Export Job Photos ---
+router.get('/jobs/:jobId/export', (req, res) => {
+  const db = getDb();
+  const job = db.prepare('SELECT * FROM program_jobs WHERE id = ?').get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  const photos = db.prepare('SELECT id, uploaded_by, role, phase, measure_name, house_side, description, photo_ref, has_photo, file_name, created_at FROM job_photos WHERE job_id = ? ORDER BY phase, house_side, created_at').all(req.params.jobId);
+  // Group photos by phase and side
+  const grouped = {};
+  photos.forEach(p => {
+    p.has_photo = !!db.prepare('SELECT photo_data FROM job_photos WHERE id = ?').get(p.id)?.photo_data;
+    const key = p.phase || 'untagged';
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(p);
+  });
+  const checklist = db.prepare('SELECT * FROM job_checklist_items WHERE job_id = ? ORDER BY item_type, id').all(job.id);
+  res.json({
+    job: { id: job.id, job_number: job.job_number, customer_name: job.customer_name, address: job.address, city: job.city, zip: job.zip },
+    photos_by_phase: grouped,
+    photo_count: photos.length,
+    pre_photos: photos.filter(p => p.phase === 'assessment' || p.phase === 'pre_install'),
+    post_photos: photos.filter(p => p.phase === 'post_install'),
+    by_side: {
+      alpha: photos.filter(p => p.house_side === 'Alpha'),
+      bravo: photos.filter(p => p.house_side === 'Bravo'),
+      charlie: photos.filter(p => p.house_side === 'Charlie'),
+      delta: photos.filter(p => p.house_side === 'Delta'),
+      interior: photos.filter(p => p.house_side === 'Interior'),
+      other: photos.filter(p => !p.house_side || p.house_side === 'Other')
+    },
+    checklist
+  });
 });
 
 // --- HVAC Replacements ---

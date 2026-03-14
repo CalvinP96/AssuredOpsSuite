@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const DOC_TYPES = ['Policy', 'Procedure', 'Form', 'Report', 'Audit', 'Compliance', 'Training', 'SOP', 'Manual', 'Checklist', 'Other'];
 const DOC_STATUSES = ['draft', 'in_review', 'approved', 'active', 'archived'];
@@ -10,6 +10,7 @@ const UTILITIES = ['ComEd', 'Nicor Gas', 'Peoples Gas', 'North Shore Gas'];
 
 export default function ProgramDetail({ role, fixedProgramId }) {
   const params = useParams();
+  const navigate = useNavigate();
   const id = fixedProgramId || params.id;
   const [program, setProgram] = useState(null);
   const [tab, setTab] = useState('jobs');
@@ -621,6 +622,10 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                       <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>{job.address}{job.city ? `, ${job.city}` : ''} {job.zip || ''}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <button className="btn btn-sm btn-primary" style={{ fontSize: 11, padding: '3px 10px', whiteSpace: 'nowrap' }}
+                        onClick={e => { e.stopPropagation(); navigate(`/job/${job.id}`); }}>
+                        Open Project
+                      </button>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: pct === 100 ? '#27ae60' : '#e94560' }}>{pct}% Complete</div>
                         <div style={{ width: 120, height: 6, background: '#eee', borderRadius: 3, marginTop: 4 }}>
@@ -2542,10 +2547,22 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                   <input value={jobForm.zip} onChange={e => setJobForm({...jobForm, zip: e.target.value})} />
                 </div>
                 <div className="form-group">
-                  <label>Utility</label>
-                  <select value={jobForm.utility} onChange={e => setJobForm({...jobForm, utility: e.target.value})}>
-                    {UTILITIES.map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
+                  <label>Utility (select all that apply)</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {UTILITIES.map(u => {
+                      const selected = (jobForm.utility || '').split(', ').filter(Boolean);
+                      return (
+                        <label key={u} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                          <input type="checkbox" checked={selected.includes(u)}
+                            onChange={e => {
+                              const newUtils = e.target.checked ? [...selected, u] : selected.filter(x => x !== u);
+                              setJobForm({ ...jobForm, utility: newUtils.join(', ') });
+                            }} />
+                          {u}
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="form-group">
                   <label>Phone</label>

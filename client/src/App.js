@@ -10,6 +10,7 @@ import FinancePage from './pages/FinancePage';
 import BillingPage from './pages/BillingPage';
 import EmployeeDetail from './pages/EmployeeDetail';
 import HESIEPage from './pages/HESIEPage';
+import JobDetail from './pages/JobDetail';
 import './App.css';
 
 const ROLES = ['Admin', 'HR', 'IT', 'Warehouse', 'Finance', 'Operations', 'Program Manager', 'Assessor', 'Installer', 'HVAC'];
@@ -56,6 +57,7 @@ function App() {
                 <Route path="/billing" element={<BillingPage role={currentRole} />} />
               )}
               <Route path="/hes-ie" element={<HESIEPage role={currentRole} />} />
+              <Route path="/job/:jobId" element={<JobDetail role={currentRole} />} />
               <Route path="/programs" element={<Navigate to="/hes-ie" />} />
               <Route path="/program/:id" element={<Navigate to="/hes-ie" />} />
               <Route path="/employee/:id" element={<EmployeeDetail role={currentRole} />} />

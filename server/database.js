@@ -385,8 +385,11 @@ async function initDatabase() {
       role TEXT NOT NULL,
       phase TEXT NOT NULL,
       measure_name TEXT,
+      house_side TEXT,
       description TEXT NOT NULL,
       photo_ref TEXT,
+      photo_data TEXT,
+      file_name TEXT,
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (job_id) REFERENCES program_jobs(id)
     );
