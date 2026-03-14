@@ -13,7 +13,7 @@ import HESIEPage from './pages/HESIEPage';
 import JobDetail from './pages/JobDetail';
 import './App.css';
 
-const ROLES = ['Admin', 'HR', 'IT', 'Warehouse', 'Finance', 'Operations', 'Program Manager', 'Assessor', 'Installer', 'HVAC'];
+const ROLES = ['Admin', 'HR', 'IT', 'Warehouse', 'Finance', 'Operations', 'Program Manager', 'Assessor', 'Scope Creator', 'Installer', 'HVAC'];
 
 function App() {
   const [currentRole, setCurrentRole] = useState('Admin');

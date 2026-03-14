@@ -1395,6 +1395,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                       <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>{job.address}, {job.city} {job.zip}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <button className="btn btn-sm btn-primary" style={{ fontSize: 11, padding: '3px 10px' }}
+                        onClick={e => { e.stopPropagation(); navigate(`/job/${job.id}`); }}>Open Project</button>
                       <span className={`badge ${job.status === 'assessment_scheduled' ? 'pending' : 'active'}`}>{job.status.replace(/_/g, ' ')}</span>
                       {job.assessment_date && <span style={{ fontSize: 12, color: '#666' }}>{job.assessment_date}</span>}
                       <span style={{ color: '#888', fontSize: 18 }}>{isExpanded ? '\u25B2' : '\u25BC'}</span>
@@ -1408,7 +1410,7 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                         <div><strong>Utility:</strong> {job.utility}</div>
                       </div>
 
-                      {/* Assessment Date */}
+                      {/* Assessment Date + Status */}
                       <div style={{ marginBottom: 12, fontSize: 12 }}>
                         <strong>Assessment Date:</strong>{' '}
                         <input type="date" value={job.assessment_date || ''} style={{ fontSize: 11, padding: '2px 4px' }}
@@ -1419,11 +1421,10 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                         </button>
                       </div>
 
-                      {/* Collapsible Assessment Form */}
-                      <div
-                        style={{ padding: '10px 12px', background: '#4a6741', color: '#fff', borderRadius: '6px 6px 0 0', cursor: 'pointer', marginTop: 8 }}
+                      {/* Quick Field Observations (MS Form style) */}
+                      <div style={{ padding: '10px 12px', background: '#4a6741', color: '#fff', borderRadius: '6px 6px 0 0', cursor: 'pointer', marginTop: 8 }}
                         onClick={() => setAssessmentOpen(assessmentOpen === job.id ? null : job.id)}>
-                        <h4 style={{ margin: 0, fontSize: 14 }}>Energy Assessment Field Data {assessmentOpen === job.id ? '\u25B2' : '\u25BC'}</h4>
+                        <h4 style={{ margin: 0, fontSize: 14 }}>Field Observations {assessmentOpen === job.id ? '\u25B2' : '\u25BC'}</h4>
                       </div>
                       {assessmentOpen === job.id && (() => {
                         const set = (section, field, val) => {
@@ -1433,8 +1434,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                         const v = (section, field) => (ad[section] || {})[field] || '';
                         const yn = (section, field) => (
                           <span style={{ display: 'inline-flex', gap: 4 }}>
-                            <label style={{ fontSize: 11 }}><input type="radio" name={`a-${job.id}-${section}-${field}`} checked={v(section, field) === 'yes'} onChange={() => set(section, field, 'yes')} /> yes</label>
-                            <label style={{ fontSize: 11 }}><input type="radio" name={`a-${job.id}-${section}-${field}`} checked={v(section, field) === 'no'} onChange={() => set(section, field, 'no')} /> no</label>
+                            <label style={{ fontSize: 11 }}><input type="radio" name={`a-${job.id}-${section}-${field}`} checked={v(section, field) === 'yes'} onChange={() => set(section, field, 'yes')} /> Y</label>
+                            <label style={{ fontSize: 11 }}><input type="radio" name={`a-${job.id}-${section}-${field}`} checked={v(section, field) === 'no'} onChange={() => set(section, field, 'no')} /> N</label>
                           </span>
                         );
                         const txt = (section, field, placeholder, width) => (
@@ -1451,251 +1452,51 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                         );
                         const gs = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '6px 16px', fontSize: 12 };
                         const fs = { display: 'flex', alignItems: 'center', gap: 4, padding: '3px 0' };
-                        const hs = { background: '#8a8a8a', color: '#fff', padding: '6px 12px', fontWeight: 700, fontSize: 13 };
-                        const ss = { padding: '10px 12px', borderBottom: '1px solid #ddd' };
+                        const hs = { background: '#8a8a8a', color: '#fff', padding: '6px 10px', fontWeight: 700, fontSize: 12 };
+                        const ss = { padding: '8px 10px', borderBottom: '1px solid #ddd' };
 
                         return (
                           <div style={{ border: '1px solid #ccc', borderTop: 'none', borderRadius: '0 0 6px 6px', background: '#fff' }}>
-                            {/* HEADER */}
-                            <div style={ss}>
-                              <div style={gs}>
-                                <div style={fs}><strong>Completed By:</strong> {txt('header', 'completed_by', 'Name', 140)}</div>
-                                <div style={fs}><strong>Date:</strong> <input type="date" style={{ fontSize: 11, padding: '2px 4px' }} value={v('header', 'date')} onChange={e => set('header', 'date', e.target.value)} /></div>
-                              </div>
-                            </div>
-                            <div style={hs}>EXTERIOR INSPECTION</div>
-                            <div style={ss}>
-                              <div style={gs}>
-                                <div style={fs}><strong>Style:</strong> {txt('exterior', 'style', 'Ranch...', 100)}</div>
-                                <div style={fs}><strong>Year Built:</strong> {txt('exterior', 'year_built', 'Year', 60)}</div>
-                                <div style={fs}><strong>Stories:</strong> {txt('exterior', 'stories', '#', 40)}</div>
-                                <div style={fs}><strong>Bedrooms:</strong> {txt('exterior', 'bedrooms', '#', 40)}</div>
-                                <div style={fs}><strong>SqFt:</strong> {txt('exterior', 'sq_footage', 'sqft', 70)}</div>
-                                <div style={fs}><strong>Volume:</strong> {txt('exterior', 'volume', 'cuft', 70)}</div>
-                                <div style={fs}><strong>Gutters:</strong> {yn('exterior', 'gutters')} <strong style={{ marginLeft: 6 }}>Cond:</strong> {sel('exterior', 'gutter_condition', ['good', 'poor'])}</div>
-                                <div style={fs}><strong>Downspouts:</strong> {yn('exterior', 'downspouts')} <strong style={{ marginLeft: 6 }}>Repairs:</strong> {yn('exterior', 'gutter_repairs')}</div>
-                                <div style={fs}><strong>Roof:</strong> {sel('exterior', 'roof_condition', ['good', 'average', 'poor'])} <strong style={{ marginLeft: 6 }}>Type:</strong> {sel('exterior', 'roof_type', ['Architecture', '3-Tab', 'Flat'])}</div>
-                                <div style={fs}><strong>Roof Age:</strong> {txt('exterior', 'roof_age', 'years', 50)} <strong style={{ marginLeft: 6 }}>Repair:</strong> {yn('exterior', 'roof_repair')}</div>
-                                <div style={fs}><strong>High Roof Venting:</strong> {yn('exterior', 'high_roof_venting')} <strong style={{ marginLeft: 6 }}>Type:</strong> {sel('exterior', 'vent_type', ['static', 'ridge'])}</div>
-                                <div style={fs}><strong>Chimney:</strong> {sel('exterior', 'chimney', ['brick', 'metal', 'none'])} <strong style={{ marginLeft: 6 }}>Flashing Repair:</strong> {yn('exterior', 'flashing_repair')}</div>
-                                <div style={fs}><strong>Soffit:</strong> {yn('exterior', 'soffit')} <strong style={{ marginLeft: 4 }}>Type:</strong> {txt('exterior', 'soffit_type', 'Type', 60)} <strong style={{ marginLeft: 4 }}>Cond:</strong> {sel('exterior', 'soffit_condition', ['good', 'poor'])}</div>
-                                <div style={fs}><strong>Soffit Vents:</strong> {yn('exterior', 'soffit_vents')} <strong style={{ marginLeft: 6 }}>Repairs:</strong> {yn('exterior', 'soffit_repairs')}</div>
-                                <div style={fs}><strong>Chutes/Baffles Needed:</strong> {txt('exterior', 'soffit_chutes', 'Qty', 40)}</div>
-                              </div>
-                              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('exterior', 'notes', 'Notes...', '100%')}</div>
-                            </div>
-                            <div style={hs}>INTERIOR INSPECTION</div>
-                            <div style={ss}>
-                              <div style={gs}>
-                                <div style={fs}><strong>Mold:</strong> {yn('interior', 'mold')}</div>
-                                <div style={fs}><strong>Broken Glass:</strong> {yn('interior', 'broken_glass')}</div>
-                                <div style={fs}><strong>Knob & Tube:</strong> {yn('interior', 'knob_tube')}</div>
-                                <div style={fs}><strong>Wiring Issues:</strong> {yn('interior', 'wiring_issues')}</div>
-                                <div style={fs}><strong>Moisture:</strong> {yn('interior', 'moisture')}</div>
-                                <div style={fs}><strong>Water Leaks:</strong> {yn('interior', 'water_leaks')}</div>
-                                <div style={fs}><strong>Roof Leaks:</strong> {yn('interior', 'roof_leaks')} <span style={{ marginLeft: 4 }}>Loc:</span> {txt('interior', 'roof_leaks_location', 'Location', 80)}</div>
-                                <div style={fs}><strong>Drop Ceiling:</strong> {yn('interior', 'drop_ceiling')}</div>
-                                <div style={fs}><strong>Ceiling:</strong> {sel('interior', 'ceiling_condition', ['good', 'poor'])}</div>
-                                <div style={fs}><strong>Wall Condition:</strong> {txt('interior', 'wall_condition', 'Condition', 80)}</div>
-                                <div style={fs}><strong>Smoke Det:</strong> {yn('interior', 'smoke_detector')}</div>
-                                <div style={fs}><strong>Drywall Repair:</strong> {yn('interior', 'drywall_repair')} <span style={{ marginLeft: 4 }}>Loc:</span> {txt('interior', 'drywall_location', 'Location', 80)}</div>
-                                <div style={fs}><strong>CO Det:</strong> {yn('interior', 'co_detector')}</div>
-                                <div style={fs}><strong>Recessed Lighting:</strong> {yn('interior', 'recessed_lighting')}</div>
-                                <div style={fs}><strong>Dryer Vented:</strong> {yn('interior', 'dryer_vented')}</div>
-                              </div>
-                              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('interior', 'notes', 'Notes...', '100%')}</div>
-                            </div>
-                            <div style={hs}>DIRECT INSTALLS</div>
-                            <div style={ss}>
-                              <div style={gs}>
-                                <div style={fs}><strong>Smoke Det Qty:</strong> {txt('direct_install', 'smoke_qty', '#', 40)}</div>
-                                <div style={fs}><strong>CO Det Qty:</strong> {txt('direct_install', 'co_qty', '#', 40)}</div>
-                                <div style={fs}><strong>Total:</strong> {txt('direct_install', 'total', '#', 40)}</div>
-                              </div>
-                            </div>
-                            <div style={hs}>DOOR TYPES</div>
-                            <div style={ss}>
-                              <div style={gs}>
-                                {['Front', 'Back', 'Basement', 'Attic'].map(d => (
-                                  <div key={d} style={fs}><strong>{d}:</strong> {yn('doors', d.toLowerCase())} <span style={{ marginLeft: 4 }}>WS:</span> {yn('doors', `${d.toLowerCase()}_strip`)}</div>
-                                ))}
-                                <div style={fs}><strong>Other:</strong> {txt('doors', 'other', 'Type', 60)}</div>
-                                <div style={fs}><strong>Total WS Needed:</strong> {txt('doors', 'total_ws', '#', 30)}</div>
-                              </div>
-                            </div>
-                            <div style={hs}>HATCHES</div>
-                            <div style={ss}>
-                              {['Scuttle', 'Knee Wall', 'Pull Down', 'Walk Up'].map(h => (
-                                <div key={h} style={{ ...fs, marginBottom: 4 }}>
-                                  <strong style={{ minWidth: 70 }}>{h}:</strong>
-                                  <span>Loc:</span> {txt('hatches', `${h.toLowerCase().replace(/ /g,'_')}_loc`, 'Loc', 60)}
-                                  <span>Qty:</span> {txt('hatches', `${h.toLowerCase().replace(/ /g,'_')}_qty`, '#', 25)}
-                                  <span>R:</span> {txt('hatches', `${h.toLowerCase().replace(/ /g,'_')}_rval`, 'R', 30)}
-                                  <span>Add:</span> {txt('hatches', `${h.toLowerCase().replace(/ /g,'_')}_add`, 'R', 30)}
-                                </div>
-                              ))}
-                              <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: 12 }}>
-                                <div style={fs}><strong>Created - Scuttle:</strong> {txt('hatches', 'created_scuttle', '#', 25)}</div>
-                                <div style={fs}><strong>Knee Wall:</strong> {txt('hatches', 'created_knee_wall', '#', 25)}</div>
-                              </div>
-                            </div>
-                            <div style={hs}>ATTIC</div>
-                            <div style={ss}>
-                              <div style={gs}>
-                                <div style={fs}><strong>Type:</strong> {sel('attic', 'type', ['Finished', 'Unfinished', 'Flat'])}</div>
-                                <div style={fs}><strong>Pre R-Value:</strong> {txt('attic', 'pre_r_value', 'R', 40)}</div>
-                                <div style={fs}><strong>SqFt:</strong> {txt('attic', 'sq_footage', 'sqft', 60)}</div>
-                                <div style={fs}><strong>R to Add:</strong> {txt('attic', 'r_to_add', 'R', 40)}</div>
-                                <div style={fs}><strong>Recessed Lights:</strong> {yn('attic', 'recessed_lights')} Qty: {txt('attic', 'recessed_qty', '#', 25)} Type: {sel('attic', 'recessed_type', ['Straight Bow', 'Other'])}</div>
-                                <div style={fs}><strong>Storage Created:</strong> {txt('attic', 'storage_created', 'Details', 100)}</div>
-                                <div style={fs}><strong>Ductwork:</strong> {yn('attic', 'ductwork')} Cond: {sel('attic', 'duct_condition', ['good', 'poor'])}</div>
-                                <div style={fs}><strong>Duct Lin Ft:</strong> {txt('attic', 'duct_lin_ft', 'ft', 40)}</div>
-                                <div style={fs}><strong>Floor Boards:</strong> {yn('attic', 'floor_boards')}</div>
-                              </div>
-                              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Attic Notes:</strong> {txt('attic', 'notes', 'Notes...', '100%')}</div>
-                            </div>
-                            <div style={hs}>COLLAR BEAM</div>
-                            <div style={ss}>
-                              <div style={gs}>
-                                <div style={fs}><strong>Pre R-Value:</strong> {txt('collar_beam', 'pre_r_value', 'R', 40)}</div>
-                                <div style={fs}><strong>SqFt:</strong> {txt('collar_beam', 'sq_footage', 'sqft', 60)}</div>
-                                <div style={fs}><strong>R to Add:</strong> {txt('collar_beam', 'r_to_add', 'R', 40)}</div>
-                                <div style={fs}><strong>Ductwork:</strong> {yn('collar_beam', 'ductwork')} Cond: {sel('collar_beam', 'duct_condition', ['good', 'poor'])}</div>
-                                <div style={fs}><strong>Duct Lin Ft:</strong> {txt('collar_beam', 'duct_lin_ft', 'ft', 40)}</div>
-                                <div style={fs}><strong>Accessibles:</strong> {yn('collar_beam', 'accessibles')}</div>
-                                <div style={fs}><strong>Cut In:</strong> {yn('collar_beam', 'cut_in')}</div>
-                              </div>
-                            </div>
-                            <div style={hs}>OUTER CEILING JOIST</div>
-                            <div style={ss}>
-                              <div style={gs}>
-                                <div style={fs}><strong>Pre R-Value:</strong> {txt('ocj', 'pre_r_value', 'R', 40)}</div>
-                                <div style={fs}><strong>SqFt:</strong> {txt('ocj', 'sq_footage', 'sqft', 60)}</div>
-                                <div style={fs}><strong># OCJs:</strong> {txt('ocj', 'num_ocjs', '#', 25)}</div>
-                                <div style={fs}><strong>R to Add:</strong> {txt('ocj', 'r_to_add', 'R', 40)}</div>
-                                <div style={fs}><strong>Ductwork:</strong> {yn('ocj', 'ductwork')} Cond: {sel('ocj', 'duct_condition', ['good', 'poor'])}</div>
-                                <div style={fs}><strong>Accessible:</strong> {yn('ocj', 'accessible')}</div>
-                                <div style={fs}><strong>Cut In:</strong> {yn('ocj', 'cut_in')}</div>
-                                <div style={fs}><strong>Floor Boards:</strong> {yn('ocj', 'floor_boards')}</div>
-                              </div>
-                            </div>
-                            <div style={hs}>KNEE WALLS</div>
-                            <div style={ss}>
-                              <div style={gs}>
-                                <div style={fs}><strong>Pre R-Value:</strong> {txt('knee_walls', 'pre_r_value', 'R', 40)}</div>
-                                <div style={fs}><strong>SqFt:</strong> {txt('knee_walls', 'sq_footage', 'sqft', 60)}</div>
-                                <div style={fs}><strong>Plumbing Wall:</strong> {yn('knee_walls', 'plumbing_wall')}</div>
-                                <div style={fs}><strong>R to Add:</strong> {txt('knee_walls', 'r_to_add', 'R', 40)}</div>
-                                <div style={fs}><strong>Dense Pack:</strong> {yn('knee_walls', 'dense_pack')}</div>
-                                <div style={fs}><strong>Rigid Foam:</strong> {yn('knee_walls', 'rigid_foam')}</div>
-                                <div style={fs}><strong>Fiberglass:</strong> {yn('knee_walls', 'fiberglass')}</div>
-                                <div style={fs}><strong>Wall Type:</strong> {sel('knee_walls', 'wall_type', ['Drywall', 'Plaster'])}</div>
-                              </div>
-                            </div>
-                            <div style={hs}>FOUNDATION</div>
-                            <div style={ss}>
-                              <div style={gs}>
-                                <div style={fs}><strong>Basement:</strong> {sel('foundation', 'basement_type', ['Finished', 'Unfinished w/framing', 'Unfinished', 'No basement/slab'])}</div>
-                                <div style={fs}><strong>Above Grade SqFt:</strong> {txt('foundation', 'above_grade_sqft', 'sqft', 60)}</div>
-                                <div style={fs}><strong>Below Grade SqFt:</strong> {txt('foundation', 'below_grade_sqft', 'sqft', 60)}</div>
-                                <div style={fs}><strong>Pre R-Value:</strong> {txt('foundation', 'pre_r_value', 'R', 40)}</div>
-                                <div style={fs}><strong>Insulation:</strong> {sel('foundation', 'insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
-                                <div style={fs}><strong>Band Joints:</strong> {yn('foundation', 'band_joints')} Lin Ft: {txt('foundation', 'linear_ft', 'ft', 40)}</div>
-                                <div style={fs}><strong>Band R-Value:</strong> {txt('foundation', 'band_pre_r_value', 'R', 40)} Insul: {sel('foundation', 'band_insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
-                                <div style={fs}><strong>Plaster/Lath:</strong> {yn('foundation', 'plaster_lath')}</div>
-                                <div style={fs}><strong>Balloon Const:</strong> {yn('foundation', 'balloon_const')}</div>
-                                <div style={fs}><strong>Asbestos Pipe:</strong> {yn('foundation', 'asbestos')}</div>
-                                <div style={fs}><strong>Ductwork:</strong> {yn('foundation', 'ductwork')} Cond: {sel('foundation', 'duct_condition', ['good', 'poor'])}</div>
-                              </div>
-                              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('foundation', 'notes', 'Notes...', '100%')}</div>
-                            </div>
-                            <div style={hs}>CRAWLSPACE</div>
-                            <div style={ss}>
-                              <div style={gs}>
-                                <div style={fs}><strong>Vented:</strong> {yn('crawlspace', 'vented')} # Vents: {txt('crawlspace', 'num_vents', '#', 25)}</div>
-                                <div style={fs}><strong>Floor:</strong> {sel('crawlspace', 'floor_type', ['Concrete', 'Dirt/Gravel'])}</div>
-                                <div style={fs}><strong>Vapor Barrier:</strong> {yn('crawlspace', 'vapor_barrier')} SqFt: {txt('crawlspace', 'vapor_sqft', 'sqft', 50)}</div>
-                                <div style={fs}><strong>Water Issues:</strong> {yn('crawlspace', 'water_issues')}</div>
-                                <div style={fs}><strong>Ductwork:</strong> {yn('crawlspace', 'ductwork')} Cond: {sel('crawlspace', 'duct_condition', ['good', 'poor'])}</div>
-                                <div style={fs}><strong>Above Grade SqFt:</strong> {txt('crawlspace', 'above_grade', 'sqft', 50)}</div>
-                                <div style={fs}><strong>Below Grade SqFt:</strong> {txt('crawlspace', 'below_grade', 'sqft', 50)}</div>
-                                <div style={fs}><strong>Pre R-Value:</strong> {txt('crawlspace', 'pre_r_value', 'R', 40)}</div>
-                                <div style={fs}><strong>Insulation:</strong> {sel('crawlspace', 'insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
-                                <div style={fs}><strong>Band Joints:</strong> {yn('crawlspace', 'band_joints')} Lin Ft: {txt('crawlspace', 'band_linear_ft', 'ft', 40)}</div>
-                                <div style={fs}><strong>Band R-Value:</strong> {txt('crawlspace', 'band_pre_r_value', 'R', 40)} Insul: {sel('crawlspace', 'band_insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
-                              </div>
-                              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('crawlspace', 'notes', 'Notes...', '100%')}</div>
-                            </div>
-                            <div style={hs}>EXTERIOR WALLS</div>
-                            <div style={ss}>
-                              {['1st Floor', '2nd Floor'].map(floor => (
-                                <div key={floor} style={{ marginBottom: 8 }}>
-                                  <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>{floor}</div>
-                                  <div style={gs}>
-                                    <div style={fs}><strong>Pre R:</strong> {txt('walls', `${floor}_r_value`, 'R', 35)}</div>
-                                    <div style={fs}><strong>Wall SqFt:</strong> {txt('walls', `${floor}_wall_sqft`, 'sqft', 50)}</div>
-                                    <div style={fs}><strong>R to Add:</strong> {txt('walls', `${floor}_r_add`, 'R', 35)}</div>
-                                    <div style={fs}><strong>Win/Door SqFt:</strong> {txt('walls', `${floor}_window_sqft`, 'sqft', 50)}</div>
-                                    <div style={fs}><strong>Cladding:</strong> {sel('walls', `${floor}_cladding`, ['Stucco', 'Wood Lap', 'Asbestos Shingle', 'Masonry', 'Aluminum', 'Vinyl', 'Other'])}</div>
-                                    <div style={fs}><strong>Wall Type:</strong> {sel('walls', `${floor}_wall_type`, ['Drywall', 'Plaster'])}</div>
-                                    <div style={fs}><strong>From:</strong> {sel('walls', `${floor}_insulate_from`, ['Interior', 'Exterior'])}</div>
-                                    <div style={fs}><strong>Phenolic Foam:</strong> {yn('walls', `${floor}_phenolic_foam`)}</div>
-                                    <div style={fs}><strong>Dense Pack:</strong> {yn('walls', `${floor}_dense_pack`)}</div>
-                                  </div>
-                                </div>
-                              ))}
-                              <div style={fs}><strong>Spoke to Owner re: Wall Prep:</strong> {yn('walls', 'spoke_owner')}</div>
-                              <div style={fs}><strong>Drill Location:</strong> {txt('walls', 'drill_location', 'Location', 160)}</div>
-                              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('walls', 'notes', 'Notes...', '100%')}</div>
-                            </div>
-                            <div style={hs}>MECHANICAL EQUIPMENT</div>
-                            <div style={ss}>
-                              <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>Furnace / Boiler</div>
-                              <div style={gs}>
-                                <div style={fs}><strong>Type:</strong> {sel('mechanical', 'heating_type', ['Gas Furnace', 'Boiler', 'Electric', 'Heat Pump', 'Other'])}</div>
-                                <div style={fs}><strong>Make:</strong> {txt('mechanical', 'heating_make', 'Make', 80)}</div>
-                                <div style={fs}><strong>Model:</strong> {txt('mechanical', 'heating_model', 'Model', 80)}</div>
-                                <div style={fs}><strong>Age:</strong> {txt('mechanical', 'heating_age', 'Year', 50)}</div>
-                                <div style={fs}><strong>Condition:</strong> {sel('mechanical', 'heating_condition', ['Good', 'Fair', 'Poor', 'Failed'])}</div>
-                                <div style={fs}><strong>Efficiency:</strong> {txt('mechanical', 'heating_efficiency', '%', 40)}</div>
-                                <div style={fs}><strong>Last Serviced:</strong> {txt('mechanical', 'heating_last_service', 'Year', 60)}</div>
-                                <div style={fs}><strong>Tune & Clean Rec:</strong> {yn('mechanical', 'tune_clean_recommended')}</div>
-                              </div>
-                              <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>Water Heater</div>
-                              <div style={gs}>
-                                <div style={fs}><strong>Type:</strong> {sel('mechanical', 'wh_type', ['Gas', 'Electric', 'Tankless', 'Heat Pump WH'])}</div>
-                                <div style={fs}><strong>Make:</strong> {txt('mechanical', 'wh_make', 'Make', 80)}</div>
-                                <div style={fs}><strong>Model:</strong> {txt('mechanical', 'wh_model', 'Model', 80)}</div>
-                                <div style={fs}><strong>Age:</strong> {txt('mechanical', 'wh_age', 'Year', 50)}</div>
-                                <div style={fs}><strong>Condition:</strong> {sel('mechanical', 'wh_condition', ['Good', 'Fair', 'Poor', 'Failed'])}</div>
-                              </div>
-                              <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>Central Air / Cooling</div>
-                              <div style={gs}>
-                                <div style={fs}><strong>Type:</strong> {sel('mechanical', 'cooling_type', ['Central AC', 'Room AC', 'Heat Pump', 'None'])}</div>
-                                <div style={fs}><strong>Make:</strong> {txt('mechanical', 'cooling_make', 'Make', 80)}</div>
-                                <div style={fs}><strong>SEER:</strong> {txt('mechanical', 'cooling_seer', 'SEER', 40)}</div>
-                                <div style={fs}><strong>Condition:</strong> {sel('mechanical', 'cooling_condition', ['Good', 'Fair', 'Poor', 'Failed'])}</div>
-                              </div>
-                              <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>Thermostat</div>
-                              <div style={gs}>
-                                <div style={fs}><strong>Type:</strong> {sel('mechanical', 'thermostat_type', ['Manual', 'Programmable', 'Smart/Advanced'])}</div>
-                                <div style={fs}><strong>Condition:</strong> {sel('mechanical', 'thermostat_condition', ['Good', 'Poor'])}</div>
-                              </div>
-                            </div>
-                            <div style={hs}>DIAGNOSTIC TESTING</div>
-                            <div style={ss}>
-                              <div style={gs}>
-                                <div style={fs}><strong>Pre Blower Door (CFM50):</strong> {txt('diagnostics', 'pre_cfm50', 'CFM50', 60)}</div>
-                                <div style={fs}><strong>Post Blower Door (CFM50):</strong> {txt('diagnostics', 'post_cfm50', 'CFM50', 60)}</div>
-                                <div style={fs}><strong>% Reduction:</strong> {txt('diagnostics', 'cfm50_reduction', '%', 40)}</div>
-                                <div style={fs}><strong>Pre Duct Blaster (CFM25):</strong> {txt('diagnostics', 'pre_cfm25', 'CFM25', 60)}</div>
-                                <div style={fs}><strong>Post Duct Blaster (CFM25):</strong> {txt('diagnostics', 'post_cfm25', 'CFM25', 60)}</div>
-                                <div style={fs}><strong>Combustion Pre:</strong> {txt('diagnostics', 'combustion_pre', '%', 60)}</div>
-                                <div style={fs}><strong>Combustion Post:</strong> {txt('diagnostics', 'combustion_post', '%', 60)}</div>
-                                <div style={fs}><strong>CO Test:</strong> {txt('diagnostics', 'co_test', 'ppm', 50)}</div>
-                              </div>
-                            </div>
-                            <div style={{ ...hs, background: '#4a6741' }}>ASSESSOR RECOMMENDATIONS</div>
+                            {/* Basic Home Info */}
+                            <div style={hs}>HOME INFO</div>
+                            <div style={ss}><div style={gs}>
+                              <div style={fs}><strong>Style:</strong> {txt('exterior', 'style', 'Ranch, Colonial...', 100)}</div>
+                              <div style={fs}><strong>Year Built:</strong> {txt('exterior', 'year_built', 'Year', 60)}</div>
+                              <div style={fs}><strong>Stories:</strong> {txt('exterior', 'stories', '#', 30)}</div>
+                              <div style={fs}><strong>Bedrooms:</strong> {txt('exterior', 'bedrooms', '#', 30)}</div>
+                              <div style={fs}><strong>SqFt:</strong> {txt('exterior', 'sq_footage', 'sqft', 60)}</div>
+                            </div></div>
+                            {/* Health & Safety Flags */}
+                            <div style={hs}>HEALTH & SAFETY FLAGS</div>
+                            <div style={ss}><div style={gs}>
+                              <div style={fs}><strong>Mold:</strong> {yn('interior', 'mold')}</div>
+                              <div style={fs}><strong>Knob & Tube:</strong> {yn('interior', 'knob_tube')}</div>
+                              <div style={fs}><strong>Moisture:</strong> {yn('interior', 'moisture')}</div>
+                              <div style={fs}><strong>Roof Leaks:</strong> {yn('interior', 'roof_leaks')}</div>
+                              <div style={fs}><strong>Asbestos:</strong> {yn('foundation', 'asbestos')}</div>
+                              <div style={fs}><strong>CO Det:</strong> {yn('interior', 'co_detector')}</div>
+                              <div style={fs}><strong>Smoke Det:</strong> {yn('interior', 'smoke_detector')}</div>
+                              <div style={fs}><strong>Dryer Vented:</strong> {yn('interior', 'dryer_vented')}</div>
+                            </div></div>
+                            {/* Quick Mechanical */}
+                            <div style={hs}>MECHANICAL - QUICK CHECK</div>
+                            <div style={ss}><div style={gs}>
+                              <div style={fs}><strong>Heat Type:</strong> {sel('mechanical', 'heating_type', ['Gas Furnace', 'Boiler', 'Electric', 'Heat Pump'])}</div>
+                              <div style={fs}><strong>Condition:</strong> {sel('mechanical', 'heating_condition', ['Good', 'Fair', 'Poor', 'Failed'])}</div>
+                              <div style={fs}><strong>Age:</strong> {txt('mechanical', 'heating_age', 'Year', 50)}</div>
+                              <div style={fs}><strong>Tune & Clean Rec:</strong> {yn('mechanical', 'tune_clean_recommended')}</div>
+                              <div style={fs}><strong>Thermostat:</strong> {sel('mechanical', 'thermostat_type', ['Manual', 'Programmable', 'Smart/Advanced'])}</div>
+                            </div></div>
+                            {/* Diagnostics */}
+                            <div style={hs}>DIAGNOSTICS</div>
+                            <div style={ss}><div style={gs}>
+                              <div style={fs}><strong>Pre Blower Door (CFM50):</strong> {txt('diagnostics', 'pre_cfm50', 'CFM50', 60)}</div>
+                              <div style={fs}><strong>Pre Duct Blaster (CFM25):</strong> {txt('diagnostics', 'pre_cfm25', 'CFM25', 60)}</div>
+                              <div style={fs}><strong>Combustion Pre:</strong> {txt('diagnostics', 'combustion_pre', '%', 50)}</div>
+                              <div style={fs}><strong>CO Test:</strong> {txt('diagnostics', 'co_test', 'ppm', 50)}</div>
+                            </div></div>
+                            {/* Assessor Recommendations */}
+                            <div style={{ ...hs, background: '#4a6741' }}>RECOMMENDATIONS</div>
                             <div style={{ ...ss, borderBottom: 'none' }}>
                               <div style={gs}>
                                 {['attic_insulation', 'wall_insulation', 'basement_insulation', 'air_sealing', 'duct_sealing', 'rim_joist', 'hvac_tune_clean', 'thermostat', 'exhaust_fans', 'detectors', 'hs_repairs', 'deferral'].map(r => (
@@ -1703,41 +1504,92 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                 ))}
                               </div>
                               <textarea style={{ width: '100%', fontSize: 11, padding: 4, minHeight: 60, marginTop: 8, border: '1px solid #ccc', borderRadius: 3 }}
-                                defaultValue={v('recommendations', 'details')} placeholder="Recommendation details, concerns, deferral reasons..."
+                                defaultValue={v('recommendations', 'details')} placeholder="Assessor notes, field observations, concerns..."
                                 onBlur={e => set('recommendations', 'details', e.target.value)} />
-                              <div style={{ marginTop: 6 }}>
-                                <strong style={{ fontSize: 12 }}>Deferral Reason (if applicable):</strong>
-                                <textarea style={{ width: '100%', fontSize: 11, padding: 4, minHeight: 40, marginTop: 4, border: '1px solid #ccc', borderRadius: 3 }}
-                                  defaultValue={v('recommendations', 'deferral_reason')} placeholder="Cite specific deferral condition..."
-                                  onBlur={e => set('recommendations', 'deferral_reason', e.target.value)} />
-                              </div>
                             </div>
                           </div>
                         );
                       })()}
 
-                      {/* Assessor Photo Log */}
+                      {/* Pre-Install Photo Capture */}
                       <div style={{ marginTop: 14, padding: 12, background: '#f0f4ff', borderRadius: 6 }}>
                         <h4 style={{ fontSize: 13, color: '#0f3460', marginBottom: 8 }}>Assessment Photos</h4>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                        <p style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>Take pre-install photos of each side of the house, mechanical equipment, and any health & safety concerns.</p>
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                          {['Alpha', 'Bravo', 'Charlie', 'Delta', 'Interior'].map(side => {
+                            const count = (job.photos || []).filter(p => p.phase === 'assessment' && p.house_side === side).length;
+                            const colors = { Alpha: '#e3f2fd', Bravo: '#fce4ec', Charlie: '#e8f5e9', Delta: '#fff3e0', Interior: '#f3e5f5' };
+                            return (
+                              <div key={side} style={{ fontSize: 10, padding: '3px 8px', background: colors[side], borderRadius: 4, fontWeight: 600 }}>
+                                {side}: {count}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                           {(job.photos || []).filter(p => p.phase === 'assessment').map(p => (
                             <div key={p.id} style={{ fontSize: 11, padding: '4px 8px', background: '#e8fde8', borderRadius: 4, border: '1px solid #c8e6c9' }}>
-                              {p.description} {p.photo_ref && <span style={{ color: '#888' }}>({p.photo_ref})</span>}
+                              {p.house_side && <span style={{ fontWeight: 600 }}>[{p.house_side}] </span>}
+                              {p.description}
                             </div>
                           ))}
                         </div>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <input id={`assess-photo-desc-${job.id}`} style={{ flex: 1, fontSize: 11, padding: '4px 6px' }} placeholder="Photo description (e.g., Front of home, Furnace data tag)" />
-                          <input id={`assess-photo-ref-${job.id}`} style={{ width: 160, fontSize: 11, padding: '4px 6px' }} placeholder="Company Cam ref" />
-                          <button className="btn btn-sm btn-primary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={() => {
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <select id={`assess-side-${job.id}`} style={{ fontSize: 11, padding: '4px 6px' }}>
+                            <option value="">Side of House</option>
+                            <option value="Alpha">Alpha (A)</option>
+                            <option value="Bravo">Bravo (B)</option>
+                            <option value="Charlie">Charlie (C)</option>
+                            <option value="Delta">Delta (D)</option>
+                            <option value="Interior">Interior</option>
+                            <option value="Other">Other</option>
+                          </select>
+                          <input id={`assess-photo-desc-${job.id}`} style={{ flex: 1, fontSize: 11, padding: '4px 6px', minWidth: 150 }} placeholder="Photo description" />
+                          <input id={`assess-photo-ref-${job.id}`} style={{ width: 120, fontSize: 11, padding: '4px 6px' }} placeholder="Cam ref" />
+                          <label className="btn btn-sm btn-secondary" style={{ fontSize: 10, padding: '3px 8px', cursor: 'pointer' }}>
+                            Upload
+                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
+                              const file = e.target.files[0]; if (!file) return;
+                              const desc = document.getElementById(`assess-photo-desc-${job.id}`).value;
+                              if (!desc) { alert('Enter a description first'); return; }
+                              const side = document.getElementById(`assess-side-${job.id}`).value;
+                              const reader = new FileReader();
+                              reader.onload = ev => {
+                                fetch(`/api/programs/jobs/${job.id}/photos`, {
+                                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ uploaded_by: 'Assessor', role: 'Assessor', phase: 'assessment', house_side: side, description: desc, photo_data: ev.target.result, file_name: file.name })
+                                }).then(() => { loadJobs(); document.getElementById(`assess-photo-desc-${job.id}`).value = ''; });
+                              };
+                              reader.readAsDataURL(file);
+                            }} />
+                          </label>
+                          <label className="btn btn-sm btn-primary" style={{ fontSize: 10, padding: '3px 8px', cursor: 'pointer' }}>
+                            Camera
+                            <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => {
+                              const file = e.target.files[0]; if (!file) return;
+                              const desc = document.getElementById(`assess-photo-desc-${job.id}`).value;
+                              if (!desc) { alert('Enter a description first'); return; }
+                              const side = document.getElementById(`assess-side-${job.id}`).value;
+                              const reader = new FileReader();
+                              reader.onload = ev => {
+                                fetch(`/api/programs/jobs/${job.id}/photos`, {
+                                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ uploaded_by: 'Assessor', role: 'Assessor', phase: 'assessment', house_side: side, description: desc, photo_data: ev.target.result, file_name: file.name })
+                                }).then(() => { loadJobs(); document.getElementById(`assess-photo-desc-${job.id}`).value = ''; });
+                              };
+                              reader.readAsDataURL(file);
+                            }} />
+                          </label>
+                          <button className="btn btn-sm btn-success" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => {
                             const desc = document.getElementById(`assess-photo-desc-${job.id}`).value;
                             if (!desc) return;
                             const ref = document.getElementById(`assess-photo-ref-${job.id}`).value;
+                            const side = document.getElementById(`assess-side-${job.id}`).value;
                             fetch(`/api/programs/jobs/${job.id}/photos`, {
                               method: 'POST', headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ uploaded_by: 'Assessor', role: 'Assessor', phase: 'assessment', description: desc, photo_ref: ref })
+                              body: JSON.stringify({ uploaded_by: 'Assessor', role: 'Assessor', phase: 'assessment', house_side: side, description: desc, photo_ref: ref })
                             }).then(() => { loadJobs(); document.getElementById(`assess-photo-desc-${job.id}`).value = ''; document.getElementById(`assess-photo-ref-${job.id}`).value = ''; });
-                          }}>+ Log Photo</button>
+                          }}>+ Log Ref</button>
                         </div>
                       </div>
                     </div>
@@ -1746,6 +1598,42 @@ export default function ProgramDetail({ role, fixedProgramId }) {
               );
             })
           )}
+        </div>
+      )}
+
+      {/* ===================== SCOPE CREATOR FIELD VIEW ===================== */}
+      {tab === 'jobs' && role === 'Scope Creator' && (
+        <div>
+          <h3 style={{ marginBottom: 12 }}>Scope Creation</h3>
+          {jobs.filter(j => ['assessment_complete', 'pre_approval', 'approved'].includes(j.status)).length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: 30, color: '#888' }}>No jobs ready for scoping.</div>
+          ) : (
+            jobs.filter(j => ['assessment_complete', 'pre_approval', 'approved'].includes(j.status)).map(job => (
+              <div key={job.id} className="card" style={{ marginBottom: 12, padding: '14px 16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <strong>{job.customer_name || 'Unnamed'}</strong>
+                    {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
+                    <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>{job.address}, {job.city}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-sm btn-primary" style={{ fontSize: 12 }}
+                      onClick={() => navigate(`/job/${job.id}`)}>
+                      Open Full Detail - Fill Form & Build Scope
+                    </button>
+                    <span className={`badge ${job.status === 'approved' ? 'active' : 'pending'}`}>{job.status.replace(/_/g, ' ')}</span>
+                  </div>
+                </div>
+                <div style={{ marginTop: 8, fontSize: 11, color: '#666' }}>
+                  Assessment: {(() => { try { const a = JSON.parse(job.assessment_data || '{}'); return a.recommendations?.details ? 'Notes: ' + a.recommendations.details.substring(0, 100) + '...' : 'No assessor notes yet'; } catch { return 'No data'; } })()}
+                </div>
+                <div style={{ marginTop: 4, fontSize: 11 }}>
+                  Scope: {(() => { try { const s = JSON.parse(job.scope_data || '{}'); return (s.selected_measures || []).length > 0 ? (s.selected_measures || []).join(', ') : 'No scope built yet'; } catch { return 'No scope'; } })()}
+                </div>
+              </div>
+            ))
+          )}
+          <p style={{ fontSize: 11, color: '#888', marginTop: 12 }}>Click "Open Full Detail" to fill out the complete Appendix D form and build the scope of work for each project.</p>
         </div>
       )}
 
@@ -1809,32 +1697,78 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                       {/* Post-Install Photo Log */}
                       <div style={{ marginBottom: 12, padding: 10, background: '#e8f5e9', borderRadius: 6 }}>
                         <h4 style={{ fontSize: 13, color: '#2e7d32', marginBottom: 8 }}>Post-Install Photos</h4>
-                        {selectedMeasures.map(m => {
-                          const photosForMeasure = (job.photos || []).filter(p => p.phase === 'post_install' && p.measure_name === m);
+                        {/* Existing photos gallery */}
+                        {(() => {
+                          const instPhotos = (job.photos || []).filter(p => p.phase === 'post_install');
+                          const SIDES = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Interior', 'Other'];
+                          const sideColors = { Alpha: '#e3f2fd', Bravo: '#fff3e0', Charlie: '#f3e5f5', Delta: '#e8f5e9', Interior: '#fce4ec', Other: '#f5f5f5' };
                           return (
-                            <div key={m} style={{ marginBottom: 8, padding: '6px 8px', background: '#fff', borderRadius: 4, border: '1px solid #ddd' }}>
-                              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{m}</div>
-                              {photosForMeasure.map(p => (
-                                <div key={p.id} style={{ fontSize: 11, color: '#27ae60', padding: '2px 0' }}>
-                                  {p.description} {p.photo_ref && <span style={{ color: '#888' }}>({p.photo_ref})</span>} - {p.created_at?.split('T')[0]}
+                            <>
+                              {instPhotos.length > 0 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                                  {instPhotos.map(p => (
+                                    <div key={p.id} style={{ width: 110, border: '1px solid #ddd', borderRadius: 6, overflow: 'hidden', background: '#fff', fontSize: 10 }}>
+                                      {p.has_photo ? (
+                                        <img src={`/api/programs/photos/${p.id}/image`} alt={p.description} style={{ width: '100%', height: 80, objectFit: 'cover' }} />
+                                      ) : (
+                                        <div style={{ width: '100%', height: 80, background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>No image</div>
+                                      )}
+                                      <div style={{ padding: 4 }}>
+                                        {p.house_side && <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 3, background: sideColors[p.house_side] || '#eee' }}>{p.house_side}</span>}
+                                        <div style={{ marginTop: 2 }}>{p.description}</div>
+                                        {p.measure_name && <div style={{ color: '#888' }}>{p.measure_name}</div>}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {/* Upload controls per measure */}
+                              {selectedMeasures.map(m => (
+                                <div key={m} style={{ marginBottom: 8, padding: '6px 8px', background: '#fff', borderRadius: 4, border: '1px solid #ddd' }}>
+                                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{m} <span style={{ color: '#888', fontWeight: 400 }}>({instPhotos.filter(p => p.measure_name === m).length} photos)</span></div>
+                                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <select id={`inst-side-${job.id}-${m}`} style={{ fontSize: 11, padding: '3px 4px' }}>
+                                      {SIDES.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                    <input id={`inst-desc-${job.id}-${m}`} style={{ flex: 1, minWidth: 120, fontSize: 11, padding: '3px 6px' }} placeholder={`Photo description`} />
+                                    <label className="btn btn-sm btn-success" style={{ fontSize: 10, padding: '3px 8px', cursor: 'pointer', margin: 0 }}>
+                                      Camera
+                                      <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => {
+                                        const file = e.target.files[0]; if (!file) return;
+                                        const desc = document.getElementById(`inst-desc-${job.id}-${m}`).value || `${m} - post install`;
+                                        const side = document.getElementById(`inst-side-${job.id}-${m}`).value;
+                                        const reader = new FileReader();
+                                        reader.onload = () => {
+                                          fetch(`/api/programs/jobs/${job.id}/photos`, {
+                                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ uploaded_by: 'Installer', role: 'Installer', phase: 'post_install', measure_name: m, description: desc, house_side: side, photo_data: reader.result, file_name: file.name })
+                                          }).then(() => loadJobs());
+                                        };
+                                        reader.readAsDataURL(file); e.target.value = '';
+                                      }} />
+                                    </label>
+                                    <label className="btn btn-sm btn-primary" style={{ fontSize: 10, padding: '3px 8px', cursor: 'pointer', margin: 0 }}>
+                                      Upload
+                                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
+                                        const file = e.target.files[0]; if (!file) return;
+                                        const desc = document.getElementById(`inst-desc-${job.id}-${m}`).value || `${m} - post install`;
+                                        const side = document.getElementById(`inst-side-${job.id}-${m}`).value;
+                                        const reader = new FileReader();
+                                        reader.onload = () => {
+                                          fetch(`/api/programs/jobs/${job.id}/photos`, {
+                                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ uploaded_by: 'Installer', role: 'Installer', phase: 'post_install', measure_name: m, description: desc, house_side: side, photo_data: reader.result, file_name: file.name })
+                                          }).then(() => loadJobs());
+                                        };
+                                        reader.readAsDataURL(file); e.target.value = '';
+                                      }} />
+                                    </label>
+                                  </div>
                                 </div>
                               ))}
-                              <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                                <input id={`inst-photo-${job.id}-${m}`} style={{ flex: 1, fontSize: 11, padding: '3px 6px' }} placeholder={`Post-install photo for ${m}`} />
-                                <input id={`inst-ref-${job.id}-${m}`} style={{ width: 120, fontSize: 11, padding: '3px 6px' }} placeholder="Cam ref" />
-                                <button className="btn btn-sm btn-success" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => {
-                                  const desc = document.getElementById(`inst-photo-${job.id}-${m}`).value;
-                                  if (!desc) return;
-                                  const ref = document.getElementById(`inst-ref-${job.id}-${m}`).value;
-                                  fetch(`/api/programs/jobs/${job.id}/photos`, {
-                                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ uploaded_by: 'Installer', role: 'Installer', phase: 'post_install', measure_name: m, description: desc, photo_ref: ref })
-                                  }).then(() => { loadJobs(); document.getElementById(`inst-photo-${job.id}-${m}`).value = ''; document.getElementById(`inst-ref-${job.id}-${m}`).value = ''; });
-                                }}>+ Photo</button>
-                              </div>
-                            </div>
+                            </>
                           );
-                        })}
+                        })()}
                       </div>
 
                       {/* Change Order Request */}
@@ -1971,24 +1905,63 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                       {/* HVAC Photos */}
                       <div style={{ marginBottom: 12, padding: 10, background: '#f0f4ff', borderRadius: 6 }}>
                         <h4 style={{ fontSize: 13, color: '#0f3460', marginBottom: 8 }}>HVAC Photos</h4>
-                        {(job.photos || []).filter(p => p.role === 'HVAC').map(p => (
-                          <div key={p.id} style={{ fontSize: 11, padding: '3px 0', color: '#333' }}>
-                            {p.description} {p.photo_ref && <span style={{ color: '#888' }}>({p.photo_ref})</span>} - {p.created_at?.split('T')[0]}
-                          </div>
-                        ))}
-                        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                          <input id={`hvac-photo-${job.id}`} style={{ flex: 1, fontSize: 11, padding: '3px 6px' }} placeholder="Photo description (e.g., Furnace data tag, Combustion readings)" />
-                          <input id={`hvac-ref-${job.id}`} style={{ width: 120, fontSize: 11, padding: '3px 6px' }} placeholder="Cam ref" />
-                          <button className="btn btn-sm btn-primary" style={{ fontSize: 10 }} onClick={() => {
-                            const desc = document.getElementById(`hvac-photo-${job.id}`).value;
-                            if (!desc) return;
-                            const ref = document.getElementById(`hvac-ref-${job.id}`).value;
-                            fetch(`/api/programs/jobs/${job.id}/photos`, {
-                              method: 'POST', headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ uploaded_by: 'HVAC Tech', role: 'HVAC', phase: 'hvac', description: desc, photo_ref: ref })
-                            }).then(() => { loadJobs(); document.getElementById(`hvac-photo-${job.id}`).value = ''; document.getElementById(`hvac-ref-${job.id}`).value = ''; });
-                          }}>+ Photo</button>
-                        </div>
+                        {(() => {
+                          const hvacPhotos = (job.photos || []).filter(p => p.role === 'HVAC');
+                          return (
+                            <>
+                              {hvacPhotos.length > 0 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                                  {hvacPhotos.map(p => (
+                                    <div key={p.id} style={{ width: 110, border: '1px solid #ddd', borderRadius: 6, overflow: 'hidden', background: '#fff', fontSize: 10 }}>
+                                      {p.has_photo ? (
+                                        <img src={`/api/programs/photos/${p.id}/image`} alt={p.description} style={{ width: '100%', height: 80, objectFit: 'cover' }} />
+                                      ) : (
+                                        <div style={{ width: '100%', height: 80, background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>No image</div>
+                                      )}
+                                      <div style={{ padding: 4 }}>
+                                        <div>{p.description}</div>
+                                        <div style={{ color: '#888' }}>{p.created_at?.split('T')[0]}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                                <input id={`hvac-desc-${job.id}`} style={{ flex: 1, minWidth: 150, fontSize: 11, padding: '3px 6px' }} placeholder="Photo description (e.g., Furnace data tag, Combustion readings)" />
+                                <label className="btn btn-sm btn-primary" style={{ fontSize: 10, cursor: 'pointer', margin: 0 }}>
+                                  Camera
+                                  <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => {
+                                    const file = e.target.files[0]; if (!file) return;
+                                    const desc = document.getElementById(`hvac-desc-${job.id}`).value || 'HVAC equipment photo';
+                                    const reader = new FileReader();
+                                    reader.onload = () => {
+                                      fetch(`/api/programs/jobs/${job.id}/photos`, {
+                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ uploaded_by: 'HVAC Tech', role: 'HVAC', phase: 'hvac', description: desc, photo_data: reader.result, file_name: file.name })
+                                      }).then(() => loadJobs());
+                                    };
+                                    reader.readAsDataURL(file); e.target.value = '';
+                                  }} />
+                                </label>
+                                <label className="btn btn-sm btn-success" style={{ fontSize: 10, cursor: 'pointer', margin: 0 }}>
+                                  Upload
+                                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
+                                    const file = e.target.files[0]; if (!file) return;
+                                    const desc = document.getElementById(`hvac-desc-${job.id}`).value || 'HVAC equipment photo';
+                                    const reader = new FileReader();
+                                    reader.onload = () => {
+                                      fetch(`/api/programs/jobs/${job.id}/photos`, {
+                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ uploaded_by: 'HVAC Tech', role: 'HVAC', phase: 'hvac', description: desc, photo_data: reader.result, file_name: file.name })
+                                      }).then(() => loadJobs());
+                                    };
+                                    reader.readAsDataURL(file); e.target.value = '';
+                                  }} />
+                                </label>
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
 
                       {/* HVAC Replacements - existing section */}

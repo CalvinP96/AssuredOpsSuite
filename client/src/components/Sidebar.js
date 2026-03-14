@@ -51,6 +51,9 @@ const NAV_ITEMS = {
   Assessor: [
     { path: '/hes-ie', icon: '📋', label: 'My Assessments' },
   ],
+  'Scope Creator': [
+    { path: '/hes-ie', icon: '📋', label: 'Scope Builder' },
+  ],
   Installer: [
     { path: '/hes-ie', icon: '📋', label: 'My Jobs' },
   ],
