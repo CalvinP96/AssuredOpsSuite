@@ -295,13 +295,26 @@ export default function JobDetail({ role }) {
         </span>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs - filtered by role */}
       <div style={{ display: 'flex', borderBottom: '1px solid #ddd', marginBottom: 16, flexWrap: 'wrap' }}>
-        {['overview', 'assessment', 'scope', 'photos', 'scheduling', 'checklist', 'hvac', 'change_orders', 'export'].map(t => (
-          <button key={t} style={tabStyle(t)} onClick={() => { setTab(t); if (t === 'export') loadExport(); }}>
-            {t === 'change_orders' ? 'Change Orders' : t.charAt(0).toUpperCase() + t.slice(1)}
-          </button>
-        ))}
+        {(() => {
+          const allTabs = ['overview', 'assessment', 'scope', 'photos', 'scheduling', 'checklist', 'hvac', 'change_orders', 'export'];
+          let visibleTabs = allTabs;
+          if (role === 'Assessor') {
+            visibleTabs = ['overview', 'assessment', 'photos'];
+          } else if (role === 'Scope Creator') {
+            visibleTabs = ['overview', 'assessment', 'scope', 'photos', 'scheduling'];
+          } else if (role === 'Installer') {
+            visibleTabs = ['overview', 'scope', 'photos', 'scheduling', 'checklist', 'change_orders'];
+          } else if (role === 'HVAC') {
+            visibleTabs = ['overview', 'hvac', 'photos'];
+          }
+          return visibleTabs.map(t => (
+            <button key={t} style={tabStyle(t)} onClick={() => { setTab(t); if (t === 'export') loadExport(); }}>
+              {t === 'change_orders' ? 'Change Orders' : t === 'assessment' && role === 'Assessor' ? 'MS Forms Survey' : t === 'assessment' && role === 'Scope Creator' ? 'Assessor Data' : t.charAt(0).toUpperCase() + t.slice(1)}
+            </button>
+          ));
+        })()}
       </div>
 
       {/* ===================== OVERVIEW TAB ===================== */}
@@ -398,9 +411,29 @@ export default function JobDetail({ role }) {
       {/* ===================== ASSESSMENT TAB ===================== */}
       {tab === 'assessment' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', background: '#4a6741', color: '#fff', cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}
+          {/* Assessor Recommendations Banner - visible to Scope Creator */}
+          {role === 'Scope Creator' && (() => {
+            const recs = ad.recommendations || {};
+            const recItems = ['attic_insulation', 'wall_insulation', 'basement_insulation', 'air_sealing', 'duct_sealing', 'rim_joist', 'hvac_tune_clean', 'hvac_replacement', 'thermostat', 'exhaust_fans', 'detectors', 'hs_repairs'].filter(r => recs[r] === 'yes');
+            return (
+              <div style={{ padding: '12px 16px', background: '#fff3e0', borderBottom: '2px solid #ffe0b2' }}>
+                <h4 style={{ fontSize: 13, color: '#e65100', marginBottom: 6 }}>Assessor Recommendations (Reference)</h4>
+                {recItems.length > 0 ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                    {recItems.map(r => (
+                      <span key={r} style={{ fontSize: 11, padding: '3px 8px', background: '#e8f5e9', borderRadius: 4, border: '1px solid #c8e6c9' }}>{r.replace(/_/g, ' ')}</span>
+                    ))}
+                  </div>
+                ) : <p style={{ fontSize: 11, color: '#888', margin: 0 }}>No recommendations from assessor yet.</p>}
+                {recs.details && <p style={{ fontSize: 11, margin: '4px 0 0' }}><strong>Notes:</strong> {recs.details}</p>}
+                {recs.deferral === 'yes' && <p style={{ fontSize: 11, margin: '4px 0 0', color: '#c0392b' }}><strong>DEFERRAL RECOMMENDED:</strong> {recs.deferral_reason || 'No reason given'}</p>}
+                <p style={{ fontSize: 10, color: '#888', margin: '8px 0 0', fontStyle: 'italic' }}>Fill out the complete Appendix D form below based on the 2026 HES IE requirements. You have final say on scope.</p>
+              </div>
+            );
+          })()}
+          <div style={{ padding: '12px 16px', background: role === 'Assessor' ? '#4a6741' : '#0f3460', color: '#fff', cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}
             onClick={() => setAssessmentOpen(!assessmentOpen)}>
-            <h3 style={{ margin: 0, fontSize: 14 }}>Energy Assessment Data (Appendix D)</h3>
+            <h3 style={{ margin: 0, fontSize: 14 }}>{role === 'Assessor' ? 'MS Forms Assessment Survey' : 'Energy Assessment Data (Appendix D - 2026 HES)'}</h3>
             <span>{assessmentOpen ? '\u25B2' : '\u25BC'}</span>
           </div>
           {assessmentOpen && (
@@ -666,15 +699,34 @@ export default function JobDetail({ role }) {
       {/* ===================== SCOPE TAB ===================== */}
       {tab === 'scope' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          {/* Assessor Recommendations in Scope View */}
+          {(role === 'Scope Creator' || role === 'Admin' || role === 'Operations') && (() => {
+            const recs = ad.recommendations || {};
+            const recItems = ['attic_insulation', 'wall_insulation', 'basement_insulation', 'air_sealing', 'duct_sealing', 'rim_joist', 'hvac_tune_clean', 'hvac_replacement', 'thermostat', 'exhaust_fans', 'detectors', 'hs_repairs'].filter(r => recs[r] === 'yes');
+            if (recItems.length === 0 && !recs.details) return null;
+            return (
+              <div style={{ padding: '10px 16px', background: '#fff3e0', borderBottom: '1px solid #ffe0b2' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#e65100', marginBottom: 4 }}>Assessor Recommended:</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {recItems.map(r => (
+                    <span key={r} style={{ fontSize: 10, padding: '2px 6px', background: '#e8f5e9', borderRadius: 3, border: '1px solid #c8e6c9' }}>{r.replace(/_/g, ' ')}</span>
+                  ))}
+                </div>
+                {recs.details && <p style={{ fontSize: 10, color: '#666', margin: '4px 0 0' }}>{recs.details}</p>}
+              </div>
+            );
+          })()}
           <div style={{ padding: '12px 16px', background: '#0f3460', color: '#fff', cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}
             onClick={() => setScopeOpen(!scopeOpen)}>
-            <h3 style={{ margin: 0, fontSize: 14 }}>Scope of Work Builder</h3>
+            <h3 style={{ margin: 0, fontSize: 14 }}>Scope of Work Builder {role === 'Scope Creator' ? '(Final Say)' : ''}</h3>
             <span>{scopeOpen ? '\u25B2' : '\u25BC'}</span>
           </div>
           {scopeOpen && program && (() => {
+            const canScope = ['Admin', 'Operations', 'Program Manager', 'Scope Creator'].includes(role);
             const measures = program.measures || [];
             const selectedMeasures = sc.selected_measures || [];
             const toggleMeasure = (name) => {
+              if (!canScope) return;
               const updated = selectedMeasures.includes(name) ? selectedMeasures.filter(m => m !== name) : [...selectedMeasures, name];
               const newScope = { ...sc, selected_measures: updated };
               saveScope(newScope);
@@ -689,6 +741,7 @@ export default function JobDetail({ role }) {
             if (aVal('recommendations', 'duct_sealing') === 'yes') suggestions.push('Duct Sealing');
             if (aVal('recommendations', 'rim_joist') === 'yes') suggestions.push('Rim Joist Insulation');
             if (aVal('recommendations', 'hvac_tune_clean') === 'yes') { suggestions.push('Gas Furnace Tune-Up'); suggestions.push('Boiler Tune-Up'); }
+            if (aVal('recommendations', 'hvac_replacement') === 'yes') { suggestions.push('Furnace Replacement'); suggestions.push('Boiler Replacement'); }
             if (aVal('recommendations', 'thermostat') === 'yes') { suggestions.push('Programmable Thermostat'); suggestions.push('Advanced Thermostat'); }
 
             const categories = [...new Set(measures.map(m => m.category))];
@@ -696,11 +749,11 @@ export default function JobDetail({ role }) {
               <div style={{ padding: 16 }}>
                 {suggestions.length > 0 && (
                   <div style={{ background: '#fff3e0', padding: 10, borderRadius: 6, marginBottom: 12 }}>
-                    <strong style={{ fontSize: 12 }}>Auto-Suggested from Assessment:</strong>
+                    <strong style={{ fontSize: 12 }}>Auto-Suggested from Assessor Recommendations:</strong>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
                       {suggestions.map(s => (
                         <button key={s} className={`btn btn-sm ${selectedMeasures.includes(s) ? 'btn-success' : 'btn-warning'}`}
-                          style={{ fontSize: 11, padding: '3px 8px' }} onClick={() => toggleMeasure(s)}>
+                          style={{ fontSize: 11, padding: '3px 8px' }} disabled={!canScope} onClick={() => toggleMeasure(s)}>
                           {selectedMeasures.includes(s) ? '+ ' : ''}{s}
                         </button>
                       ))}
@@ -711,19 +764,51 @@ export default function JobDetail({ role }) {
                   <div key={cat} style={{ marginBottom: 12 }}>
                     <h4 style={{ fontSize: 13, color: '#333', marginBottom: 6, borderBottom: '1px solid #eee', paddingBottom: 4 }}>{cat}</h4>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 4 }}>
-                      {measures.filter(m => m.category === cat).map(m => (
-                        <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '3px 6px', background: selectedMeasures.includes(m.name) ? '#e8f5e9' : '#f9f9f9', borderRadius: 4, cursor: canEdit ? 'pointer' : 'default' }}>
-                          <input type="checkbox" checked={selectedMeasures.includes(m.name)} disabled={!canEdit} onChange={() => toggleMeasure(m.name)} />
-                          {m.name}
-                        </label>
-                      ))}
+                      {measures.filter(m => m.category === cat).map(m => {
+                        const isRec = suggestions.includes(m.name);
+                        return (
+                          <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '3px 6px', background: selectedMeasures.includes(m.name) ? '#e8f5e9' : isRec ? '#fff8e1' : '#f9f9f9', borderRadius: 4, cursor: canScope ? 'pointer' : 'default', border: isRec && !selectedMeasures.includes(m.name) ? '1px dashed #ff9800' : '1px solid transparent' }}>
+                            <input type="checkbox" checked={selectedMeasures.includes(m.name)} disabled={!canScope} onChange={() => toggleMeasure(m.name)} />
+                            {m.name} {isRec && !selectedMeasures.includes(m.name) && <span style={{ fontSize: 9, color: '#ff9800' }}>(recommended)</span>}
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
+
+                {/* Weatherization Pricing - from 2026 HES Appendix D */}
+                {canScope && selectedMeasures.length > 0 && (
+                  <div style={{ marginTop: 16, padding: 12, background: '#f5f5f5', borderRadius: 6, border: '1px solid #ddd' }}>
+                    <h4 style={{ fontSize: 13, color: '#333', marginBottom: 8 }}>Weatherization Pricing Worksheet</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '4px 8px', fontSize: 11, alignItems: 'center' }}>
+                      <div style={{ fontWeight: 700, borderBottom: '1px solid #ccc', paddingBottom: 2 }}>Measure</div>
+                      <div style={{ fontWeight: 700, borderBottom: '1px solid #ccc', paddingBottom: 2 }}>Qty/SqFt</div>
+                      <div style={{ fontWeight: 700, borderBottom: '1px solid #ccc', paddingBottom: 2 }}>Unit</div>
+                      <div style={{ fontWeight: 700, borderBottom: '1px solid #ccc', paddingBottom: 2 }}>Cost</div>
+                      {selectedMeasures.map(m => (
+                        <React.Fragment key={m}>
+                          <div>{m}</div>
+                          <input style={{ fontSize: 11, padding: '2px 4px', border: '1px solid #ccc', borderRadius: 3 }}
+                            defaultValue={(sc.pricing || {})[m]?.qty || ''} placeholder="0"
+                            onBlur={e => saveScope({ ...sc, pricing: { ...(sc.pricing || {}), [m]: { ...((sc.pricing || {})[m] || {}), qty: e.target.value } } })} />
+                          <div style={{ color: '#666' }}>{m.includes('Insulation') || m.includes('Sealing') ? 'SF/LF' : 'Ea'}</div>
+                          <input style={{ fontSize: 11, padding: '2px 4px', border: '1px solid #ccc', borderRadius: 3 }}
+                            defaultValue={(sc.pricing || {})[m]?.cost || ''} placeholder="$0"
+                            onBlur={e => saveScope({ ...sc, pricing: { ...(sc.pricing || {}), [m]: { ...((sc.pricing || {})[m] || {}), cost: e.target.value } } })} />
+                        </React.Fragment>
+                      ))}
+                    </div>
+                    <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, textAlign: 'right' }}>
+                      Total: ${Object.values(sc.pricing || {}).reduce((sum, p) => sum + (parseFloat(p.cost) || 0), 0).toLocaleString()}
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ marginTop: 12 }}>
                   <strong style={{ fontSize: 12 }}>Scope Notes:</strong>
                   <textarea style={{ width: '100%', fontSize: 11, padding: 4, minHeight: 60, marginTop: 4, border: '1px solid #ccc', borderRadius: 3 }}
-                    defaultValue={sc.notes} disabled={!canEdit}
+                    defaultValue={sc.notes} disabled={!canScope}
                     onBlur={e => saveScope({ ...sc, notes: e.target.value })} />
                 </div>
                 {selectedMeasures.length > 0 && (

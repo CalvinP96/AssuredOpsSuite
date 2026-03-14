@@ -578,7 +578,11 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                     onClick={() => setExpandedJob(isExpanded ? null : job.id)}
                   >
                     <div>
-                      <strong>{job.customer_name || 'Unnamed'}</strong>
+                      <strong style={{ cursor: 'pointer', color: '#1a73e8', textDecoration: 'none' }}
+                        onClick={e => { e.stopPropagation(); navigate(`/job/${job.id}`); }}
+                        onMouseOver={e => e.target.style.textDecoration = 'underline'}
+                        onMouseOut={e => e.target.style.textDecoration = 'none'}
+                      >{job.customer_name || 'Unnamed'}</strong>
                       {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
                       <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>{job.address}{job.city ? `, ${job.city}` : ''} {job.zip || ''}</span>
                     </div>
@@ -1351,7 +1355,11 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                   <div style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: job.status === 'assessment_scheduled' ? '#fff3e0' : '#e8f5e9' }}
                     onClick={() => setExpandedJob(isExpanded ? null : job.id)}>
                     <div>
-                      <strong>{job.customer_name || 'Unnamed'}</strong>
+                      <strong style={{ cursor: 'pointer', color: '#1a73e8' }}
+                        onClick={e => { e.stopPropagation(); navigate(`/job/${job.id}`); }}
+                        onMouseOver={e => e.target.style.textDecoration = 'underline'}
+                        onMouseOut={e => e.target.style.textDecoration = 'none'}
+                      >{job.customer_name || 'Unnamed'}</strong>
                       {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
                       <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>{job.address}, {job.city} {job.zip}</span>
                     </div>
@@ -1382,10 +1390,11 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                         </button>
                       </div>
 
-                      {/* Quick Field Observations (MS Form style) */}
-                      <div style={{ padding: '10px 12px', background: '#4a6741', color: '#fff', borderRadius: '6px 6px 0 0', cursor: 'pointer', marginTop: 8 }}
+                      {/* MS Forms Assessment Survey - Assessor collects only this data */}
+                      <div style={{ padding: '10px 12px', background: '#4a6741', color: '#fff', borderRadius: '6px 6px 0 0', cursor: 'pointer', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                         onClick={() => setAssessmentOpen(assessmentOpen === job.id ? null : job.id)}>
-                        <h4 style={{ margin: 0, fontSize: 14 }}>Field Observations {assessmentOpen === job.id ? '\u25B2' : '\u25BC'}</h4>
+                        <h4 style={{ margin: 0, fontSize: 14 }}>MS Forms Assessment Survey</h4>
+                        <span style={{ fontSize: 10, opacity: 0.8 }}>Collect required field data {assessmentOpen === job.id ? '\u25B2' : '\u25BC'}</span>
                       </div>
                       {assessmentOpen === job.id && (() => {
                         const set = (section, field, val) => {
@@ -1419,54 +1428,107 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                         return (
                           <div style={{ border: '1px solid #ccc', borderTop: 'none', borderRadius: '0 0 6px 6px', background: '#fff' }}>
                             {/* Basic Home Info */}
-                            <div style={hs}>HOME INFO</div>
+                            <div style={hs}>1. GENERAL HOME INFO</div>
                             <div style={ss}><div style={gs}>
-                              <div style={fs}><strong>Style:</strong> {txt('exterior', 'style', 'Ranch, Colonial...', 100)}</div>
+                              <div style={fs}><strong>Style:</strong> {sel('exterior', 'style', ['Ranch', 'Colonial', 'Bungalow', 'Cape Cod', 'Split-Level', 'Two-Story', 'Multi-Level', 'Other'])}</div>
                               <div style={fs}><strong>Year Built:</strong> {txt('exterior', 'year_built', 'Year', 60)}</div>
-                              <div style={fs}><strong>Stories:</strong> {txt('exterior', 'stories', '#', 30)}</div>
+                              <div style={fs}><strong>Stories:</strong> {sel('exterior', 'stories', ['1', '1.5', '2', '2.5', '3'])}</div>
                               <div style={fs}><strong>Bedrooms:</strong> {txt('exterior', 'bedrooms', '#', 30)}</div>
-                              <div style={fs}><strong>SqFt:</strong> {txt('exterior', 'sq_footage', 'sqft', 60)}</div>
+                              <div style={fs}><strong>SqFt (Cond.):</strong> {txt('exterior', 'sq_footage', 'sqft', 60)}</div>
+                              <div style={fs}><strong>Occupants:</strong> {txt('exterior', 'occupants', '#', 30)}</div>
+                            </div></div>
+                            {/* Exterior Quick Check */}
+                            <div style={hs}>2. EXTERIOR QUICK CHECK</div>
+                            <div style={ss}><div style={gs}>
+                              <div style={fs}><strong>Roof Condition:</strong> {sel('exterior', 'roof_condition', ['good', 'average', 'poor'])}</div>
+                              <div style={fs}><strong>Roof Type:</strong> {sel('exterior', 'roof_type', ['Architecture', '3-Tab', 'Flat'])}</div>
+                              <div style={fs}><strong>Gutters:</strong> {yn('exterior', 'gutters')} Cond: {sel('exterior', 'gutter_condition', ['good', 'poor'])}</div>
+                              <div style={fs}><strong>Soffit:</strong> {yn('exterior', 'soffit')} Vents: {yn('exterior', 'soffit_vents')}</div>
+                              <div style={fs}><strong>Chimney:</strong> {sel('exterior', 'chimney', ['brick', 'metal', 'none'])}</div>
+                              <div style={fs}><strong>Cladding:</strong> {sel('exterior', 'cladding', ['Wood Lap', 'Vinyl', 'Aluminum', 'Stucco', 'Masonry', 'Asbestos Shingle', 'Other'])}</div>
                             </div></div>
                             {/* Health & Safety Flags */}
-                            <div style={hs}>HEALTH & SAFETY FLAGS</div>
+                            <div style={hs}>3. HEALTH & SAFETY FLAGS</div>
                             <div style={ss}><div style={gs}>
                               <div style={fs}><strong>Mold:</strong> {yn('interior', 'mold')}</div>
                               <div style={fs}><strong>Knob & Tube:</strong> {yn('interior', 'knob_tube')}</div>
                               <div style={fs}><strong>Moisture:</strong> {yn('interior', 'moisture')}</div>
                               <div style={fs}><strong>Roof Leaks:</strong> {yn('interior', 'roof_leaks')}</div>
-                              <div style={fs}><strong>Asbestos:</strong> {yn('foundation', 'asbestos')}</div>
-                              <div style={fs}><strong>CO Det:</strong> {yn('interior', 'co_detector')}</div>
-                              <div style={fs}><strong>Smoke Det:</strong> {yn('interior', 'smoke_detector')}</div>
+                              <div style={fs}><strong>Wiring Issues:</strong> {yn('interior', 'wiring_issues')}</div>
+                              <div style={fs}><strong>Asbestos Pipe:</strong> {yn('foundation', 'asbestos')}</div>
+                              <div style={fs}><strong>CO Detector:</strong> {yn('interior', 'co_detector')} Qty Needed: {txt('direct_install', 'co_qty', '#', 25)}</div>
+                              <div style={fs}><strong>Smoke Detector:</strong> {yn('interior', 'smoke_detector')} Qty Needed: {txt('direct_install', 'smoke_qty', '#', 25)}</div>
                               <div style={fs}><strong>Dryer Vented:</strong> {yn('interior', 'dryer_vented')}</div>
+                              <div style={fs}><strong>Gas Leaks:</strong> {yn('diagnostics', 'gas_leaks')}</div>
+                            </div>
+                            <div style={{ marginTop: 6 }}>
+                              <strong style={{ fontSize: 11 }}>H&S Notes:</strong>
+                              <textarea style={{ width: '100%', fontSize: 11, padding: 4, minHeight: 40, marginTop: 2, border: '1px solid #ccc', borderRadius: 3 }}
+                                defaultValue={v('interior', 'hs_notes')} placeholder="Describe any H&S concerns..."
+                                onBlur={e => set('interior', 'hs_notes', e.target.value)} />
+                            </div>
+                            </div>
+                            {/* Quick Insulation Observations */}
+                            <div style={hs}>4. INSULATION OBSERVATIONS</div>
+                            <div style={ss}><div style={gs}>
+                              <div style={fs}><strong>Attic Access:</strong> {yn('ms_insulation', 'attic_access')}</div>
+                              <div style={fs}><strong>Attic Existing Insul:</strong> {sel('ms_insulation', 'attic_existing', ['None', 'R-0 to R-11', 'R-12 to R-19', 'R-20+'])}</div>
+                              <div style={fs}><strong>Attic Insul Needed:</strong> {yn('recommendations', 'attic_insulation')}</div>
+                              <div style={fs}><strong>Walls Accessible:</strong> {yn('ms_insulation', 'walls_accessible')}</div>
+                              <div style={fs}><strong>Walls Insulated:</strong> {sel('ms_insulation', 'walls_existing', ['None', 'Partial', 'Full'])}</div>
+                              <div style={fs}><strong>Wall Insul Needed:</strong> {yn('recommendations', 'wall_insulation')}</div>
+                              <div style={fs}><strong>Basement Type:</strong> {sel('ms_insulation', 'basement_type', ['Finished', 'Unfinished', 'Crawlspace', 'Slab', 'None'])}</div>
+                              <div style={fs}><strong>Basement Insul Needed:</strong> {yn('recommendations', 'basement_insulation')}</div>
+                              <div style={fs}><strong>Rim Joist Access:</strong> {yn('ms_insulation', 'rim_joist_access')}</div>
+                              <div style={fs}><strong>Rim Joist Needed:</strong> {yn('recommendations', 'rim_joist')}</div>
                             </div></div>
                             {/* Quick Mechanical */}
-                            <div style={hs}>MECHANICAL - QUICK CHECK</div>
+                            <div style={hs}>5. MECHANICAL EQUIPMENT</div>
                             <div style={ss}><div style={gs}>
-                              <div style={fs}><strong>Heat Type:</strong> {sel('mechanical', 'heating_type', ['Gas Furnace', 'Boiler', 'Electric', 'Heat Pump'])}</div>
+                              <div style={fs}><strong>Heat Type:</strong> {sel('mechanical', 'heating_type', ['Gas Furnace', 'Boiler', 'Electric', 'Heat Pump', 'Space Heater'])}</div>
+                              <div style={fs}><strong>Make:</strong> {txt('mechanical', 'heating_make', 'Make', 80)}</div>
+                              <div style={fs}><strong>Model:</strong> {txt('mechanical', 'heating_model', 'Model', 80)}</div>
+                              <div style={fs}><strong>Age (approx):</strong> {txt('mechanical', 'heating_age', 'Year', 50)}</div>
                               <div style={fs}><strong>Condition:</strong> {sel('mechanical', 'heating_condition', ['Good', 'Fair', 'Poor', 'Failed'])}</div>
-                              <div style={fs}><strong>Age:</strong> {txt('mechanical', 'heating_age', 'Year', 50)}</div>
                               <div style={fs}><strong>Tune & Clean Rec:</strong> {yn('mechanical', 'tune_clean_recommended')}</div>
+                              <div style={fs}><strong>Water Heater:</strong> {sel('mechanical', 'wh_type', ['Gas', 'Electric', 'Tankless', 'Heat Pump WH'])}</div>
+                              <div style={fs}><strong>WH Age:</strong> {txt('mechanical', 'wh_age', 'Year', 50)}</div>
                               <div style={fs}><strong>Thermostat:</strong> {sel('mechanical', 'thermostat_type', ['Manual', 'Programmable', 'Smart/Advanced'])}</div>
+                              <div style={fs}><strong>Cooling:</strong> {sel('mechanical', 'cooling_type', ['Central AC', 'Room AC', 'None'])}</div>
                             </div></div>
                             {/* Diagnostics */}
-                            <div style={hs}>DIAGNOSTICS</div>
+                            <div style={hs}>6. DIAGNOSTICS</div>
                             <div style={ss}><div style={gs}>
                               <div style={fs}><strong>Pre Blower Door (CFM50):</strong> {txt('diagnostics', 'pre_cfm50', 'CFM50', 60)}</div>
                               <div style={fs}><strong>Pre Duct Blaster (CFM25):</strong> {txt('diagnostics', 'pre_cfm25', 'CFM25', 60)}</div>
+                              <div style={fs}><strong>Ambient CO Level:</strong> {txt('diagnostics', 'ambient_co', 'ppm', 50)}</div>
+                              <div style={fs}><strong>Gas Oven Test:</strong> {sel('diagnostics', 'gas_oven_test', ['passed', 'failed', 'N/A'])}</div>
+                              <div style={fs}><strong>Heating Spillage WCD:</strong> {yn('diagnostics', 'heating_spillage')}</div>
+                              <div style={fs}><strong>Heating CO (ppm):</strong> {txt('diagnostics', 'heating_co_ppm', 'ppm', 50)}</div>
+                              <div style={fs}><strong>WH Spillage WCD:</strong> {yn('diagnostics', 'wh_spillage')}</div>
+                              <div style={fs}><strong>WH CO (ppm):</strong> {txt('diagnostics', 'wh_co_ppm', 'ppm', 50)}</div>
                               <div style={fs}><strong>Combustion Pre:</strong> {txt('diagnostics', 'combustion_pre', '%', 50)}</div>
-                              <div style={fs}><strong>CO Test:</strong> {txt('diagnostics', 'co_test', 'ppm', 50)}</div>
                             </div></div>
                             {/* Assessor Recommendations */}
-                            <div style={{ ...hs, background: '#4a6741' }}>RECOMMENDATIONS</div>
+                            <div style={{ ...hs, background: '#4a6741' }}>7. ASSESSOR RECOMMENDATIONS</div>
                             <div style={{ ...ss, borderBottom: 'none' }}>
+                              <p style={{ fontSize: 10, color: '#666', margin: '0 0 8px', fontStyle: 'italic' }}>Check Y/N for each measure you recommend. Scope Creator has final say on the scope of work.</p>
                               <div style={gs}>
-                                {['attic_insulation', 'wall_insulation', 'basement_insulation', 'air_sealing', 'duct_sealing', 'rim_joist', 'hvac_tune_clean', 'thermostat', 'exhaust_fans', 'detectors', 'hs_repairs', 'deferral'].map(r => (
+                                {['attic_insulation', 'wall_insulation', 'basement_insulation', 'air_sealing', 'duct_sealing', 'rim_joist', 'hvac_tune_clean', 'hvac_replacement', 'thermostat', 'exhaust_fans', 'detectors', 'hs_repairs', 'deferral'].map(r => (
                                   <div key={r} style={fs}><strong>{r.replace(/_/g, ' ')}:</strong> {yn('recommendations', r)}</div>
                                 ))}
                               </div>
                               <textarea style={{ width: '100%', fontSize: 11, padding: 4, minHeight: 60, marginTop: 8, border: '1px solid #ccc', borderRadius: 3 }}
-                                defaultValue={v('recommendations', 'details')} placeholder="Assessor notes, field observations, concerns..."
+                                defaultValue={v('recommendations', 'details')} placeholder="Assessor notes - describe findings, concerns, observations for Scope Creator..."
                                 onBlur={e => set('recommendations', 'details', e.target.value)} />
+                              {v('recommendations', 'deferral') === 'yes' && (
+                                <div style={{ marginTop: 6 }}>
+                                  <strong style={{ fontSize: 11, color: '#c0392b' }}>Deferral Reason (Required):</strong>
+                                  <textarea style={{ width: '100%', fontSize: 11, padding: 4, minHeight: 40, marginTop: 2, border: '1px solid #e74c3c', borderRadius: 3 }}
+                                    defaultValue={v('recommendations', 'deferral_reason')} placeholder="Why should this project be deferred?"
+                                    onBlur={e => set('recommendations', 'deferral_reason', e.target.value)} />
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
@@ -1559,36 +1621,112 @@ export default function ProgramDetail({ role, fixedProgramId }) {
       {/* ===================== SCOPE CREATOR FIELD VIEW ===================== */}
       {tab === 'jobs' && role === 'Scope Creator' && (
         <div>
-          <h3 style={{ marginBottom: 12 }}>Scope Creation</h3>
+          <h3 style={{ marginBottom: 4 }}>Scope Creation</h3>
+          <p style={{ fontSize: 11, color: '#666', margin: '0 0 12px' }}>Review assessor recommendations, fill out the 2026 HES Appendix D form, and build the scope of work. You have final say on scope.</p>
           {jobs.filter(j => ['assessment_complete', 'pre_approval', 'approved'].includes(j.status)).length === 0 ? (
             <div className="card" style={{ textAlign: 'center', padding: 30, color: '#888' }}>No jobs ready for scoping.</div>
           ) : (
-            jobs.filter(j => ['assessment_complete', 'pre_approval', 'approved'].includes(j.status)).map(job => (
-              <div key={job.id} className="card" style={{ marginBottom: 12, padding: '14px 16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <strong>{job.customer_name || 'Unnamed'}</strong>
-                    {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
-                    <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>{job.address}, {job.city}</span>
+            jobs.filter(j => ['assessment_complete', 'pre_approval', 'approved'].includes(j.status)).map(job => {
+              const ad = getAssessment(job);
+              const sc = getScope(job);
+              const recs = ad.recommendations || {};
+              const selectedMeasures = sc.selected_measures || [];
+              const isExpanded = expandedJob === job.id;
+              const recItems = ['attic_insulation', 'wall_insulation', 'basement_insulation', 'air_sealing', 'duct_sealing', 'rim_joist', 'hvac_tune_clean', 'hvac_replacement', 'thermostat', 'exhaust_fans', 'detectors', 'hs_repairs'].filter(r => recs[r] === 'yes');
+              const isDeferral = recs.deferral === 'yes';
+              return (
+                <div key={job.id} className="card" style={{ marginBottom: 12, padding: 0, overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: isDeferral ? '#ffebee' : selectedMeasures.length > 0 ? '#e8f5e9' : '#fff8e1' }}
+                    onClick={() => setExpandedJob(isExpanded ? null : job.id)}>
+                    <div>
+                      <strong style={{ cursor: 'pointer', color: '#1a73e8' }}
+                        onClick={e => { e.stopPropagation(); navigate(`/job/${job.id}`); }}
+                        onMouseOver={e => e.target.style.textDecoration = 'underline'}
+                        onMouseOut={e => e.target.style.textDecoration = 'none'}
+                      >{job.customer_name || 'Unnamed'}</strong>
+                      {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
+                      <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>{job.address}, {job.city}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {isDeferral && <span className="badge terminated" style={{ fontSize: 10 }}>Deferral Recommended</span>}
+                      {selectedMeasures.length > 0 && <span style={{ fontSize: 11, color: '#27ae60', fontWeight: 600 }}>{selectedMeasures.length} measures scoped</span>}
+                      <span className={`badge ${job.status === 'approved' ? 'active' : 'pending'}`}>{job.status.replace(/_/g, ' ')}</span>
+                      <span style={{ color: '#888', fontSize: 18 }}>{isExpanded ? '\u25B2' : '\u25BC'}</span>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-sm btn-primary" style={{ fontSize: 12 }}
-                      onClick={() => navigate(`/job/${job.id}`)}>
-                      Open Full Detail - Fill Form & Build Scope
-                    </button>
-                    <span className={`badge ${job.status === 'approved' ? 'active' : 'pending'}`}>{job.status.replace(/_/g, ' ')}</span>
-                  </div>
+                  {isExpanded && (
+                    <div style={{ padding: '12px 16px', borderTop: '1px solid #eee' }}>
+                      {/* Assessor Recommendations - READ ONLY */}
+                      <div style={{ padding: 10, background: '#fff3e0', borderRadius: 6, marginBottom: 12, border: '1px solid #ffe0b2' }}>
+                        <h4 style={{ fontSize: 13, color: '#e65100', marginBottom: 6 }}>Assessor Recommendations (Read Only)</h4>
+                        {recItems.length > 0 ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                            {recItems.map(r => (
+                              <span key={r} style={{ fontSize: 11, padding: '3px 8px', background: '#e8f5e9', borderRadius: 4, border: '1px solid #c8e6c9' }}>{r.replace(/_/g, ' ')}</span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p style={{ fontSize: 11, color: '#888', margin: 0 }}>No specific recommendations yet.</p>
+                        )}
+                        {recs.details && <p style={{ fontSize: 11, margin: '4px 0 0', color: '#333' }}><strong>Notes:</strong> {recs.details}</p>}
+                        {isDeferral && recs.deferral_reason && (
+                          <p style={{ fontSize: 11, margin: '4px 0 0', color: '#c0392b' }}><strong>Deferral Reason:</strong> {recs.deferral_reason}</p>
+                        )}
+                        {/* MS Forms quick data summary */}
+                        <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 4, fontSize: 11, color: '#555' }}>
+                          {ad.exterior?.style && <div><strong>Style:</strong> {ad.exterior.style}</div>}
+                          {ad.exterior?.year_built && <div><strong>Year:</strong> {ad.exterior.year_built}</div>}
+                          {ad.exterior?.stories && <div><strong>Stories:</strong> {ad.exterior.stories}</div>}
+                          {ad.exterior?.sq_footage && <div><strong>SqFt:</strong> {ad.exterior.sq_footage}</div>}
+                          {ad.mechanical?.heating_type && <div><strong>Heat:</strong> {ad.mechanical.heating_type} ({ad.mechanical.heating_condition || '?'})</div>}
+                          {ad.diagnostics?.pre_cfm50 && <div><strong>Pre CFM50:</strong> {ad.diagnostics.pre_cfm50}</div>}
+                        </div>
+                      </div>
+
+                      {/* Quick Scope Builder */}
+                      <div style={{ padding: 10, background: '#e3f2fd', borderRadius: 6, marginBottom: 12, border: '1px solid #bbdefb' }}>
+                        <h4 style={{ fontSize: 13, color: '#0f3460', marginBottom: 6 }}>Quick Scope Builder (You Have Final Say)</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 4 }}>
+                          {['Attic Insulation', 'Wall Insulation', 'Basement/Crawlspace Wall Insulation', 'Air Sealing', 'Duct Sealing', 'Rim Joist Insulation', 'Gas Furnace Tune-Up', 'Boiler Tune-Up', 'Furnace Replacement', 'Boiler Replacement', 'Central Air Conditioning', 'Programmable Thermostat', 'Advanced Thermostat'].map(m => {
+                            const isRec = recItems.some(r => m.toLowerCase().includes(r.replace(/_/g, ' ')));
+                            return (
+                              <label key={m} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '3px 6px', background: selectedMeasures.includes(m) ? '#e8f5e9' : isRec ? '#fff3e0' : '#f9f9f9', borderRadius: 4, cursor: 'pointer', border: isRec && !selectedMeasures.includes(m) ? '1px dashed #ff9800' : '1px solid transparent' }}>
+                                <input type="checkbox" checked={selectedMeasures.includes(m)} onChange={() => {
+                                  const updated = selectedMeasures.includes(m) ? selectedMeasures.filter(x => x !== m) : [...selectedMeasures, m];
+                                  saveScope(job.id, { ...sc, selected_measures: updated });
+                                }} />
+                                {m} {isRec && !selectedMeasures.includes(m) && <span style={{ fontSize: 9, color: '#ff9800' }}>(rec)</span>}
+                              </label>
+                            );
+                          })}
+                        </div>
+                        <div style={{ marginTop: 8 }}>
+                          <strong style={{ fontSize: 11 }}>Scope Notes:</strong>
+                          <textarea style={{ width: '100%', fontSize: 11, padding: 4, minHeight: 40, marginTop: 2, border: '1px solid #ccc', borderRadius: 3 }}
+                            defaultValue={sc.notes || sc.scope_notes || ''} placeholder="Scope notes, justifications, overrides from assessor recommendations..."
+                            onBlur={e => saveScope(job.id, { ...sc, notes: e.target.value })} />
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button className="btn btn-sm btn-primary" style={{ fontSize: 12 }}
+                          onClick={() => navigate(`/job/${job.id}`)}>
+                          Open Full Detail - Appendix D Form
+                        </button>
+                        {job.status === 'assessment_complete' && (
+                          <button className="btn btn-sm btn-success" style={{ fontSize: 12 }}
+                            onClick={() => updateJobStatus(job, 'pre_approval')}>
+                            Submit for Pre-Approval
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div style={{ marginTop: 8, fontSize: 11, color: '#666' }}>
-                  Assessment: {(() => { try { const a = JSON.parse(job.assessment_data || '{}'); return a.recommendations?.details ? 'Notes: ' + a.recommendations.details.substring(0, 100) + '...' : 'No assessor notes yet'; } catch { return 'No data'; } })()}
-                </div>
-                <div style={{ marginTop: 4, fontSize: 11 }}>
-                  Scope: {(() => { try { const s = JSON.parse(job.scope_data || '{}'); return (s.selected_measures || []).length > 0 ? (s.selected_measures || []).join(', ') : 'No scope built yet'; } catch { return 'No scope'; } })()}
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
-          <p style={{ fontSize: 11, color: '#888', marginTop: 12 }}>Click "Open Full Detail" to fill out the complete Appendix D form and build the scope of work for each project.</p>
         </div>
       )}
 
@@ -1608,7 +1746,11 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                   <div style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#e3f2fd' }}
                     onClick={() => setExpandedJob(isExpanded ? null : job.id)}>
                     <div>
-                      <strong>{job.customer_name}</strong>
+                      <strong style={{ cursor: 'pointer', color: '#1a73e8' }}
+                        onClick={e => { e.stopPropagation(); navigate(`/job/${job.id}`); }}
+                        onMouseOver={e => e.target.style.textDecoration = 'underline'}
+                        onMouseOut={e => e.target.style.textDecoration = 'none'}
+                      >{job.customer_name}</strong>
                       {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
                       <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>{job.address}, {job.city}</span>
                     </div>
@@ -1778,7 +1920,11 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                   <div style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fce4ec' }}
                     onClick={() => setExpandedJob(isExpanded ? null : job.id)}>
                     <div>
-                      <strong>{job.customer_name}</strong>
+                      <strong style={{ cursor: 'pointer', color: '#1a73e8' }}
+                        onClick={e => { e.stopPropagation(); navigate(`/job/${job.id}`); }}
+                        onMouseOver={e => e.target.style.textDecoration = 'underline'}
+                        onMouseOut={e => e.target.style.textDecoration = 'none'}
+                      >{job.customer_name}</strong>
                       {job.job_number && <span className="badge active" style={{ marginLeft: 8, fontSize: 10 }}>#{job.job_number}</span>}
                       <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>{job.address}, {job.city}</span>
                     </div>
