@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 export default function ProgramsPage({ role }) {
   const [programs, setPrograms] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ name: '', code: '', description: '', manager_name: '', manager_title: '', site_url: '' });
+  const [form, setForm] = useState({ name: '', code: '', description: '', manager_name: '', manager_title: '' });
 
   const load = useCallback(() => {
     fetch('/api/programs').then(r => r.json()).then(setPrograms).catch(() => {});
@@ -18,7 +18,7 @@ export default function ProgramsPage({ role }) {
       body: JSON.stringify(form)
     });
     setShowModal(false);
-    setForm({ name: '', code: '', description: '', manager_name: '', manager_title: '', site_url: '' });
+    setForm({ name: '', code: '', description: '', manager_name: '', manager_title: '' });
     load();
   };
 
@@ -95,10 +95,6 @@ export default function ProgramsPage({ role }) {
               <div className="form-group">
                 <label>Description</label>
                 <textarea rows={2} value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
-              </div>
-              <div className="form-group">
-                <label>Program Site URL (optional)</label>
-                <input type="url" placeholder="https://..." value={form.site_url} onChange={e => setForm({...form, site_url: e.target.value})} />
               </div>
               <div className="btn-group">
                 <button type="submit" className="btn btn-success">Add Program</button>

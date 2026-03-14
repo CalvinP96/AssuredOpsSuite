@@ -9,7 +9,6 @@ import KPIPage from './pages/KPIPage';
 import FinancePage from './pages/FinancePage';
 import BillingPage from './pages/BillingPage';
 import EmployeeDetail from './pages/EmployeeDetail';
-import HESPortal from './pages/HESPortal';
 import ProgramsPage from './pages/ProgramsPage';
 import ProgramDetail from './pages/ProgramDetail';
 import './App.css';
@@ -60,7 +59,6 @@ function App() {
               <Route path="/programs" element={<ProgramsPage role={currentRole} />} />
               <Route path="/program/:id" element={<ProgramDetail role={currentRole} />} />
               <Route path="/employee/:id" element={<EmployeeDetail role={currentRole} />} />
-              <Route path="/hes-portal" element={<HESPortal />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>

@@ -164,7 +164,6 @@ async function initDatabase() {
       manager_name TEXT,
       manager_title TEXT,
       status TEXT DEFAULT 'active',
-      site_url TEXT,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );

@@ -146,9 +146,6 @@ export default function ProgramDetail({ role }) {
           <button key={t} className={`btn btn-sm ${tab === t ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setTab(t)}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>
         ))}
-        {program.site_url && (
-          <a href={program.site_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-success">Open Program Site</a>
-        )}
       </div>
 
       {/* OVERVIEW TAB */}

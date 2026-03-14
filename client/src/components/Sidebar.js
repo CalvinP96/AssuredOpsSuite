@@ -11,7 +11,6 @@ const NAV_ITEMS = {
     { path: '/kpi', icon: '🎯', label: 'KPI Management' },
     { path: '/finance', icon: '💰', label: 'Finance' },
     { path: '/billing', icon: '🧾', label: 'Termination Billing' },
-    { path: '/hes-portal', icon: '🌐', label: 'HES IE Portal' },
   ],
   HR: [
     { path: '/', icon: '📊', label: 'Dashboard' },

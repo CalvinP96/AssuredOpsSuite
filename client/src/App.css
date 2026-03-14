@@ -255,14 +255,6 @@ tr:hover { background: #f8f9fa; }
 }
 .section-header h2 { font-size: 22px; color: #1a1a2e; }
 
-/* HES Portal iframe */
-.hes-frame {
-  width: 100%;
-  height: calc(100vh - 140px);
-  border: none;
-  border-radius: 12px;
-}
-
 /* Money */
 .money { font-weight: 600; color: #27ae60; }
 .money.due { color: #e94560; }

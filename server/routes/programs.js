@@ -30,22 +30,22 @@ router.get('/:id', (req, res) => {
 
 router.post('/', (req, res) => {
   const db = getDb();
-  const { name, code, description, manager_name, manager_title, site_url } = req.body;
+  const { name, code, description, manager_name, manager_title } = req.body;
   if (!name || !code) return res.status(400).json({ error: 'name and code are required' });
 
   const result = db.prepare(
-    'INSERT INTO programs (name, code, description, manager_name, manager_title, site_url) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(name, code, description || null, manager_name || null, manager_title || null, site_url || null);
+    'INSERT INTO programs (name, code, description, manager_name, manager_title) VALUES (?, ?, ?, ?, ?)'
+  ).run(name, code, description || null, manager_name || null, manager_title || null);
 
   res.status(201).json(db.prepare('SELECT * FROM programs WHERE id = ?').get(result.lastInsertRowid));
 });
 
 router.put('/:id', (req, res) => {
   const db = getDb();
-  const { name, code, description, manager_name, manager_title, status, site_url } = req.body;
+  const { name, code, description, manager_name, manager_title, status } = req.body;
   db.prepare(
-    "UPDATE programs SET name=?, code=?, description=?, manager_name=?, manager_title=?, status=?, site_url=?, updated_at=datetime('now') WHERE id=?"
-  ).run(name, code, description, manager_name, manager_title, status, site_url, req.params.id);
+    "UPDATE programs SET name=?, code=?, description=?, manager_name=?, manager_title=?, status=?, updated_at=datetime('now') WHERE id=?"
+  ).run(name, code, description, manager_name, manager_title, status, req.params.id);
   res.json(db.prepare('SELECT * FROM programs WHERE id = ?').get(req.params.id));
 });
 
