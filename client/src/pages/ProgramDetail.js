@@ -185,6 +185,26 @@ export default function ProgramDetail({ role, fixedProgramId }) {
     loadJobs();
   };
 
+  const updateJobField = async (job, field, value) => {
+    await fetch(`/api/programs/jobs/${job.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...job, [field]: value })
+    });
+    loadJobs();
+  };
+
+  // Forecast state
+  const [forecast, setForecast] = useState(null);
+  const [forecastFrom, setForecastFrom] = useState('');
+  const [forecastTo, setForecastTo] = useState('');
+
+  const loadForecast = useCallback((from, to) => {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    fetch(`/api/programs/${id}/jobs/forecast?${params}`).then(r => r.json()).then(setForecast).catch(() => {});
+  }, [id]);
+
   if (!program) return <div className="card"><p>Loading...</p></div>;
 
   const canEdit = role === 'Admin' || role === 'Operations';
@@ -200,7 +220,7 @@ export default function ProgramDetail({ role, fixedProgramId }) {
   const processSteps = program.processSteps || [];
   const phases = [...new Set(processSteps.map(s => s.phase))];
 
-  const tabs = ['overview', 'rules', 'process', 'jobs', 'documents', 'tasks', 'milestones'];
+  const tabs = ['overview', 'rules', 'process', 'jobs', 'pipeline', 'documents', 'tasks', 'milestones'];
 
   return (
     <div>
@@ -591,12 +611,103 @@ export default function ProgramDetail({ role, fixedProgramId }) {
 
                   {isExpanded && (
                     <div style={{ padding: '0 16px 16px', borderTop: '1px solid #eee' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginTop: 12 }}>
+                      {/* Basic Info */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginTop: 12 }}>
                         <div style={{ fontSize: 12 }}><strong>Utility:</strong> {job.utility || '-'}</div>
                         <div style={{ fontSize: 12 }}><strong>Contractor:</strong> {job.assigned_contractor || '-'}</div>
-                        <div style={{ fontSize: 12 }}><strong>Assessment:</strong> {job.assessment_date || '-'}</div>
-                        <div style={{ fontSize: 12 }}><strong>Install:</strong> {job.install_date || '-'}</div>
-                        <div style={{ fontSize: 12 }}><strong>Inspection:</strong> {job.inspection_date || '-'}</div>
+                        <div style={{ fontSize: 12 }}><strong>Estimate:</strong> {job.estimate_amount ? `$${Number(job.estimate_amount).toLocaleString()}` :
+                          (canEdit ? <input type="number" style={{ width: 100, fontSize: 11, padding: '2px 4px' }} placeholder="$0.00"
+                            onBlur={e => e.target.value && updateJobField(job, 'estimate_amount', parseFloat(e.target.value))} /> : '-')}</div>
+                      </div>
+
+                      {/* Scheduling Dates */}
+                      <div style={{ marginTop: 14 }}>
+                        <h4 style={{ fontSize: 13, color: '#0f3460', marginBottom: 8 }}>Scheduling & Install Dates</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+                          {[
+                            { label: 'Assessment Date', field: 'assessment_date' },
+                            { label: 'Submission Date', field: 'submission_date' },
+                            { label: 'ABC Install (Attic/Basement/Crawl)', field: 'abc_install_date' },
+                            { label: 'Wall Injection Install', field: 'wall_injection_date' },
+                            { label: 'Patch Job Date', field: 'patch_date' },
+                            { label: 'HVAC Tune & Clean', field: 'hvac_tune_clean_date' },
+                            { label: 'HVAC Replacement', field: 'hvac_replacement_date' },
+                            { label: 'Final Inspection', field: 'inspection_date' },
+                          ].map(({ label, field }) => (
+                            <div key={field} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <strong style={{ minWidth: 180 }}>{label}:</strong>
+                              {canEdit ? (
+                                <input type="date" value={job[field] || ''} style={{ fontSize: 11, padding: '2px 4px' }}
+                                  onChange={e => updateJobField(job, field, e.target.value)} />
+                              ) : (
+                                <span>{job[field] || '-'}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Permit Tracking */}
+                      <div style={{ marginTop: 14, padding: 12, background: job.needs_permit ? '#fff8e1' : '#f9f9f9', borderRadius: 6, border: `1px solid ${job.needs_permit ? '#ffe082' : '#eee'}` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                          <h4 style={{ fontSize: 13, color: '#e65100', margin: 0 }}>Permit Tracking</h4>
+                          {canEdit && (
+                            <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                              <input type="checkbox" checked={!!job.needs_permit}
+                                onChange={() => updateJobField(job, 'needs_permit', job.needs_permit ? 0 : 1)} />
+                              Permit Required
+                            </label>
+                          )}
+                        </div>
+                        {job.needs_permit ? (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8, fontSize: 12 }}>
+                            <div>
+                              <strong>Status:</strong>{' '}
+                              {canEdit ? (
+                                <select value={job.permit_status || 'not_applied'} style={{ fontSize: 11, padding: '2px 4px' }}
+                                  onChange={e => updateJobField(job, 'permit_status', e.target.value)}>
+                                  <option value="not_applied">Not Applied</option>
+                                  <option value="applied">Applied</option>
+                                  <option value="received">Received</option>
+                                  <option value="issue">Issue</option>
+                                </select>
+                              ) : (
+                                <span className={`badge ${job.permit_status === 'received' ? 'active' : job.permit_status === 'issue' ? 'terminated' : 'pending'}`}>
+                                  {(job.permit_status || 'not_applied').replace(/_/g, ' ')}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <strong>Applied:</strong>{' '}
+                              {canEdit ? <input type="date" value={job.permit_applied_date || ''} style={{ fontSize: 11, padding: '2px 4px' }}
+                                onChange={e => updateJobField(job, 'permit_applied_date', e.target.value)} /> : (job.permit_applied_date || '-')}
+                            </div>
+                            <div>
+                              <strong>Received:</strong>{' '}
+                              {canEdit ? <input type="date" value={job.permit_received_date || ''} style={{ fontSize: 11, padding: '2px 4px' }}
+                                onChange={e => updateJobField(job, 'permit_received_date', e.target.value)} /> : (job.permit_received_date || '-')}
+                            </div>
+                            <div>
+                              <strong>Permit #:</strong>{' '}
+                              {canEdit ? <input value={job.permit_number || ''} style={{ width: 100, fontSize: 11, padding: '2px 4px' }} placeholder="Permit #"
+                                onBlur={e => updateJobField(job, 'permit_number', e.target.value)} defaultValue={job.permit_number || ''} /> : (job.permit_number || '-')}
+                            </div>
+                            <div>
+                              <strong>Jurisdiction:</strong>{' '}
+                              {canEdit ? <input style={{ width: 120, fontSize: 11, padding: '2px 4px' }} placeholder="City/County"
+                                onBlur={e => e.target.value && updateJobField(job, 'permit_jurisdiction', e.target.value)} defaultValue={job.permit_jurisdiction || ''} /> : (job.permit_jurisdiction || '-')}
+                            </div>
+                            {job.permit_notes && <div style={{ gridColumn: '1 / -1' }}><strong>Notes:</strong> {job.permit_notes}</div>}
+                            {canEdit && !job.permit_notes && (
+                              <div style={{ gridColumn: '1 / -1' }}>
+                                <input style={{ width: '100%', fontSize: 11, padding: '2px 4px' }} placeholder="Permit notes..."
+                                  onBlur={e => e.target.value && updateJobField(job, 'permit_notes', e.target.value)} />
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 12, color: '#888' }}>No permit needed for this job. Check the box above during scope creation if one is identified.</div>
+                        )}
                       </div>
 
                       {/* Job-Level Paperwork */}
@@ -767,6 +878,166 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                 </div>
               );
             })
+          )}
+        </div>
+      )}
+
+      {/* PIPELINE / FORECAST TAB */}
+      {tab === 'pipeline' && (
+        <div>
+          {/* Date Range Filter */}
+          <div className="card" style={{ marginBottom: 16 }}>
+            <h3>Job Forecast & Pipeline</h3>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+              <label style={{ fontSize: 13 }}>
+                From: <input type="date" value={forecastFrom} onChange={e => setForecastFrom(e.target.value)} style={{ marginLeft: 4 }} />
+              </label>
+              <label style={{ fontSize: 13 }}>
+                To: <input type="date" value={forecastTo} onChange={e => setForecastTo(e.target.value)} style={{ marginLeft: 4 }} />
+              </label>
+              <button className="btn btn-primary btn-sm" onClick={() => loadForecast(forecastFrom, forecastTo)}>Load Forecast</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => { setForecastFrom(''); setForecastTo(''); loadForecast('', ''); }}>Show All</button>
+            </div>
+          </div>
+
+          {forecast && (
+            <>
+              {/* Pipeline Summary */}
+              <div className="stats-grid" style={{ marginBottom: 16 }}>
+                <div className="stat-card green">
+                  <div className="stat-value">{forecast.submitted?.count || 0}</div>
+                  <div className="stat-label">Submitted{forecastFrom ? ` (${forecastFrom} - ${forecastTo || 'now'})` : ''}</div>
+                  {forecast.submitted?.total_estimate > 0 && <div style={{ fontSize: 12, color: '#27ae60', marginTop: 4 }}>${Number(forecast.submitted.total_estimate).toLocaleString()}</div>}
+                </div>
+                <div className="stat-card blue">
+                  <div className="stat-value">{forecast.projected?.count || 0}</div>
+                  <div className="stat-label">Projected Submissions</div>
+                  {forecast.projected?.total_estimate > 0 && <div style={{ fontSize: 12, color: '#2980b9', marginTop: 4 }}>${Number(forecast.projected.total_estimate).toLocaleString()}</div>}
+                </div>
+                <div className="stat-card orange">
+                  <div className="stat-value">{(forecast.ready_to_submit || []).length}</div>
+                  <div className="stat-label">Ready to Submit</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{forecast.permit_summary?.total_needing_permit || 0}</div>
+                  <div className="stat-label">Need Permits</div>
+                </div>
+              </div>
+
+              {/* Pipeline Buckets */}
+              <div className="card" style={{ marginBottom: 16 }}>
+                <h3>Pipeline by Status</h3>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                  {Object.entries(forecast.pipeline || {}).sort((a, b) => {
+                    const order = JOB_STATUSES;
+                    return order.indexOf(a[0]) - order.indexOf(b[0]);
+                  }).map(([status, count]) => (
+                    <div key={status} style={{ padding: '10px 16px', background: status === 'complete' ? '#e8fde8' : status === 'deferred' ? '#fde8e8' : '#f0f4ff', borderRadius: 8, textAlign: 'center', minWidth: 100, border: '1px solid #ddd' }}>
+                      <div style={{ fontSize: 22, fontWeight: 700, color: '#0f3460' }}>{count}</div>
+                      <div style={{ fontSize: 11, color: '#666', textTransform: 'capitalize' }}>{status.replace(/_/g, ' ')}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Permit Summary */}
+              {forecast.permit_summary?.total_needing_permit > 0 && (
+                <div className="card" style={{ marginBottom: 16 }}>
+                  <h3>Permit Summary</h3>
+                  <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
+                    <div style={{ padding: '8px 14px', background: '#fff3e0', borderRadius: 6, fontSize: 13 }}>
+                      <strong>Not Applied:</strong> {forecast.permit_summary.not_applied}
+                    </div>
+                    <div style={{ padding: '8px 14px', background: '#e3f2fd', borderRadius: 6, fontSize: 13 }}>
+                      <strong>Applied:</strong> {forecast.permit_summary.applied}
+                    </div>
+                    <div style={{ padding: '8px 14px', background: '#e8f5e9', borderRadius: 6, fontSize: 13 }}>
+                      <strong>Received:</strong> {forecast.permit_summary.received}
+                    </div>
+                    {forecast.permit_summary.issues > 0 && (
+                      <div style={{ padding: '8px 14px', background: '#ffebee', borderRadius: 6, fontSize: 13 }}>
+                        <strong>Issues:</strong> {forecast.permit_summary.issues}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Ready to Submit */}
+              {(forecast.ready_to_submit || []).length > 0 && (
+                <div className="card" style={{ marginBottom: 16 }}>
+                  <h3 style={{ color: '#27ae60' }}>Ready to Submit ({forecast.ready_to_submit.length})</h3>
+                  <p style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>All job types complete - these projects can be submitted for payment.</p>
+                  <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #ddd', textAlign: 'left' }}>
+                        <th style={{ padding: '6px 8px' }}>Job #</th>
+                        <th style={{ padding: '6px 8px' }}>Customer</th>
+                        <th style={{ padding: '6px 8px' }}>Address</th>
+                        <th style={{ padding: '6px 8px' }}>Estimate</th>
+                        <th style={{ padding: '6px 8px' }}>Projected Submission</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {forecast.ready_to_submit.map(j => (
+                        <tr key={j.id} style={{ borderBottom: '1px solid #eee' }}>
+                          <td style={{ padding: '6px 8px' }}>{j.job_number || '-'}</td>
+                          <td style={{ padding: '6px 8px' }}>{j.customer_name}</td>
+                          <td style={{ padding: '6px 8px' }}>{j.address}, {j.city}</td>
+                          <td style={{ padding: '6px 8px' }}>{j.estimate_amount ? `$${Number(j.estimate_amount).toLocaleString()}` : '-'}</td>
+                          <td style={{ padding: '6px 8px' }}>{j.projected_submission || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* In-Progress Jobs with Completion Tracking */}
+              <div className="card">
+                <h3>In-Progress Jobs ({(forecast.all_in_progress || []).length})</h3>
+                <p style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>Job types must all be complete before project can be submitted for payment.</p>
+                <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #ddd', textAlign: 'left' }}>
+                      <th style={{ padding: '6px 8px' }}>Job #</th>
+                      <th style={{ padding: '6px 8px' }}>Customer</th>
+                      <th style={{ padding: '6px 8px' }}>Status</th>
+                      <th style={{ padding: '6px 8px' }}>Progress</th>
+                      <th style={{ padding: '6px 8px' }}>Completed</th>
+                      <th style={{ padding: '6px 8px' }}>Pending</th>
+                      <th style={{ padding: '6px 8px' }}>Est. Submission</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(forecast.all_in_progress || []).map(j => (
+                      <tr key={j.id} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '6px 8px' }}>{j.job_number || '-'}</td>
+                        <td style={{ padding: '6px 8px' }}>{j.customer_name}</td>
+                        <td style={{ padding: '6px 8px' }}>
+                          <span className={`badge ${j.status === 'deferred' ? 'terminated' : 'pending'}`}>{j.status?.replace(/_/g, ' ')}</span>
+                        </td>
+                        <td style={{ padding: '6px 8px' }}>
+                          <div style={{ width: 80, height: 8, background: '#eee', borderRadius: 4, overflow: 'hidden', display: 'inline-block', verticalAlign: 'middle', marginRight: 6 }}>
+                            <div style={{ width: `${j.completion_pct}%`, height: '100%', background: j.completion_pct === 100 ? '#27ae60' : '#2980b9', borderRadius: 4 }} />
+                          </div>
+                          <span>{j.completion_pct}%</span>
+                        </td>
+                        <td style={{ padding: '6px 8px', fontSize: 11, color: '#27ae60' }}>{(j.completed_types || []).join(', ') || '-'}</td>
+                        <td style={{ padding: '6px 8px', fontSize: 11, color: '#c0392b' }}>{(j.pending_types || []).join(', ') || '-'}</td>
+                        <td style={{ padding: '6px 8px' }}>{j.projected_submission || 'TBD'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {!forecast && (
+            <div className="card" style={{ textAlign: 'center', padding: 40, color: '#888' }}>
+              <p>Click "Load Forecast" or "Show All" to view your job pipeline and submission projections.</p>
+            </div>
           )}
         </div>
       )}

@@ -215,10 +215,37 @@ router.post('/:id/jobs', (req, res) => {
 
 router.put('/jobs/:jobId', (req, res) => {
   const db = getDb();
-  const { status, customer_name, address, city, zip, utility, assessment_date, install_date, inspection_date, assigned_contractor, notes } = req.body;
+  const {
+    status, customer_name, address, city, zip, utility,
+    assessment_date, submission_date, estimate_amount,
+    abc_install_date, wall_injection_date, patch_date,
+    hvac_tune_clean_date, hvac_replacement_date,
+    install_date, inspection_date, assigned_contractor,
+    needs_permit, permit_status, permit_applied_date, permit_received_date,
+    permit_number, permit_jurisdiction, permit_notes,
+    notes
+  } = req.body;
   db.prepare(
-    "UPDATE program_jobs SET status=?, customer_name=?, address=?, city=?, zip=?, utility=?, assessment_date=?, install_date=?, inspection_date=?, assigned_contractor=?, notes=?, updated_at=datetime('now') WHERE id=?"
-  ).run(status, customer_name, address, city, zip, utility, assessment_date, install_date, inspection_date, assigned_contractor, notes, req.params.jobId);
+    `UPDATE program_jobs SET
+      status=?, customer_name=?, address=?, city=?, zip=?, utility=?,
+      assessment_date=?, submission_date=?, estimate_amount=?,
+      abc_install_date=?, wall_injection_date=?, patch_date=?,
+      hvac_tune_clean_date=?, hvac_replacement_date=?,
+      install_date=?, inspection_date=?, assigned_contractor=?,
+      needs_permit=?, permit_status=?, permit_applied_date=?, permit_received_date=?,
+      permit_number=?, permit_jurisdiction=?, permit_notes=?,
+      notes=?, updated_at=datetime('now')
+    WHERE id=?`
+  ).run(
+    status, customer_name, address, city, zip, utility,
+    assessment_date, submission_date, estimate_amount || null,
+    abc_install_date, wall_injection_date, patch_date,
+    hvac_tune_clean_date, hvac_replacement_date,
+    install_date, inspection_date, assigned_contractor,
+    needs_permit ? 1 : 0, permit_status || 'not_needed', permit_applied_date, permit_received_date,
+    permit_number, permit_jurisdiction, permit_notes,
+    notes, req.params.jobId
+  );
   res.json(db.prepare('SELECT * FROM program_jobs WHERE id = ?').get(req.params.jobId));
 });
 
@@ -271,6 +298,133 @@ router.put('/hvac/:hvacId', (req, res) => {
   res.json(db.prepare('SELECT * FROM hvac_replacements WHERE id = ?').get(req.params.hvacId));
 });
 
+// --- Job Forecasting ---
+
+router.get('/:id/jobs/forecast', (req, res) => {
+  const db = getDb();
+  const pid = req.params.id;
+  const { from, to } = req.query;
+
+  // Get all jobs for this program
+  const allJobs = db.prepare('SELECT * FROM program_jobs WHERE program_id = ?').all(pid);
+
+  // Submitted jobs in date range (status = 'submitted', 'invoiced', or 'complete')
+  const submittedStatuses = ['submitted', 'invoiced', 'complete'];
+  const submittedInRange = allJobs.filter(j =>
+    submittedStatuses.includes(j.status) &&
+    j.submission_date &&
+    (!from || j.submission_date >= from) &&
+    (!to || j.submission_date <= to)
+  );
+
+  // Jobs in progress (not yet submitted) - these are projected
+  // A job is "complete" (ready to submit) when all applicable job types are done
+  // Job types: abc_install_date, wall_injection_date, patch_date, hvac_tune_clean_date, hvac_replacement_date
+  const inProgressJobs = allJobs.filter(j =>
+    !submittedStatuses.includes(j.status) && j.status !== 'deferred'
+  );
+
+  // For each in-progress job, determine what's left and estimate completion
+  const projectedJobs = inProgressJobs.map(j => {
+    // Get scoped measures to know which job types apply
+    const measures = db.prepare(
+      'SELECT jm.*, pm.category, pm.name as measure_name FROM job_measures jm JOIN program_measures pm ON jm.measure_id = pm.id WHERE jm.job_id = ?'
+    ).all(j.id);
+
+    const hasInsulation = measures.some(m => ['Insulation', 'Air Sealing & Duct Sealing'].includes(m.category));
+    const hasWallInjection = measures.some(m => m.measure_name === 'Wall Insulation');
+    const hasMechanicals = measures.some(m => m.category === 'Mechanicals');
+    const hasTuneUp = measures.some(m => m.measure_name && m.measure_name.includes('Tune-Up'));
+    const hasReplacement = measures.some(m => m.measure_name && m.measure_name.includes('Replacement'));
+
+    // Determine what's complete vs pending
+    const completedTypes = [];
+    const pendingTypes = [];
+
+    if (hasInsulation) {
+      if (j.abc_install_date) completedTypes.push('ABC Install');
+      else pendingTypes.push('ABC Install');
+    }
+    if (hasWallInjection) {
+      if (j.wall_injection_date) completedTypes.push('Wall Injection');
+      else pendingTypes.push('Wall Injection');
+    }
+    if (hasInsulation || hasWallInjection) {
+      if (j.patch_date) completedTypes.push('Patch');
+      else pendingTypes.push('Patch');
+    }
+    if (hasTuneUp) {
+      if (j.hvac_tune_clean_date) completedTypes.push('HVAC Tune & Clean');
+      else pendingTypes.push('HVAC Tune & Clean');
+    }
+    if (hasReplacement) {
+      if (j.hvac_replacement_date) completedTypes.push('HVAC Replacement');
+      else pendingTypes.push('HVAC Replacement');
+    }
+
+    const totalTypes = completedTypes.length + pendingTypes.length;
+    const completionPct = totalTypes > 0 ? Math.round((completedTypes.length / totalTypes) * 100) : 0;
+
+    // Estimate projected submission date based on latest scheduled date
+    const scheduledDates = [
+      j.abc_install_date, j.wall_injection_date, j.patch_date,
+      j.hvac_tune_clean_date, j.hvac_replacement_date
+    ].filter(Boolean).sort();
+    const latestScheduled = scheduledDates.length > 0 ? scheduledDates[scheduledDates.length - 1] : null;
+
+    return {
+      ...j,
+      measures_count: measures.length,
+      completed_types: completedTypes,
+      pending_types: pendingTypes,
+      completion_pct: completionPct,
+      projected_submission: latestScheduled,
+      ready_to_submit: pendingTypes.length === 0 && totalTypes > 0
+    };
+  });
+
+  // Projected submissions in date range
+  const projectedInRange = projectedJobs.filter(j =>
+    j.projected_submission &&
+    (!from || j.projected_submission >= from) &&
+    (!to || j.projected_submission <= to)
+  );
+
+  // Pipeline summary by status
+  const pipeline = {};
+  allJobs.forEach(j => {
+    pipeline[j.status] = (pipeline[j.status] || 0) + 1;
+  });
+
+  // Permit summary
+  const permitJobs = allJobs.filter(j => j.needs_permit);
+  const permitSummary = {
+    total_needing_permit: permitJobs.length,
+    not_applied: permitJobs.filter(j => j.permit_status === 'not_applied' || j.permit_status === 'not_needed').length,
+    applied: permitJobs.filter(j => j.permit_status === 'applied').length,
+    received: permitJobs.filter(j => j.permit_status === 'received').length,
+    issues: permitJobs.filter(j => j.permit_status === 'issue').length
+  };
+
+  res.json({
+    date_range: { from: from || 'all', to: to || 'all' },
+    submitted: {
+      count: submittedInRange.length,
+      total_estimate: submittedInRange.reduce((sum, j) => sum + (j.estimate_amount || 0), 0),
+      jobs: submittedInRange
+    },
+    projected: {
+      count: projectedInRange.length,
+      total_estimate: projectedInRange.reduce((sum, j) => sum + (j.estimate_amount || 0), 0),
+      jobs: projectedInRange
+    },
+    ready_to_submit: projectedJobs.filter(j => j.ready_to_submit),
+    pipeline,
+    permit_summary: permitSummary,
+    all_in_progress: projectedJobs
+  });
+});
+
 // --- Seed HES IE Program Rules ---
 
 router.post('/:id/seed-hes-rules', (req, res) => {
@@ -306,8 +460,8 @@ router.post('/:id/seed-hes-rules', (req, res) => {
     { cat: 'Mechanicals', name: 'Natural Gas Water Heater Replacement', desc: 'Emergency replacement. Energy factor ≥0.67. DECISION TREE: Is equipment failed? → If YES → Eligible for Replacement. If NO → Does it pose H&S risk? → If YES → Is it repairable under $650? → If YES → Not Eligible (repair instead). If NO → Eligible for Replacement. If electric resistance → Eligible for heat pump WH regardless.', baseline: 'Equipment failed OR poses H&S risk AND repair cost ≥$650. Electric resistance water heaters always eligible for heat pump WH replacement.', eff: 'Energy factor of new water heater must be ≥0.67.', install: 'Emergency replacement only. Install by qualified contractor per manufacturer specs and codes. Submit tech report to RI for approval.', emergency: 1, sort: 42 },
     { cat: 'Mechanicals', name: 'Electric Water Heater Replacement (Heat Pump)', desc: 'Replace electric resistance water heaters with Heat Pump Water Heaters regardless of age/condition. ComEd can replace ANY existing electric HVAC/DHW with heat pumps - does NOT need to be TOS/emergency.', baseline: 'Any existing electric resistance water heater - no age or condition requirement. ComEd funded.', eff: 'Must be Energy Star rated Heat Pump Water Heater.', install: 'Consult homeowner, especially if recently replaced. Provide customer education on heat pump WH routine maintenance. Do not proceed if customer cannot keep up with regular maintenance.', emergency: 0, sort: 43 },
     { cat: 'Mechanicals', name: 'Central Air Conditioner Replacement', desc: 'Emergency replacement. DECISION TREE: Is equipment failed? → If YES → Eligible for Replacement. If NO → Does it pose H&S risk? → If YES → Is it repairable under $190/ton? → If YES → Not Eligible (repair instead). If NO → Eligible for Replacement. Must be ≤SEER 10 and manufactured before 2000.', baseline: 'CAC must be ≤SEER 10 and manufactured before 2000. Equipment failed OR poses H&S risk AND repair cost ≥$190/ton.', eff: 'New CAC must have SEER 2 ≥15.2 (16 SEER equivalent).', install: 'Emergency replacement only. Submit tech report to RI for approval. Complete Manual J for sizing.', emergency: 1, sort: 44 },
-    { cat: 'Mechanicals', name: 'Gas Furnace Tune-Up', desc: 'Tune-up for gas furnaces not serviced in 3+ years.', baseline: 'Must not have received tune-up within last 3 years. Not allowed on propane furnaces.', eff: 'Per IL TRM requirements.', install: 'Measure combustion efficiency. Check/clean blower assembly. Lubricate motor, inspect fan belt. Inspect for gas leaks. Clean burner, adjust. Check ignition/safety systems. Check/clean heat exchanger. Inspect exhaust/flue. Inspect control box/wiring. Check air filter. Inspect ductwork. Measure temperature rise. Check volts/amps. Check thermostat operation. Perform CO test and adjust.', emergency: 0, sort: 45 },
-    { cat: 'Mechanicals', name: 'Boiler Tune-Up', desc: 'Tune-up for boilers not serviced in 3+ years.', baseline: 'Must not have received tune-up within last 3 years.', eff: 'Per IL TRM requirements.', install: 'Measure combustion efficiency. Adjust airflow/stack temps. Adjust burner and gas input. Check venting, piping insulation, safety controls, combustion air. Clean fireside surfaces. Inspect refractory, gaskets, doors. Clean water cut-off controls. Flush boiler. Clean burner and pilot. Check electrode. Clean damper/blower. Check motor starter contacts. Perform flame safeguard checks. Troubleshoot problems.', emergency: 0, sort: 46 },
+    { cat: 'Mechanicals', name: 'Gas Furnace Tune-Up', desc: 'Tune and clean for gas furnaces not serviced in 3+ years. This is the HVAC entry point - HVAC only gets involved if a tune and clean is recommended. Tech produces a tech report complying with IL TRM 2026. If issues are found, the tech report includes recommendations per the Mechanical Decision Tree. If no issues, the tune and clean is complete and billable as-is.', baseline: 'Must not have received tune-up within last 3 years. Not allowed on propane furnaces.', eff: 'Per IL TRM 2026 requirements.', install: 'Measure combustion efficiency. Check/clean blower assembly. Lubricate motor, inspect fan belt. Inspect for gas leaks. Clean burner, adjust. Check ignition/safety systems. Check/clean heat exchanger. Inspect exhaust/flue. Inspect control box/wiring. Check air filter. Inspect ductwork. Measure temperature rise. Check volts/amps. Check thermostat operation. Perform CO test and adjust. Produce tech report per IL TRM 2026. If issues found, apply Mechanical Decision Tree (Appendix H) and include replacement recommendations in tech report.', emergency: 0, sort: 45 },
+    { cat: 'Mechanicals', name: 'Boiler Tune-Up', desc: 'Tune and clean for boilers not serviced in 3+ years. This is the HVAC entry point - HVAC only gets involved if a tune and clean is recommended. Tech produces a tech report complying with IL TRM 2026. If issues are found, the tech report includes recommendations per the Mechanical Decision Tree. If no issues, the tune and clean is complete and billable as-is.', baseline: 'Must not have received tune-up within last 3 years.', eff: 'Per IL TRM 2026 requirements.', install: 'Measure combustion efficiency. Adjust airflow/stack temps. Adjust burner and gas input. Check venting, piping insulation, safety controls, combustion air. Clean fireside surfaces. Inspect refractory, gaskets, doors. Clean water cut-off controls. Flush boiler. Clean burner and pilot. Check electrode. Clean damper/blower. Check motor starter contacts. Perform flame safeguard checks. Troubleshoot problems. Produce tech report per IL TRM 2026. If issues found, apply Mechanical Decision Tree (Appendix H) and include replacement recommendations in tech report.', emergency: 0, sort: 46 },
     { cat: 'Mechanicals', name: 'Room Air Conditioner Replacement', desc: 'Emergency replacement of nonfunctional room AC. DECISION TREE: Is equipment failed? → If YES → Eligible for Replacement. If NO → Not Eligible.', baseline: 'Room AC must be nonfunctional (failed). Simple pass/fail - no repair threshold.', eff: 'Replace with Energy Star efficiency.', install: 'Emergency replacement only.', emergency: 1, sort: 47 },
     { cat: 'Mechanicals', name: 'EC Motors', desc: 'Electronically commutated motor for older but running HVAC systems.', baseline: 'System is older but running well.', eff: 'Static pressure taken to ensure system functioning as specified.', install: 'Take static pressure reading before and after.', emergency: 0, sort: 48 },
     // Health & Safety
@@ -470,8 +624,8 @@ router.post('/:id/seed-hes-rules', (req, res) => {
       'Documentation that unit is nonfunctional',
       'Energy Star certification of replacement'
     ]},
-    { measure: 'Gas Furnace Tune-Up', docs: ['Combustion efficiency readings (before/after) in RISE', 'All IL TRM required tune-up activities documented'] },
-    { measure: 'Boiler Tune-Up', docs: ['Combustion efficiency readings (before/after) in RISE', 'All IL TRM required tune-up activities documented'] },
+    { measure: 'Gas Furnace Tune-Up', docs: ['Tech report compliant with IL TRM 2026', 'Combustion efficiency readings (before/after) in RISE', 'All IL TRM required tune and clean activities documented', 'Mechanical Decision Tree (Appendix H) completed if issues found', 'Replacement recommendation in tech report if decision tree indicates'] },
+    { measure: 'Boiler Tune-Up', docs: ['Tech report compliant with IL TRM 2026', 'Combustion efficiency readings (before/after) in RISE', 'All IL TRM required tune and clean activities documented', 'Mechanical Decision Tree (Appendix H) completed if issues found', 'Replacement recommendation in tech report if decision tree indicates'] },
     { measure: 'Kitchen Exhaust Fan', docs: ['RedCalc screenshot uploaded to RISE', 'ASHRAE 62.2 calculation (include basement area)', 'Fan flow rates on assessment report'] },
     { measure: 'Bathroom Exhaust Fan', docs: ['RedCalc screenshot uploaded to RISE', 'ASHRAE 62.2 calculation', 'Fan flow rates on assessment report'] },
     { measure: 'Bathroom Exhaust Fan w/ Light', docs: ['RedCalc screenshot uploaded to RISE', 'ASHRAE 62.2 calculation', 'Fan flow rates on assessment report'] },
@@ -499,18 +653,20 @@ router.post('/:id/seed-hes-rules', (req, res) => {
     { phase: 'Scope & Pre-Approval', step: 9, title: 'Get Required Forms Signed', desc: 'Customer signs Customer Authorization Form and Scope of Work. Collect all signatures needed for pre-approval.', cert: null, forms: 'Customer Authorization Form (Appendix E), Scope of Work - Signed', timeline: null },
     { phase: 'Scope & Pre-Approval', step: 10, title: 'Upload Pre-Pictures', desc: 'Upload all pre-installation photos to RISE as zip folder or Company Cam link. Ensure documents named with address and are legible.', cert: null, forms: null, timeline: null },
     { phase: 'Scope & Pre-Approval', step: 11, title: 'Create Estimate with Program Pricing', desc: 'Create estimate using program pricing for all scoped measures. Upload estimate to RISE.', cert: null, forms: 'Program Estimate', timeline: null },
-    { phase: 'Scope & Pre-Approval', step: 12, title: 'Submit for Pre-Approval', desc: 'Submit complete package to RI for pre-approval: signed forms, photos, estimate, all RISE data.', cert: null, forms: 'All pre-approval documents', timeline: 'RI target turnaround: 2 business days' },
-    { phase: 'HVAC Replacement', step: 13, title: 'Mechanical Decision Tree Evaluation', desc: 'Follow Mechanical Replacement Decision Trees (Appendix H) to determine if furnace, boiler, water heater, or CAC qualifies for replacement vs. repair/tune-up.', cert: null, forms: 'Mechanical Decision Trees (Appendix H)', timeline: null },
-    { phase: 'HVAC Replacement', step: 14, title: 'Submit Tech Report for Replacement', desc: 'When replacement is needed: create tech report documenting equipment condition, decision tree results, and recommended replacement. Email tech report to RI program contacts for approval.', cert: null, forms: 'Tech Report (emailed to RI contacts)', timeline: null },
-    { phase: 'HVAC Replacement', step: 15, title: 'Receive Replacement Approval', desc: 'RI reviews tech report and approves or denies replacement request. Track approval status.', cert: null, forms: 'Replacement Approval from RI', timeline: null },
-    { phase: 'HVAC Replacement', step: 16, title: 'Manual J & Equipment Selection', desc: 'Complete Manual J load calculation to determine proper equipment sizing. Document what equipment will be installed (make, model, efficiency, size). Required for proper billing.', cert: null, forms: 'Manual J Calculation, Equipment Spec Sheet', timeline: 'Before installation' },
-    { phase: 'Installation', step: 17, title: 'Schedule & Perform Work', desc: 'Call customer and schedule installation. Install all approved measures per program specs and BPI standards.', cert: 'Varies by measure type', forms: null, timeline: 'After approval received' },
-    { phase: 'Installation', step: 18, title: 'Final Inspection', desc: 'Inspect all work to ensure safe conditions and proper installation. Staff must be BPI BA-P certified.', cert: 'BPI Building Analyst Professional (BA-P)', forms: 'Final Inspection Form (Appendix F)', timeline: null },
-    { phase: 'Installation', step: 19, title: 'Customer Sign-Off', desc: 'Customer acknowledges work complete by signing Final Inspection Form.', cert: null, forms: 'Final Inspection Form (Appendix F)', timeline: null },
-    { phase: 'Closeout', step: 20, title: 'Post Photos & Documentation', desc: 'Upload all post-installation photos. Ensure all documentation complete per Photo Checklist.', cert: null, forms: 'Documentation and Photo Checklist (Appendix J)', timeline: null },
-    { phase: 'Closeout', step: 21, title: 'Customer Education & Survey', desc: 'Educate customer on installed measures. Provide satisfaction survey for customer to mail in.', cert: null, forms: 'Customer Satisfaction Survey (Appendix K)', timeline: null },
-    { phase: 'Closeout', step: 22, title: 'Submit for Invoicing', desc: 'Enter all final data into RISE. Ensure HVAC billing matches Manual J and approved equipment. Submit for final approval.', cert: null, forms: 'All closeout documents, RISE submission', timeline: 'Per program calendar' },
-    { phase: 'QA/QC', step: 23, title: 'QA/QC Inspection', desc: 'CMC conducts QA/QC inspections on 5% of projects. New contractors: first 5 inspected (80% pass required). Probation: next 10 inspected (80% pass required).', cert: null, forms: 'QAQC Observation Form (Appendix G)', timeline: 'Ongoing' }
+    { phase: 'Scope & Pre-Approval', step: 12, title: 'Identify Permit Requirements', desc: 'During scope creation, identify if the job requires any building permits based on work type and local jurisdiction. Flag the job and begin permit tracking.', cert: null, forms: null, timeline: 'During scope creation' },
+    { phase: 'Scope & Pre-Approval', step: 13, title: 'Submit for Pre-Approval', desc: 'Submit complete package to RI for pre-approval: signed forms, photos, estimate, all RISE data.', cert: null, forms: 'All pre-approval documents', timeline: 'RI target turnaround: 2 business days' },
+    { phase: 'HVAC', step: 14, title: 'Perform Tune & Clean', desc: 'HVAC only gets involved if a tune and clean is recommended during assessment/scoping. Tech performs tune and clean per IL TRM 2026 requirements and produces a tech report. The tech report documents all findings and complies with IL TRM 2026 for tune and cleans in Illinois.', cert: null, forms: 'Tech Report (IL TRM 2026 compliant)', timeline: 'After pre-approval' },
+    { phase: 'HVAC', step: 15, title: 'Evaluate Findings & Decision Tree', desc: 'Review tech report findings. If issues are present, apply the Mechanical Replacement Decision Tree (Appendix H) to determine if equipment qualifies for replacement. If no issues are found, the tune and clean is complete and billable - no further HVAC steps needed.', cert: null, forms: 'Mechanical Decision Trees (Appendix H) - only if issues found', timeline: null },
+    { phase: 'HVAC', step: 16, title: 'Submit Tech Report for Replacement (If Needed)', desc: 'Only if the decision tree indicates replacement: email tech report with decision tree results and replacement recommendation to RI program contacts for approval.', cert: null, forms: 'Tech Report with replacement recommendation (emailed to RI contacts)', timeline: null },
+    { phase: 'HVAC', step: 17, title: 'Receive Replacement Approval', desc: 'RI reviews tech report and approves or denies replacement request. Track approval status.', cert: null, forms: 'Replacement Approval from RI', timeline: null },
+    { phase: 'HVAC', step: 18, title: 'Manual J & Equipment Selection', desc: 'Only if replacement approved. Complete Manual J load calculation to determine proper equipment sizing. Document what equipment will be installed (make, model, efficiency, size). Required for proper billing.', cert: null, forms: 'Manual J Calculation, Equipment Spec Sheet', timeline: 'Before installation' },
+    { phase: 'Installation', step: 19, title: 'Schedule & Perform Work', desc: 'Call customer and schedule installation. Install all approved measures per program specs and BPI standards.', cert: 'Varies by measure type', forms: null, timeline: 'After approval received' },
+    { phase: 'Installation', step: 20, title: 'Final Inspection', desc: 'Inspect all work to ensure safe conditions and proper installation. Staff must be BPI BA-P certified.', cert: 'BPI Building Analyst Professional (BA-P)', forms: 'Final Inspection Form (Appendix F)', timeline: null },
+    { phase: 'Installation', step: 21, title: 'Customer Sign-Off', desc: 'Customer acknowledges work complete by signing Final Inspection Form.', cert: null, forms: 'Final Inspection Form (Appendix F)', timeline: null },
+    { phase: 'Closeout', step: 22, title: 'Post Photos & Documentation', desc: 'Upload all post-installation photos. Ensure all documentation complete per Photo Checklist.', cert: null, forms: 'Documentation and Photo Checklist (Appendix J)', timeline: null },
+    { phase: 'Closeout', step: 23, title: 'Customer Education & Survey', desc: 'Educate customer on installed measures. Provide satisfaction survey for customer to mail in.', cert: null, forms: 'Customer Satisfaction Survey (Appendix K)', timeline: null },
+    { phase: 'Closeout', step: 24, title: 'Submit for Invoicing', desc: 'Enter all final data into RISE. Ensure HVAC billing matches Manual J and approved equipment. Submit for final approval.', cert: null, forms: 'All closeout documents, RISE submission', timeline: 'Per program calendar' },
+    { phase: 'QA/QC', step: 25, title: 'QA/QC Inspection', desc: 'CMC conducts QA/QC inspections on 5% of projects. New contractors: first 5 inspected (80% pass required). Probation: next 10 inspected (80% pass required).', cert: null, forms: 'QAQC Observation Form (Appendix G)', timeline: 'Ongoing' }
   ];
 
   steps.forEach((s, i) => {
