@@ -585,7 +585,7 @@ export default function JobDetail({ role }) {
             </div>
 
           ) : (
-            /* For Scope Creator / Admin / Others: Full Appendix D assessment data */
+            /* For Scope Creator / Admin / Others: Full 2026 HES IE audit data */
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               {/* Assessor Recommendations Banner for Scope Creator */}
               {role === 'Scope Creator' && (() => {
@@ -605,10 +605,10 @@ export default function JobDetail({ role }) {
                 );
               })()}
               <div style={{ padding: '12px 16px', background: '#0f3460', color: '#fff' }}>
-                <h3 style={{ margin: 0, fontSize: 14 }}>Energy Assessment Data (Appendix D - 2026 HES)</h3>
+                <h3 style={{ margin: 0, fontSize: 14 }}>2026 HES IE Audit Data Collection</h3>
               </div>
 
-              {/* Full Appendix D form */}
+              {/* Full 2026 HES IE audit data form with automated calculations */}
               <div style={ss}><div style={gs}>
                 <div style={fs}><strong>Completed By:</strong> {txt('header', 'completed_by', 'Name', 140)}</div>
                 <div style={fs}><strong>Date:</strong> <input type="date" style={{ fontSize: 11, padding: '2px 4px' }} value={aVal('header', 'date')} disabled={!canEdit} onChange={e => aSet('header', 'date', e.target.value)} /></div>
@@ -819,16 +819,146 @@ export default function JobDetail({ role }) {
                 </div>
               </div>
               <div style={hs}>DIAGNOSTIC TESTING</div>
-              <div style={ss}><div style={gs}>
-                <div style={fs}><strong>Pre Blower Door (CFM50):</strong> {txt('diagnostics', 'pre_cfm50', 'CFM50', 60)}</div>
-                <div style={fs}><strong>Post Blower Door (CFM50):</strong> {txt('diagnostics', 'post_cfm50', 'CFM50', 60)}</div>
-                <div style={fs}><strong>% Reduction:</strong> {txt('diagnostics', 'cfm50_reduction', '%', 40)}</div>
-                <div style={fs}><strong>Pre Duct Blaster (CFM25):</strong> {txt('diagnostics', 'pre_cfm25', 'CFM25', 60)}</div>
-                <div style={fs}><strong>Post Duct Blaster (CFM25):</strong> {txt('diagnostics', 'post_cfm25', 'CFM25', 60)}</div>
-                <div style={fs}><strong>Combustion Pre:</strong> {txt('diagnostics', 'combustion_pre', '%', 60)}</div>
-                <div style={fs}><strong>Combustion Post:</strong> {txt('diagnostics', 'combustion_post', '%', 60)}</div>
-                <div style={fs}><strong>CO Test:</strong> {txt('diagnostics', 'co_test', 'ppm', 50)}</div>
-              </div></div>
+              <div style={ss}>
+                <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>Blower Door Test</div>
+                <div style={gs}>
+                  <div style={fs}><strong>Pre CFM50:</strong> {txt('diagnostics', 'pre_cfm50', 'CFM50', 60)}</div>
+                  <div style={fs}><strong>Post CFM50:</strong> {txt('diagnostics', 'post_cfm50', 'CFM50', 60)}</div>
+                  <div style={fs}><strong>% Reduction:</strong>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: (() => {
+                      const pre = parseFloat(aVal('diagnostics', 'pre_cfm50'));
+                      const post = parseFloat(aVal('diagnostics', 'post_cfm50'));
+                      if (!pre || !post) return '#888';
+                      const pct = ((pre - post) / pre * 100);
+                      return pct >= 25 ? '#27ae60' : pct >= 15 ? '#f39c12' : '#e74c3c';
+                    })(), marginLeft: 4 }}>
+                      {(() => {
+                        const pre = parseFloat(aVal('diagnostics', 'pre_cfm50'));
+                        const post = parseFloat(aVal('diagnostics', 'post_cfm50'));
+                        if (!pre || !post) return '--';
+                        return ((pre - post) / pre * 100).toFixed(1) + '%';
+                      })()}
+                    </span>
+                    <span style={{ fontSize: 9, color: '#888', marginLeft: 4 }}>(goal: 25%+)</span>
+                  </div>
+                  <div style={fs}><strong>Exterior Temp:</strong> {txt('diagnostics', 'exterior_temp', 'F', 40)}</div>
+                  <div style={fs}><strong>BD Location:</strong> {sel('diagnostics', 'bd_location', ['Front', 'Side', 'Back'])}</div>
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>Duct Blaster</div>
+                <div style={gs}>
+                  <div style={fs}><strong>Pre CFM25:</strong> {txt('diagnostics', 'pre_cfm25', 'CFM25', 60)}</div>
+                  <div style={fs}><strong>Post CFM25:</strong> {txt('diagnostics', 'post_cfm25', 'CFM25', 60)}</div>
+                  <div style={fs}><strong>% Reduction:</strong>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#0f3460', marginLeft: 4 }}>
+                      {(() => {
+                        const pre = parseFloat(aVal('diagnostics', 'pre_cfm25'));
+                        const post = parseFloat(aVal('diagnostics', 'post_cfm25'));
+                        if (!pre || !post) return '--';
+                        return ((pre - post) / pre * 100).toFixed(1) + '%';
+                      })()}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>CAZ Testing (Combustion Appliance Zone)</div>
+                <div style={gs}>
+                  <div style={fs}><strong>Ambient CO (ppm):</strong> {txt('diagnostics', 'ambient_co', 'ppm', 50)}</div>
+                  <div style={fs}><strong>Gas Oven CO:</strong> {txt('diagnostics', 'gas_oven_co', 'ppm', 50)} {sel('diagnostics', 'gas_oven_pass', ['Pass', 'Fail'])}</div>
+                  <div style={fs}><strong>Heating Spillage:</strong> {yn('diagnostics', 'heating_spillage')} CO: {txt('diagnostics', 'heating_co', 'ppm', 40)}</div>
+                  <div style={fs}><strong>Heating Flue Angle OK:</strong> {yn('diagnostics', 'heating_flue_ok')}</div>
+                  <div style={fs}><strong>WH Spillage:</strong> {yn('diagnostics', 'wh_spillage')} CO: {txt('diagnostics', 'wh_co', 'ppm', 40)}</div>
+                  <div style={fs}><strong>WH Flue Pitch OK:</strong> {yn('diagnostics', 'wh_flue_ok')}</div>
+                  <div style={fs}><strong>Gas Leak Found:</strong> {yn('diagnostics', 'gas_leak')} Loc: {txt('diagnostics', 'gas_leak_location', 'Location', 100)}</div>
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>Fan Flows</div>
+                <div style={gs}>
+                  <div style={fs}><strong>Kitchen Fan CFM:</strong> {txt('diagnostics', 'kitchen_fan_cfm', 'CFM', 50)} Window: {yn('diagnostics', 'kitchen_window')}</div>
+                  <div style={fs}><strong>Bath 1 Fan CFM:</strong> {txt('diagnostics', 'bath1_fan_cfm', 'CFM', 50)} Window: {yn('diagnostics', 'bath1_window')}</div>
+                  <div style={fs}><strong>Bath 2 Fan CFM:</strong> {txt('diagnostics', 'bath2_fan_cfm', 'CFM', 50)} Window: {yn('diagnostics', 'bath2_window')}</div>
+                </div>
+              </div>
+              {/* ASHRAE 62.2 - Auto-calculated per program rules */}
+              <div style={{ ...hs, background: '#1565c0' }}>ASHRAE 62.2 VENTILATION (AUTO-CALCULATED)</div>
+              <div style={ss}>
+                {(() => {
+                  const sqft = parseFloat(aVal('exterior', 'sq_footage')) || 0;
+                  const bedrooms = parseInt(aVal('exterior', 'bedrooms')) || 0;
+                  const postCFM = parseFloat(aVal('diagnostics', 'post_cfm50')) || parseFloat(aVal('diagnostics', 'pre_cfm50')) || 0;
+                  const stories = parseFloat(aVal('exterior', 'stories')) || 1;
+                  const storyFactor = stories === 1 ? 14.4 : stories === 2 ? 10.1 : stories >= 3 ? 8.3 : 14.4;
+                  const buildingVentRate = 0.03 * sqft + (bedrooms + 1) * 7.5;
+                  const infiltrationCredit = postCFM / storyFactor;
+                  const totalMechVent = Math.max(0, buildingVentRate - infiltrationCredit);
+                  const kitchenReq = 100;
+                  const bathReq = 50;
+                  const kitchenCFM = parseFloat(aVal('diagnostics', 'kitchen_fan_cfm')) || 0;
+                  const bath1CFM = parseFloat(aVal('diagnostics', 'bath1_fan_cfm')) || 0;
+                  const bath2CFM = parseFloat(aVal('diagnostics', 'bath2_fan_cfm')) || 0;
+                  const kitchenDeficit = Math.max(0, kitchenReq - kitchenCFM);
+                  const bath1Deficit = Math.max(0, bathReq - bath1CFM);
+                  const bath2Deficit = Math.max(0, bathReq - bath2CFM);
+                  const localDeficit = kitchenDeficit + bath1Deficit + bath2Deficit;
+
+                  return (
+                    <div>
+                      <div style={gs}>
+                        <div style={fs}><strong>Conditioned Area:</strong> <span style={{ fontWeight: 700, marginLeft: 4 }}>{sqft || '--'} sqft</span></div>
+                        <div style={fs}><strong>Bedrooms:</strong> <span style={{ fontWeight: 700, marginLeft: 4 }}>{bedrooms || '--'}</span></div>
+                        <div style={fs}><strong>Building Vent Rate:</strong> <span style={{ fontWeight: 700, marginLeft: 4, color: '#1565c0' }}>{sqft ? buildingVentRate.toFixed(1) : '--'} CFM</span></div>
+                        <div style={fs}><strong>Story Factor:</strong> <span style={{ marginLeft: 4 }}>{storyFactor}</span></div>
+                        <div style={fs}><strong>Infiltration Credit:</strong> <span style={{ fontWeight: 700, marginLeft: 4 }}>{postCFM ? infiltrationCredit.toFixed(1) : '--'} CFM</span></div>
+                        <div style={fs}><strong>Total Mech Vent Needed:</strong> <span style={{ fontWeight: 700, marginLeft: 4, color: totalMechVent > 0 ? '#e74c3c' : '#27ae60' }}>{sqft ? totalMechVent.toFixed(1) : '--'} CFM</span></div>
+                      </div>
+                      <div style={{ marginTop: 8, padding: 8, background: '#e3f2fd', borderRadius: 4 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Local Ventilation Deficits:</div>
+                        <div style={{ display: 'flex', gap: 16, fontSize: 11 }}>
+                          <span>Kitchen: {kitchenCFM}/{kitchenReq} CFM {kitchenDeficit > 0 ? <span style={{ color: '#e74c3c' }}>(-{kitchenDeficit})</span> : <span style={{ color: '#27ae60' }}>OK</span>}</span>
+                          <span>Bath 1: {bath1CFM}/{bathReq} CFM {bath1Deficit > 0 ? <span style={{ color: '#e74c3c' }}>(-{bath1Deficit})</span> : <span style={{ color: '#27ae60' }}>OK</span>}</span>
+                          <span>Bath 2: {bath2CFM}/{bathReq} CFM {bath2Deficit > 0 ? <span style={{ color: '#e74c3c' }}>(-{bath2Deficit})</span> : <span style={{ color: '#27ae60' }}>OK</span>}</span>
+                        </div>
+                        <div style={{ fontSize: 11, marginTop: 4, fontWeight: 600 }}>Total Local Deficit: <span style={{ color: localDeficit > 0 ? '#e74c3c' : '#27ae60' }}>{localDeficit} CFM</span></div>
+                        {totalMechVent > 0 && <div style={{ fontSize: 11, marginTop: 4, padding: '4px 8px', background: '#ffebee', borderRadius: 3, color: '#c62828' }}>New exhaust fan(s) required to meet ASHRAE 62.2</div>}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+              {/* Air sealing target auto-calc */}
+              <div style={{ ...hs, background: '#2e7d32' }}>PROGRAM RULE CHECKS (AUTO)</div>
+              <div style={ss}>
+                {(() => {
+                  const sqft = parseFloat(aVal('exterior', 'sq_footage')) || 0;
+                  const preCFM = parseFloat(aVal('diagnostics', 'pre_cfm50')) || 0;
+                  const postCFM = parseFloat(aVal('diagnostics', 'post_cfm50')) || 0;
+                  const reduction = preCFM && postCFM ? ((preCFM - postCFM) / preCFM * 100) : 0;
+                  const minCFM = sqft * 1.1;
+                  const atticR = parseFloat(aVal('attic', 'pre_r_value')) || 0;
+                  const foundR = parseFloat(aVal('foundation', 'pre_r_value')) || 0;
+                  const heatingAge = parseFloat(aVal('mechanical', 'heating_age')) || 0;
+                  const lastService = parseFloat(aVal('mechanical', 'heating_last_service')) || 0;
+                  const currentYear = new Date().getFullYear();
+                  const needsTune = lastService > 0 && (currentYear - lastService) >= 3;
+
+                  const rules = [
+                    { label: 'Air sealing CFM50 min (110% sqft)', value: `${minCFM.toFixed(0)} CFM`, met: !preCFM || preCFM >= minCFM, na: !sqft },
+                    { label: 'Blower door reduction goal (25%)', value: reduction ? `${reduction.toFixed(1)}%` : '--', met: reduction >= 25, na: !preCFM || !postCFM },
+                    { label: 'Attic target R-49', value: `Current: R-${atticR}`, met: atticR >= 49, na: !atticR },
+                    { label: 'Foundation target R-10 min', value: `Current: R-${foundR}`, met: foundR >= 10, na: !foundR },
+                    { label: 'Furnace tune-up (not serviced in 3+ yrs)', value: needsTune ? 'Recommended' : lastService ? 'OK' : '--', met: !needsTune, na: !lastService },
+                  ];
+
+                  return (
+                    <div style={{ display: 'grid', gap: 4 }}>
+                      {rules.map((r, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '4px 8px', background: r.na ? '#f5f5f5' : r.met ? '#e8f5e9' : '#fff3e0', borderRadius: 4 }}>
+                          <span style={{ fontSize: 14 }}>{r.na ? '\u2796' : r.met ? '\u2705' : '\u26A0\uFE0F'}</span>
+                          <span style={{ flex: 1 }}>{r.label}</span>
+                          <span style={{ fontWeight: 600, color: r.na ? '#999' : r.met ? '#27ae60' : '#e65100' }}>{r.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
               <div style={{ ...hs, background: '#4a6741' }}>ASSESSOR RECOMMENDATIONS</div>
               <div style={{ ...ss, borderBottom: 'none' }}>
                 <div style={gs}>
@@ -1242,12 +1372,12 @@ export default function JobDetail({ role }) {
             <p style={{ fontSize: 12, color: '#666', marginBottom: 12 }}>Track all forms that need to be signed and submitted for this project per 2026 HES requirements.</p>
             <div style={{ display: 'grid', gap: 8 }}>
               {[
-                { name: 'Customer Authorization Form (Appendix E)', desc: 'Customer signs to authorize work', key: 'auth_form' },
+                { name: 'Customer Authorization Form', desc: 'Customer signs to authorize work', key: 'auth_form' },
                 { name: 'Customer-Signed Final Scope of Work', desc: 'Customer approves the final scope before install', key: 'signed_scope' },
                 { name: 'Assessment Report', desc: 'MS Forms assessment survey completed', key: 'assessment_report' },
                 { name: 'Hazardous Conditions Form', desc: 'Document any H&S hazards found', key: 'hazardous_form' },
                 { name: 'Sub-Contractor Estimates', desc: 'If applicable, for work outside scope', key: 'sub_estimates' },
-                { name: 'Final Inspection Form (Appendix F)', desc: 'QA inspector completes after install', key: 'final_inspection' },
+                { name: 'Final Inspection Form', desc: 'QA inspector completes after install', key: 'final_inspection' },
                 { name: 'Final Invoice', desc: 'Invoice for completed work', key: 'final_invoice' },
               ].map(form => {
                 const formStatus = (sc.forms || {})[form.key] || 'pending';
@@ -1273,7 +1403,7 @@ export default function JobDetail({ role }) {
 
           {/* Documentation Checklist */}
           <div className="card" style={{ padding: 16 }}>
-            <h3 style={{ fontSize: 14, marginBottom: 12 }}>Documentation Checklist (Appendix J)</h3>
+            <h3 style={{ fontSize: 14, marginBottom: 12 }}>Documentation Checklist</h3>
             {['job_paperwork', 'photo', 'paperwork'].map(type => {
               const items = (job.checklist || []).filter(c => c.item_type === type);
               if (items.length === 0) return null;
