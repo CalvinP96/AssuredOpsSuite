@@ -810,9 +810,12 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                   <div style={fieldStyle}><strong>Roof Repair:</strong> {yn('exterior', 'roof_repair')}</div>
                                   <div style={fieldStyle}><strong>High Roof Venting:</strong> {yn('exterior', 'high_roof_venting')} <strong style={{ marginLeft: 6 }}>Type:</strong> {sel('exterior', 'vent_type', ['static', 'ridge'])}</div>
                                   <div style={fieldStyle}><strong>Chimney:</strong> {sel('exterior', 'chimney', ['brick', 'metal', 'none'])}</div>
-                                  <div style={fieldStyle}><strong>Soffit Present:</strong> {yn('exterior', 'soffit')} <strong style={{ marginLeft: 6 }}>Condition:</strong> {sel('exterior', 'soffit_condition', ['good', 'poor'])}</div>
+                                  <div style={fieldStyle}><strong>Flashing Repair:</strong> {yn('exterior', 'flashing_repair')}</div>
+                                  <div style={fieldStyle}><strong>Soffit Present:</strong> {yn('exterior', 'soffit')} <strong style={{ marginLeft: 6 }}>Type:</strong> {txt('exterior', 'soffit_type', 'Type', 80)}</div>
+                                  <div style={fieldStyle}><strong>Soffit Condition:</strong> {sel('exterior', 'soffit_condition', ['good', 'poor'])}</div>
+                                  <div style={fieldStyle}><strong>Soffit Repairs Needed:</strong> {yn('exterior', 'soffit_repairs')}</div>
                                   <div style={fieldStyle}><strong>Soffit Vents:</strong> {yn('exterior', 'soffit_vents')}</div>
-                                  <div style={fieldStyle}><strong>Soffit Chutes/Baffles:</strong> {txt('exterior', 'soffit_chutes', 'Qty needed', 80)}</div>
+                                  <div style={fieldStyle}><strong>Soffit Chutes/Baffles Needed:</strong> {txt('exterior', 'soffit_chutes', 'Qty', 60)}</div>
                                 </div>
                                 <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Exterior Notes:</strong> {txt('exterior', 'notes', 'Notes...', '100%')}</div>
                               </div>
@@ -827,7 +830,7 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                   <div style={fieldStyle}><strong>Wiring Issues:</strong> {yn('interior', 'wiring_issues')}</div>
                                   <div style={fieldStyle}><strong>Moisture Problems:</strong> {yn('interior', 'moisture')}</div>
                                   <div style={fieldStyle}><strong>Water Leaks:</strong> {yn('interior', 'water_leaks')}</div>
-                                  <div style={fieldStyle}><strong>Roof Leaks:</strong> {yn('interior', 'roof_leaks')}</div>
+                                  <div style={fieldStyle}><strong>Roof Leaks:</strong> {yn('interior', 'roof_leaks')} <span style={{ marginLeft: 4 }}>Location:</span> {txt('interior', 'roof_leaks_location', 'Location', 100)}</div>
                                   <div style={fieldStyle}><strong>Drop Ceiling:</strong> {yn('interior', 'drop_ceiling')}</div>
                                   <div style={fieldStyle}><strong>Ceiling Condition:</strong> {sel('interior', 'ceiling_condition', ['good', 'poor'])}</div>
                                   <div style={fieldStyle}><strong>Wall Condition:</strong> {txt('interior', 'wall_condition', 'Condition', 100)}</div>
@@ -835,6 +838,7 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                   <div style={fieldStyle}><strong>Drywall Repair:</strong> {yn('interior', 'drywall_repair')}</div>
                                   <div style={fieldStyle}><strong>CO Detector:</strong> {yn('interior', 'co_detector')}</div>
                                   <div style={fieldStyle}><strong>Recessed Lighting:</strong> {yn('interior', 'recessed_lighting')}</div>
+                                  <div style={fieldStyle}><strong>Drywall Repair Location:</strong> {txt('interior', 'drywall_location', 'Location', 120)}</div>
                                   <div style={fieldStyle}><strong>Dryer Vented Properly:</strong> {yn('interior', 'dryer_vented')}</div>
                                 </div>
                                 <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Interior Notes:</strong> {txt('interior', 'notes', 'Notes...', '100%')}</div>
@@ -874,6 +878,10 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                     <span>Add:</span> {txt('hatches', `${h.toLowerCase().replace(/ /g,'_')}_add`, 'R', 40)}
                                   </div>
                                 ))}
+                                <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 12 }}>
+                                  <div style={fieldStyle}><strong>Hatches Created - Scuttle:</strong> {txt('hatches', 'created_scuttle', '#', 30)}</div>
+                                  <div style={fieldStyle}><strong>Knee Wall:</strong> {txt('hatches', 'created_knee_wall', '#', 30)}</div>
+                                </div>
                                 <div style={{ marginTop: 4 }}><strong style={{ fontSize: 12 }}>Hatches Notes:</strong> {txt('hatches', 'notes', 'Notes...', '100%')}</div>
                               </div>
 
@@ -885,12 +893,45 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                   <div style={fieldStyle}><strong>Pre R-Value:</strong> {txt('attic', 'pre_r_value', 'R', 40)}</div>
                                   <div style={fieldStyle}><strong>Sq Footage:</strong> {txt('attic', 'sq_footage', 'sqft', 60)}</div>
                                   <div style={fieldStyle}><strong>R to Add:</strong> {txt('attic', 'r_to_add', 'R', 40)}</div>
-                                  <div style={fieldStyle}><strong>Recessed Lights:</strong> {yn('attic', 'recessed_lights')} Qty: {txt('attic', 'recessed_qty', '#', 30)}</div>
+                                  <div style={fieldStyle}><strong>Recessed Lights:</strong> {yn('attic', 'recessed_lights')} Qty: {txt('attic', 'recessed_qty', '#', 30)} <strong style={{ marginLeft: 8 }}>Type:</strong> {sel('attic', 'recessed_type', ['Straight Bow', 'Other'])}</div>
+                                  <div style={fieldStyle}><strong>Storage Created:</strong> {txt('attic', 'storage_created', 'Details', 120)}</div>
                                   <div style={fieldStyle}><strong>Ductwork:</strong> {yn('attic', 'ductwork')} <strong style={{ marginLeft: 6 }}>Condition:</strong> {sel('attic', 'duct_condition', ['good', 'poor'])}</div>
                                   <div style={fieldStyle}><strong>Lin Ft Duct to Seal:</strong> {txt('attic', 'duct_lin_ft', 'ft', 50)}</div>
                                   <div style={fieldStyle}><strong>Floor Boards:</strong> {yn('attic', 'floor_boards')}</div>
                                 </div>
                                 <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Attic Notes:</strong> {txt('attic', 'notes', 'Notes...', '100%')}</div>
+                              </div>
+
+                              {/* COLLAR BEAM */}
+                              <div style={headerStyle}>COLLAR BEAM</div>
+                              <div style={sectionStyle}>
+                                <div style={gridStyle}>
+                                  <div style={fieldStyle}><strong>Pre R-Value:</strong> {txt('collar_beam', 'pre_r_value', 'R', 40)}</div>
+                                  <div style={fieldStyle}><strong>Sq Footage:</strong> {txt('collar_beam', 'sq_footage', 'sqft', 60)}</div>
+                                  <div style={fieldStyle}><strong>R to Add:</strong> {txt('collar_beam', 'r_to_add', 'R', 40)}</div>
+                                  <div style={fieldStyle}><strong>Ductwork:</strong> {yn('collar_beam', 'ductwork')} <strong style={{ marginLeft: 6 }}>Condition:</strong> {sel('collar_beam', 'duct_condition', ['good', 'poor'])}</div>
+                                  <div style={fieldStyle}><strong>Lin Ft Duct to Seal:</strong> {txt('collar_beam', 'duct_lin_ft', 'ft', 50)}</div>
+                                  <div style={fieldStyle}><strong>Accessibles:</strong> {yn('collar_beam', 'accessibles')}</div>
+                                  <div style={fieldStyle}><strong>Cut In:</strong> {yn('collar_beam', 'cut_in')}</div>
+                                </div>
+                                <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Collar Beam Notes:</strong> {txt('collar_beam', 'notes', 'Notes...', '100%')}</div>
+                              </div>
+
+                              {/* OUTER CEILING JOIST */}
+                              <div style={headerStyle}>OUTER CEILING JOIST</div>
+                              <div style={sectionStyle}>
+                                <div style={gridStyle}>
+                                  <div style={fieldStyle}><strong>Pre R-Value:</strong> {txt('ocj', 'pre_r_value', 'R', 40)}</div>
+                                  <div style={fieldStyle}><strong>Sq Footage:</strong> {txt('ocj', 'sq_footage', 'sqft', 60)}</div>
+                                  <div style={fieldStyle}><strong># of OCJs:</strong> {txt('ocj', 'num_ocjs', '#', 30)}</div>
+                                  <div style={fieldStyle}><strong>R to Add:</strong> {txt('ocj', 'r_to_add', 'R', 40)}</div>
+                                  <div style={fieldStyle}><strong>Ductwork:</strong> {yn('ocj', 'ductwork')} <strong style={{ marginLeft: 6 }}>Condition:</strong> {sel('ocj', 'duct_condition', ['good', 'poor'])}</div>
+                                  <div style={fieldStyle}><strong>Lin Ft Duct to Seal:</strong> {txt('ocj', 'duct_lin_ft', 'ft', 50)}</div>
+                                  <div style={fieldStyle}><strong>Accessible:</strong> {yn('ocj', 'accessible')}</div>
+                                  <div style={fieldStyle}><strong>Cut In:</strong> {yn('ocj', 'cut_in')}</div>
+                                  <div style={fieldStyle}><strong>Floor Boards:</strong> {yn('ocj', 'floor_boards')}</div>
+                                </div>
+                                <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>OCJ Notes:</strong> {txt('ocj', 'notes', 'Notes...', '100%')}</div>
                               </div>
 
                               {/* FOUNDATION */}
@@ -904,6 +945,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                   <div style={fieldStyle}><strong>Insulation:</strong> {sel('foundation', 'insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
                                   <div style={fieldStyle}><strong>Band Joints Access:</strong> {yn('foundation', 'band_joints')}</div>
                                   <div style={fieldStyle}><strong>Linear Ft:</strong> {txt('foundation', 'linear_ft', 'ft', 50)}</div>
+                                  <div style={fieldStyle}><strong>Pre R-Value (Band):</strong> {txt('foundation', 'band_pre_r_value', 'R', 40)}</div>
+                                  <div style={fieldStyle}><strong>Insulation Type (Band):</strong> {sel('foundation', 'band_insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
                                   <div style={fieldStyle}><strong>Plaster/Lath:</strong> {yn('foundation', 'plaster_lath')}</div>
                                   <div style={fieldStyle}><strong>Balloon Const:</strong> {yn('foundation', 'balloon_const')}</div>
                                   <div style={fieldStyle}><strong>Asbestos Pipe:</strong> {yn('foundation', 'asbestos')} {v('foundation', 'asbestos') === 'yes' && <span>Tested: {txt('foundation', 'asbestos_tested', 'Result', 80)}</span>}</div>
@@ -928,6 +971,9 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                   <div style={fieldStyle}><strong>Pre R-Value:</strong> {txt('crawlspace', 'pre_r_value', 'R', 40)}</div>
                                   <div style={fieldStyle}><strong>Insulation:</strong> {sel('crawlspace', 'insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
                                   <div style={fieldStyle}><strong>Band Joints Access:</strong> {yn('crawlspace', 'band_joints')}</div>
+                                  <div style={fieldStyle}><strong>Linear Ft (Band):</strong> {txt('crawlspace', 'band_linear_ft', 'ft', 50)}</div>
+                                  <div style={fieldStyle}><strong>Pre R-Value (Band):</strong> {txt('crawlspace', 'band_pre_r_value', 'R', 40)}</div>
+                                  <div style={fieldStyle}><strong>Insulation Type (Band):</strong> {sel('crawlspace', 'band_insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
                                 </div>
                                 <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Crawlspace Notes:</strong> {txt('crawlspace', 'notes', 'Notes...', '100%')}</div>
                               </div>
@@ -946,7 +992,8 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                       <div style={fieldStyle}><strong>Cladding:</strong> {sel('walls', `${floor}_cladding`, ['Stucco', 'Wood Lap', 'Asbestos Shingle', 'Masonry', 'Aluminum', 'Vinyl', 'Other'])}</div>
                                       <div style={fieldStyle}><strong>Wall Type:</strong> {sel('walls', `${floor}_wall_type`, ['Drywall', 'Plaster'])}</div>
                                       <div style={fieldStyle}><strong>Insulate From:</strong> {sel('walls', `${floor}_insulate_from`, ['Interior', 'Exterior'])}</div>
-                                      <div style={fieldStyle}><strong>Dense Pack:</strong> {yn('walls', `${floor}_dense_pack`)}</div>
+                                      <div style={fieldStyle}><strong>Phenolic Foam:</strong> {yn('walls', `${floor}_phenolic_foam`)}</div>
+                                      <div style={fieldStyle}><strong>Dense Pack Cellulose:</strong> {yn('walls', `${floor}_dense_pack`)}</div>
                                     </div>
                                   </div>
                                 ))}
@@ -1404,7 +1451,14 @@ export default function ProgramDetail({ role, fixedProgramId }) {
 
                         return (
                           <div style={{ border: '1px solid #ccc', borderTop: 'none', borderRadius: '0 0 6px 6px', background: '#fff' }}>
-                            <div style={hs}>EXTERIOR</div>
+                            {/* HEADER */}
+                            <div style={ss}>
+                              <div style={gs}>
+                                <div style={fs}><strong>Completed By:</strong> {txt('header', 'completed_by', 'Name', 140)}</div>
+                                <div style={fs}><strong>Date:</strong> <input type="date" style={{ fontSize: 11, padding: '2px 4px' }} value={v('header', 'date')} onChange={e => set('header', 'date', e.target.value)} /></div>
+                              </div>
+                            </div>
+                            <div style={hs}>EXTERIOR INSPECTION</div>
                             <div style={ss}>
                               <div style={gs}>
                                 <div style={fs}><strong>Style:</strong> {txt('exterior', 'style', 'Ranch...', 100)}</div>
@@ -1412,18 +1466,72 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                 <div style={fs}><strong>Stories:</strong> {txt('exterior', 'stories', '#', 40)}</div>
                                 <div style={fs}><strong>Bedrooms:</strong> {txt('exterior', 'bedrooms', '#', 40)}</div>
                                 <div style={fs}><strong>SqFt:</strong> {txt('exterior', 'sq_footage', 'sqft', 70)}</div>
-                                <div style={fs}><strong>Roof:</strong> {sel('exterior', 'roof_condition', ['good', 'average', 'poor'])}</div>
+                                <div style={fs}><strong>Volume:</strong> {txt('exterior', 'volume', 'cuft', 70)}</div>
+                                <div style={fs}><strong>Gutters:</strong> {yn('exterior', 'gutters')} <strong style={{ marginLeft: 6 }}>Cond:</strong> {sel('exterior', 'gutter_condition', ['good', 'poor'])}</div>
+                                <div style={fs}><strong>Downspouts:</strong> {yn('exterior', 'downspouts')} <strong style={{ marginLeft: 6 }}>Repairs:</strong> {yn('exterior', 'gutter_repairs')}</div>
+                                <div style={fs}><strong>Roof:</strong> {sel('exterior', 'roof_condition', ['good', 'average', 'poor'])} <strong style={{ marginLeft: 6 }}>Type:</strong> {sel('exterior', 'roof_type', ['Architecture', '3-Tab', 'Flat'])}</div>
+                                <div style={fs}><strong>Roof Age:</strong> {txt('exterior', 'roof_age', 'years', 50)} <strong style={{ marginLeft: 6 }}>Repair:</strong> {yn('exterior', 'roof_repair')}</div>
+                                <div style={fs}><strong>High Roof Venting:</strong> {yn('exterior', 'high_roof_venting')} <strong style={{ marginLeft: 6 }}>Type:</strong> {sel('exterior', 'vent_type', ['static', 'ridge'])}</div>
+                                <div style={fs}><strong>Chimney:</strong> {sel('exterior', 'chimney', ['brick', 'metal', 'none'])} <strong style={{ marginLeft: 6 }}>Flashing Repair:</strong> {yn('exterior', 'flashing_repair')}</div>
+                                <div style={fs}><strong>Soffit:</strong> {yn('exterior', 'soffit')} <strong style={{ marginLeft: 4 }}>Type:</strong> {txt('exterior', 'soffit_type', 'Type', 60)} <strong style={{ marginLeft: 4 }}>Cond:</strong> {sel('exterior', 'soffit_condition', ['good', 'poor'])}</div>
+                                <div style={fs}><strong>Soffit Vents:</strong> {yn('exterior', 'soffit_vents')} <strong style={{ marginLeft: 6 }}>Repairs:</strong> {yn('exterior', 'soffit_repairs')}</div>
+                                <div style={fs}><strong>Chutes/Baffles Needed:</strong> {txt('exterior', 'soffit_chutes', 'Qty', 40)}</div>
                               </div>
+                              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('exterior', 'notes', 'Notes...', '100%')}</div>
                             </div>
-                            <div style={hs}>INTERIOR</div>
+                            <div style={hs}>INTERIOR INSPECTION</div>
                             <div style={ss}>
                               <div style={gs}>
                                 <div style={fs}><strong>Mold:</strong> {yn('interior', 'mold')}</div>
+                                <div style={fs}><strong>Broken Glass:</strong> {yn('interior', 'broken_glass')}</div>
                                 <div style={fs}><strong>Knob & Tube:</strong> {yn('interior', 'knob_tube')}</div>
+                                <div style={fs}><strong>Wiring Issues:</strong> {yn('interior', 'wiring_issues')}</div>
                                 <div style={fs}><strong>Moisture:</strong> {yn('interior', 'moisture')}</div>
-                                <div style={fs}><strong>Roof Leaks:</strong> {yn('interior', 'roof_leaks')}</div>
+                                <div style={fs}><strong>Water Leaks:</strong> {yn('interior', 'water_leaks')}</div>
+                                <div style={fs}><strong>Roof Leaks:</strong> {yn('interior', 'roof_leaks')} <span style={{ marginLeft: 4 }}>Loc:</span> {txt('interior', 'roof_leaks_location', 'Location', 80)}</div>
+                                <div style={fs}><strong>Drop Ceiling:</strong> {yn('interior', 'drop_ceiling')}</div>
                                 <div style={fs}><strong>Ceiling:</strong> {sel('interior', 'ceiling_condition', ['good', 'poor'])}</div>
+                                <div style={fs}><strong>Wall Condition:</strong> {txt('interior', 'wall_condition', 'Condition', 80)}</div>
+                                <div style={fs}><strong>Smoke Det:</strong> {yn('interior', 'smoke_detector')}</div>
+                                <div style={fs}><strong>Drywall Repair:</strong> {yn('interior', 'drywall_repair')} <span style={{ marginLeft: 4 }}>Loc:</span> {txt('interior', 'drywall_location', 'Location', 80)}</div>
+                                <div style={fs}><strong>CO Det:</strong> {yn('interior', 'co_detector')}</div>
+                                <div style={fs}><strong>Recessed Lighting:</strong> {yn('interior', 'recessed_lighting')}</div>
                                 <div style={fs}><strong>Dryer Vented:</strong> {yn('interior', 'dryer_vented')}</div>
+                              </div>
+                              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('interior', 'notes', 'Notes...', '100%')}</div>
+                            </div>
+                            <div style={hs}>DIRECT INSTALLS</div>
+                            <div style={ss}>
+                              <div style={gs}>
+                                <div style={fs}><strong>Smoke Det Qty:</strong> {txt('direct_install', 'smoke_qty', '#', 40)}</div>
+                                <div style={fs}><strong>CO Det Qty:</strong> {txt('direct_install', 'co_qty', '#', 40)}</div>
+                                <div style={fs}><strong>Total:</strong> {txt('direct_install', 'total', '#', 40)}</div>
+                              </div>
+                            </div>
+                            <div style={hs}>DOOR TYPES</div>
+                            <div style={ss}>
+                              <div style={gs}>
+                                {['Front', 'Back', 'Basement', 'Attic'].map(d => (
+                                  <div key={d} style={fs}><strong>{d}:</strong> {yn('doors', d.toLowerCase())} <span style={{ marginLeft: 4 }}>WS:</span> {yn('doors', `${d.toLowerCase()}_strip`)}</div>
+                                ))}
+                                <div style={fs}><strong>Other:</strong> {txt('doors', 'other', 'Type', 60)}</div>
+                                <div style={fs}><strong>Total WS Needed:</strong> {txt('doors', 'total_ws', '#', 30)}</div>
+                              </div>
+                            </div>
+                            <div style={hs}>HATCHES</div>
+                            <div style={ss}>
+                              {['Scuttle', 'Knee Wall', 'Pull Down', 'Walk Up'].map(h => (
+                                <div key={h} style={{ ...fs, marginBottom: 4 }}>
+                                  <strong style={{ minWidth: 70 }}>{h}:</strong>
+                                  <span>Loc:</span> {txt('hatches', `${h.toLowerCase().replace(/ /g,'_')}_loc`, 'Loc', 60)}
+                                  <span>Qty:</span> {txt('hatches', `${h.toLowerCase().replace(/ /g,'_')}_qty`, '#', 25)}
+                                  <span>R:</span> {txt('hatches', `${h.toLowerCase().replace(/ /g,'_')}_rval`, 'R', 30)}
+                                  <span>Add:</span> {txt('hatches', `${h.toLowerCase().replace(/ /g,'_')}_add`, 'R', 30)}
+                                </div>
+                              ))}
+                              <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: 12 }}>
+                                <div style={fs}><strong>Created - Scuttle:</strong> {txt('hatches', 'created_scuttle', '#', 25)}</div>
+                                <div style={fs}><strong>Knee Wall:</strong> {txt('hatches', 'created_knee_wall', '#', 25)}</div>
                               </div>
                             </div>
                             <div style={hs}>ATTIC</div>
@@ -1432,30 +1540,157 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                                 <div style={fs}><strong>Type:</strong> {sel('attic', 'type', ['Finished', 'Unfinished', 'Flat'])}</div>
                                 <div style={fs}><strong>Pre R-Value:</strong> {txt('attic', 'pre_r_value', 'R', 40)}</div>
                                 <div style={fs}><strong>SqFt:</strong> {txt('attic', 'sq_footage', 'sqft', 60)}</div>
-                                <div style={fs}><strong>Ductwork:</strong> {yn('attic', 'ductwork')}</div>
+                                <div style={fs}><strong>R to Add:</strong> {txt('attic', 'r_to_add', 'R', 40)}</div>
+                                <div style={fs}><strong>Recessed Lights:</strong> {yn('attic', 'recessed_lights')} Qty: {txt('attic', 'recessed_qty', '#', 25)} Type: {sel('attic', 'recessed_type', ['Straight Bow', 'Other'])}</div>
+                                <div style={fs}><strong>Storage Created:</strong> {txt('attic', 'storage_created', 'Details', 100)}</div>
+                                <div style={fs}><strong>Ductwork:</strong> {yn('attic', 'ductwork')} Cond: {sel('attic', 'duct_condition', ['good', 'poor'])}</div>
+                                <div style={fs}><strong>Duct Lin Ft:</strong> {txt('attic', 'duct_lin_ft', 'ft', 40)}</div>
+                                <div style={fs}><strong>Floor Boards:</strong> {yn('attic', 'floor_boards')}</div>
+                              </div>
+                              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Attic Notes:</strong> {txt('attic', 'notes', 'Notes...', '100%')}</div>
+                            </div>
+                            <div style={hs}>COLLAR BEAM</div>
+                            <div style={ss}>
+                              <div style={gs}>
+                                <div style={fs}><strong>Pre R-Value:</strong> {txt('collar_beam', 'pre_r_value', 'R', 40)}</div>
+                                <div style={fs}><strong>SqFt:</strong> {txt('collar_beam', 'sq_footage', 'sqft', 60)}</div>
+                                <div style={fs}><strong>R to Add:</strong> {txt('collar_beam', 'r_to_add', 'R', 40)}</div>
+                                <div style={fs}><strong>Ductwork:</strong> {yn('collar_beam', 'ductwork')} Cond: {sel('collar_beam', 'duct_condition', ['good', 'poor'])}</div>
+                                <div style={fs}><strong>Duct Lin Ft:</strong> {txt('collar_beam', 'duct_lin_ft', 'ft', 40)}</div>
+                                <div style={fs}><strong>Accessibles:</strong> {yn('collar_beam', 'accessibles')}</div>
+                                <div style={fs}><strong>Cut In:</strong> {yn('collar_beam', 'cut_in')}</div>
                               </div>
                             </div>
-                            <div style={hs}>FOUNDATION / CRAWLSPACE</div>
+                            <div style={hs}>OUTER CEILING JOIST</div>
+                            <div style={ss}>
+                              <div style={gs}>
+                                <div style={fs}><strong>Pre R-Value:</strong> {txt('ocj', 'pre_r_value', 'R', 40)}</div>
+                                <div style={fs}><strong>SqFt:</strong> {txt('ocj', 'sq_footage', 'sqft', 60)}</div>
+                                <div style={fs}><strong># OCJs:</strong> {txt('ocj', 'num_ocjs', '#', 25)}</div>
+                                <div style={fs}><strong>R to Add:</strong> {txt('ocj', 'r_to_add', 'R', 40)}</div>
+                                <div style={fs}><strong>Ductwork:</strong> {yn('ocj', 'ductwork')} Cond: {sel('ocj', 'duct_condition', ['good', 'poor'])}</div>
+                                <div style={fs}><strong>Accessible:</strong> {yn('ocj', 'accessible')}</div>
+                                <div style={fs}><strong>Cut In:</strong> {yn('ocj', 'cut_in')}</div>
+                                <div style={fs}><strong>Floor Boards:</strong> {yn('ocj', 'floor_boards')}</div>
+                              </div>
+                            </div>
+                            <div style={hs}>KNEE WALLS</div>
+                            <div style={ss}>
+                              <div style={gs}>
+                                <div style={fs}><strong>Pre R-Value:</strong> {txt('knee_walls', 'pre_r_value', 'R', 40)}</div>
+                                <div style={fs}><strong>SqFt:</strong> {txt('knee_walls', 'sq_footage', 'sqft', 60)}</div>
+                                <div style={fs}><strong>Plumbing Wall:</strong> {yn('knee_walls', 'plumbing_wall')}</div>
+                                <div style={fs}><strong>R to Add:</strong> {txt('knee_walls', 'r_to_add', 'R', 40)}</div>
+                                <div style={fs}><strong>Dense Pack:</strong> {yn('knee_walls', 'dense_pack')}</div>
+                                <div style={fs}><strong>Rigid Foam:</strong> {yn('knee_walls', 'rigid_foam')}</div>
+                                <div style={fs}><strong>Fiberglass:</strong> {yn('knee_walls', 'fiberglass')}</div>
+                                <div style={fs}><strong>Wall Type:</strong> {sel('knee_walls', 'wall_type', ['Drywall', 'Plaster'])}</div>
+                              </div>
+                            </div>
+                            <div style={hs}>FOUNDATION</div>
                             <div style={ss}>
                               <div style={gs}>
                                 <div style={fs}><strong>Basement:</strong> {sel('foundation', 'basement_type', ['Finished', 'Unfinished w/framing', 'Unfinished', 'No basement/slab'])}</div>
+                                <div style={fs}><strong>Above Grade SqFt:</strong> {txt('foundation', 'above_grade_sqft', 'sqft', 60)}</div>
+                                <div style={fs}><strong>Below Grade SqFt:</strong> {txt('foundation', 'below_grade_sqft', 'sqft', 60)}</div>
                                 <div style={fs}><strong>Pre R-Value:</strong> {txt('foundation', 'pre_r_value', 'R', 40)}</div>
                                 <div style={fs}><strong>Insulation:</strong> {sel('foundation', 'insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
-                                <div style={fs}><strong>Band Joints:</strong> {yn('foundation', 'band_joints')}</div>
+                                <div style={fs}><strong>Band Joints:</strong> {yn('foundation', 'band_joints')} Lin Ft: {txt('foundation', 'linear_ft', 'ft', 40)}</div>
+                                <div style={fs}><strong>Band R-Value:</strong> {txt('foundation', 'band_pre_r_value', 'R', 40)} Insul: {sel('foundation', 'band_insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
+                                <div style={fs}><strong>Plaster/Lath:</strong> {yn('foundation', 'plaster_lath')}</div>
+                                <div style={fs}><strong>Balloon Const:</strong> {yn('foundation', 'balloon_const')}</div>
+                                <div style={fs}><strong>Asbestos Pipe:</strong> {yn('foundation', 'asbestos')}</div>
+                                <div style={fs}><strong>Ductwork:</strong> {yn('foundation', 'ductwork')} Cond: {sel('foundation', 'duct_condition', ['good', 'poor'])}</div>
                               </div>
+                              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('foundation', 'notes', 'Notes...', '100%')}</div>
                             </div>
-                            <div style={hs}>MECHANICAL</div>
+                            <div style={hs}>CRAWLSPACE</div>
                             <div style={ss}>
                               <div style={gs}>
-                                <div style={fs}><strong>Heat Type:</strong> {sel('mechanical', 'heating_type', ['Gas Furnace', 'Boiler', 'Electric', 'Heat Pump'])}</div>
+                                <div style={fs}><strong>Vented:</strong> {yn('crawlspace', 'vented')} # Vents: {txt('crawlspace', 'num_vents', '#', 25)}</div>
+                                <div style={fs}><strong>Floor:</strong> {sel('crawlspace', 'floor_type', ['Concrete', 'Dirt/Gravel'])}</div>
+                                <div style={fs}><strong>Vapor Barrier:</strong> {yn('crawlspace', 'vapor_barrier')} SqFt: {txt('crawlspace', 'vapor_sqft', 'sqft', 50)}</div>
+                                <div style={fs}><strong>Water Issues:</strong> {yn('crawlspace', 'water_issues')}</div>
+                                <div style={fs}><strong>Ductwork:</strong> {yn('crawlspace', 'ductwork')} Cond: {sel('crawlspace', 'duct_condition', ['good', 'poor'])}</div>
+                                <div style={fs}><strong>Above Grade SqFt:</strong> {txt('crawlspace', 'above_grade', 'sqft', 50)}</div>
+                                <div style={fs}><strong>Below Grade SqFt:</strong> {txt('crawlspace', 'below_grade', 'sqft', 50)}</div>
+                                <div style={fs}><strong>Pre R-Value:</strong> {txt('crawlspace', 'pre_r_value', 'R', 40)}</div>
+                                <div style={fs}><strong>Insulation:</strong> {sel('crawlspace', 'insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
+                                <div style={fs}><strong>Band Joints:</strong> {yn('crawlspace', 'band_joints')} Lin Ft: {txt('crawlspace', 'band_linear_ft', 'ft', 40)}</div>
+                                <div style={fs}><strong>Band R-Value:</strong> {txt('crawlspace', 'band_pre_r_value', 'R', 40)} Insul: {sel('crawlspace', 'band_insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
+                              </div>
+                              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('crawlspace', 'notes', 'Notes...', '100%')}</div>
+                            </div>
+                            <div style={hs}>EXTERIOR WALLS</div>
+                            <div style={ss}>
+                              {['1st Floor', '2nd Floor'].map(floor => (
+                                <div key={floor} style={{ marginBottom: 8 }}>
+                                  <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>{floor}</div>
+                                  <div style={gs}>
+                                    <div style={fs}><strong>Pre R:</strong> {txt('walls', `${floor}_r_value`, 'R', 35)}</div>
+                                    <div style={fs}><strong>Wall SqFt:</strong> {txt('walls', `${floor}_wall_sqft`, 'sqft', 50)}</div>
+                                    <div style={fs}><strong>R to Add:</strong> {txt('walls', `${floor}_r_add`, 'R', 35)}</div>
+                                    <div style={fs}><strong>Win/Door SqFt:</strong> {txt('walls', `${floor}_window_sqft`, 'sqft', 50)}</div>
+                                    <div style={fs}><strong>Cladding:</strong> {sel('walls', `${floor}_cladding`, ['Stucco', 'Wood Lap', 'Asbestos Shingle', 'Masonry', 'Aluminum', 'Vinyl', 'Other'])}</div>
+                                    <div style={fs}><strong>Wall Type:</strong> {sel('walls', `${floor}_wall_type`, ['Drywall', 'Plaster'])}</div>
+                                    <div style={fs}><strong>From:</strong> {sel('walls', `${floor}_insulate_from`, ['Interior', 'Exterior'])}</div>
+                                    <div style={fs}><strong>Phenolic Foam:</strong> {yn('walls', `${floor}_phenolic_foam`)}</div>
+                                    <div style={fs}><strong>Dense Pack:</strong> {yn('walls', `${floor}_dense_pack`)}</div>
+                                  </div>
+                                </div>
+                              ))}
+                              <div style={fs}><strong>Spoke to Owner re: Wall Prep:</strong> {yn('walls', 'spoke_owner')}</div>
+                              <div style={fs}><strong>Drill Location:</strong> {txt('walls', 'drill_location', 'Location', 160)}</div>
+                              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('walls', 'notes', 'Notes...', '100%')}</div>
+                            </div>
+                            <div style={hs}>MECHANICAL EQUIPMENT</div>
+                            <div style={ss}>
+                              <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>Furnace / Boiler</div>
+                              <div style={gs}>
+                                <div style={fs}><strong>Type:</strong> {sel('mechanical', 'heating_type', ['Gas Furnace', 'Boiler', 'Electric', 'Heat Pump', 'Other'])}</div>
                                 <div style={fs}><strong>Make:</strong> {txt('mechanical', 'heating_make', 'Make', 80)}</div>
+                                <div style={fs}><strong>Model:</strong> {txt('mechanical', 'heating_model', 'Model', 80)}</div>
                                 <div style={fs}><strong>Age:</strong> {txt('mechanical', 'heating_age', 'Year', 50)}</div>
                                 <div style={fs}><strong>Condition:</strong> {sel('mechanical', 'heating_condition', ['Good', 'Fair', 'Poor', 'Failed'])}</div>
+                                <div style={fs}><strong>Efficiency:</strong> {txt('mechanical', 'heating_efficiency', '%', 40)}</div>
+                                <div style={fs}><strong>Last Serviced:</strong> {txt('mechanical', 'heating_last_service', 'Year', 60)}</div>
                                 <div style={fs}><strong>Tune & Clean Rec:</strong> {yn('mechanical', 'tune_clean_recommended')}</div>
-                                <div style={fs}><strong>Thermostat:</strong> {sel('mechanical', 'thermostat_type', ['Manual', 'Programmable', 'Smart/Advanced'])}</div>
+                              </div>
+                              <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>Water Heater</div>
+                              <div style={gs}>
+                                <div style={fs}><strong>Type:</strong> {sel('mechanical', 'wh_type', ['Gas', 'Electric', 'Tankless', 'Heat Pump WH'])}</div>
+                                <div style={fs}><strong>Make:</strong> {txt('mechanical', 'wh_make', 'Make', 80)}</div>
+                                <div style={fs}><strong>Model:</strong> {txt('mechanical', 'wh_model', 'Model', 80)}</div>
+                                <div style={fs}><strong>Age:</strong> {txt('mechanical', 'wh_age', 'Year', 50)}</div>
+                                <div style={fs}><strong>Condition:</strong> {sel('mechanical', 'wh_condition', ['Good', 'Fair', 'Poor', 'Failed'])}</div>
+                              </div>
+                              <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>Central Air / Cooling</div>
+                              <div style={gs}>
+                                <div style={fs}><strong>Type:</strong> {sel('mechanical', 'cooling_type', ['Central AC', 'Room AC', 'Heat Pump', 'None'])}</div>
+                                <div style={fs}><strong>Make:</strong> {txt('mechanical', 'cooling_make', 'Make', 80)}</div>
+                                <div style={fs}><strong>SEER:</strong> {txt('mechanical', 'cooling_seer', 'SEER', 40)}</div>
+                                <div style={fs}><strong>Condition:</strong> {sel('mechanical', 'cooling_condition', ['Good', 'Fair', 'Poor', 'Failed'])}</div>
+                              </div>
+                              <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>Thermostat</div>
+                              <div style={gs}>
+                                <div style={fs}><strong>Type:</strong> {sel('mechanical', 'thermostat_type', ['Manual', 'Programmable', 'Smart/Advanced'])}</div>
+                                <div style={fs}><strong>Condition:</strong> {sel('mechanical', 'thermostat_condition', ['Good', 'Poor'])}</div>
                               </div>
                             </div>
-                            <div style={{ ...hs, background: '#4a6741' }}>RECOMMENDATIONS</div>
+                            <div style={hs}>DIAGNOSTIC TESTING</div>
+                            <div style={ss}>
+                              <div style={gs}>
+                                <div style={fs}><strong>Pre Blower Door (CFM50):</strong> {txt('diagnostics', 'pre_cfm50', 'CFM50', 60)}</div>
+                                <div style={fs}><strong>Post Blower Door (CFM50):</strong> {txt('diagnostics', 'post_cfm50', 'CFM50', 60)}</div>
+                                <div style={fs}><strong>% Reduction:</strong> {txt('diagnostics', 'cfm50_reduction', '%', 40)}</div>
+                                <div style={fs}><strong>Pre Duct Blaster (CFM25):</strong> {txt('diagnostics', 'pre_cfm25', 'CFM25', 60)}</div>
+                                <div style={fs}><strong>Post Duct Blaster (CFM25):</strong> {txt('diagnostics', 'post_cfm25', 'CFM25', 60)}</div>
+                                <div style={fs}><strong>Combustion Pre:</strong> {txt('diagnostics', 'combustion_pre', '%', 60)}</div>
+                                <div style={fs}><strong>Combustion Post:</strong> {txt('diagnostics', 'combustion_post', '%', 60)}</div>
+                                <div style={fs}><strong>CO Test:</strong> {txt('diagnostics', 'co_test', 'ppm', 50)}</div>
+                              </div>
+                            </div>
+                            <div style={{ ...hs, background: '#4a6741' }}>ASSESSOR RECOMMENDATIONS</div>
                             <div style={{ ...ss, borderBottom: 'none' }}>
                               <div style={gs}>
                                 {['attic_insulation', 'wall_insulation', 'basement_insulation', 'air_sealing', 'duct_sealing', 'rim_joist', 'hvac_tune_clean', 'thermostat', 'exhaust_fans', 'detectors', 'hs_repairs', 'deferral'].map(r => (
@@ -1465,6 +1700,12 @@ export default function ProgramDetail({ role, fixedProgramId }) {
                               <textarea style={{ width: '100%', fontSize: 11, padding: 4, minHeight: 60, marginTop: 8, border: '1px solid #ccc', borderRadius: 3 }}
                                 defaultValue={v('recommendations', 'details')} placeholder="Recommendation details, concerns, deferral reasons..."
                                 onBlur={e => set('recommendations', 'details', e.target.value)} />
+                              <div style={{ marginTop: 6 }}>
+                                <strong style={{ fontSize: 12 }}>Deferral Reason (if applicable):</strong>
+                                <textarea style={{ width: '100%', fontSize: 11, padding: 4, minHeight: 40, marginTop: 4, border: '1px solid #ccc', borderRadius: 3 }}
+                                  defaultValue={v('recommendations', 'deferral_reason')} placeholder="Cite specific deferral condition..."
+                                  onBlur={e => set('recommendations', 'deferral_reason', e.target.value)} />
+                              </div>
                             </div>
                           </div>
                         );
