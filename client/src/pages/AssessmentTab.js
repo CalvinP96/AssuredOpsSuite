@@ -27,7 +27,6 @@ const DEFAULTS = {
   health_safety: [],
   project_deferred: '',
   additional_notes: '',
-  projected_install_date: '',
 };
 
 const WX_OPTIONS = [
@@ -320,13 +319,6 @@ export default function AssessmentTab({ job, onSave }) {
         <Field label="Additional Notes">
           <textarea style={{ ...styles.input, height: 'auto', minHeight: 80, resize: 'vertical' }}
             value={form.additional_notes} onChange={e => set('additional_notes', e.target.value)} />
-        </Field>
-      </div>
-
-      <div style={{ marginBottom: 28 }}>
-        <Field label="Projected Install Date — only if scheduled">
-          <input style={{ ...styles.input, maxWidth: 280 }} type="date"
-            value={form.projected_install_date} onChange={e => set('projected_install_date', e.target.value)} />
         </Field>
       </div>
 
