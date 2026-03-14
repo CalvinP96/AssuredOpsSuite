@@ -9,6 +9,7 @@ import InspectionTab from './InspectionTab';
 import PhotosTab from './PhotosTab';
 import FormsDocsTab from './FormsDocsTab';
 import ExportTab from './ExportTab';
+import LogTab from './LogTab';
 
 const JOB_STATUSES = ['assessment_scheduled', 'assessment_complete', 'pre_approval', 'approved', 'install_scheduled', 'install_in_progress', 'inspection', 'submitted', 'invoiced', 'complete', 'deferred'];
 const UTILITIES = ['ComEd', 'Nicor Gas', 'Peoples Gas', 'North Shore Gas'];
@@ -50,7 +51,7 @@ const PHASE_COLORS = {
   deferred: { bg: '#fee2e2', text: '#991b1b' },
 };
 
-export default function JobDetail({ role }) {
+export default function JobDetail({ role, user }) {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
@@ -134,7 +135,7 @@ export default function JobDetail({ role }) {
   };
 
   const visibleTabs = getVisibleTabs();
-  const tabProps = { job, program, canEdit, onUpdate: updateField, role };
+  const tabProps = { job, program, canEdit, onUpdate: updateField, role, user };
 
   return (
     <div className="jd-page">
@@ -339,7 +340,7 @@ export default function JobDetail({ role }) {
       {tab === 'photos' && <PhotosTab {...tabProps} />}
       {tab === 'forms' && <FormsDocsTab {...tabProps} />}
       {tab === 'export' && <ExportTab {...tabProps} />}
-      {tab === 'log' && <div className="jd-card"><div className="jd-card-title">Activity Log</div><p className="empty-text">Activity log coming soon.</p></div>}
+      {tab === 'log' && <LogTab job={job} user={user} />}
     </div>
   );
 }
