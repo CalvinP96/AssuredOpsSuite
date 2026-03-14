@@ -16,16 +16,21 @@ import './App.css';
 const ROLES = ['Admin', 'HR', 'IT', 'Warehouse', 'Finance', 'Operations', 'Program Manager', 'Assessor', 'Scope Creator', 'Installer', 'HVAC'];
 
 function App() {
-  const [currentRole, setCurrentRole] = useState('Admin');
+  const [currentRoles, setCurrentRoles] = useState(['Admin']);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const hasRole = (...roles) => currentRoles.includes('Admin') || roles.some(r => currentRoles.includes(r));
+
+  // Backward-compatible single role for pages not yet updated to multi-role
+  const primaryRole = currentRoles.includes('Admin') ? 'Admin' : currentRoles[0];
 
   return (
     <Router>
       <div className="app">
         <Sidebar
-          currentRole={currentRole}
-          setCurrentRole={setCurrentRole}
-          roles={ROLES}
+          currentRoles={currentRoles}
+          setCurrentRoles={setCurrentRoles}
+          allRoles={ROLES}
           open={sidebarOpen}
           toggle={() => setSidebarOpen(!sidebarOpen)}
         />
@@ -35,32 +40,34 @@ function App() {
               ☰
             </button>
             <h1 className="page-title">AssuredOpsSuite</h1>
-            <div className="role-badge">{currentRole}</div>
+            <div className="role-badge">
+              {currentRoles.length <= 2 ? currentRoles.join(' · ') : `${currentRoles.length} Roles`}
+            </div>
           </header>
           <div className="page-container">
             <Routes>
-              <Route path="/" element={<Dashboard role={currentRole} />} />
-              {(currentRole === 'Admin' || currentRole === 'HR') && (
-                <Route path="/hr" element={<HRPage role={currentRole} />} />
+              <Route path="/" element={<Dashboard roles={currentRoles} />} />
+              {hasRole('HR') && (
+                <Route path="/hr" element={<HRPage role={primaryRole} />} />
               )}
-              {(currentRole === 'Admin' || currentRole === 'IT') && (
-                <Route path="/it" element={<ITPage role={currentRole} />} />
+              {hasRole('IT') && (
+                <Route path="/it" element={<ITPage role={primaryRole} />} />
               )}
-              {(currentRole === 'Admin' || currentRole === 'Warehouse') && (
-                <Route path="/warehouse" element={<WarehousePage role={currentRole} />} />
+              {hasRole('Warehouse') && (
+                <Route path="/warehouse" element={<WarehousePage role={primaryRole} />} />
               )}
-              <Route path="/kpi" element={<KPIPage role={currentRole} />} />
-              {(currentRole === 'Admin' || currentRole === 'Finance') && (
-                <Route path="/finance" element={<FinancePage role={currentRole} />} />
+              <Route path="/kpi" element={<KPIPage role={primaryRole} />} />
+              {hasRole('Finance') && (
+                <Route path="/finance" element={<FinancePage role={primaryRole} />} />
               )}
-              {(currentRole === 'Admin' || currentRole === 'Finance' || currentRole === 'HR') && (
-                <Route path="/billing" element={<BillingPage role={currentRole} />} />
+              {hasRole('Finance', 'HR') && (
+                <Route path="/billing" element={<BillingPage role={primaryRole} />} />
               )}
-              <Route path="/hes-ie" element={<HESIEPage role={currentRole} />} />
-              <Route path="/job/:jobId" element={<JobDetail role={currentRole} />} />
+              <Route path="/hes-ie" element={<HESIEPage role={primaryRole} />} />
+              <Route path="/job/:jobId" element={<JobDetail role={primaryRole} />} />
               <Route path="/programs" element={<Navigate to="/hes-ie" />} />
               <Route path="/program/:id" element={<Navigate to="/hes-ie" />} />
-              <Route path="/employee/:id" element={<EmployeeDetail role={currentRole} />} />
+              <Route path="/employee/:id" element={<EmployeeDetail role={primaryRole} />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>

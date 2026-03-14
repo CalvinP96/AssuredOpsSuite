@@ -798,6 +798,34 @@ export async function updateChangeOrder(coId, data) {
   if (error) throw error;
 }
 
+// ========== DASHBOARD SUMMARIES ==========
+
+export async function getProgramsSummary() {
+  const { data: programs, error } = await supabase.from('programs').select('id, name, code, status').order('name');
+  if (error) throw error;
+  const result = [];
+  for (const p of (programs || [])) {
+    const { data: jobs } = await supabase.from('program_jobs').select('status').eq('program_id', p.id);
+    const pipeline = {};
+    (jobs || []).forEach(j => { pipeline[j.status] = (pipeline[j.status] || 0) + 1; });
+    result.push({ ...p, job_count: (jobs || []).length, pipeline });
+  }
+  return result;
+}
+
+export async function getITSummary() {
+  const { data, error } = await supabase
+    .from('equipment_assignments')
+    .select('*, equipment_catalog(unit_cost)')
+    .is('returned_date', null);
+  if (error) throw error;
+  const assignments = data || [];
+  return {
+    total_assigned: assignments.length,
+    total_cost: assignments.reduce((sum, a) => sum + (a.equipment_catalog?.unit_cost || 0), 0)
+  };
+}
+
 // --- HES-IE ---
 export async function getHesIeProgram() {
   const { data, error } = await supabase.from('programs').select('*').eq('code', 'HES-IE').single();

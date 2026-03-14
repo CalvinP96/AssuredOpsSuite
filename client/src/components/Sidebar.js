@@ -1,69 +1,60 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 
-const NAV_ITEMS = {
-  Admin: [
-    { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
-    { path: '/hr', icon: '👥', label: 'HR - Employees' },
-    { path: '/it', icon: '💻', label: 'IT - Equipment' },
-    { path: '/warehouse', icon: '📦', label: 'Warehouse' },
-    { path: '/kpi', icon: '🎯', label: 'KPI Management' },
-    { path: '/finance', icon: '💰', label: 'Finance' },
-    { path: '/billing', icon: '🧾', label: 'Termination Billing' },
-  ],
-  HR: [
-    { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
-    { path: '/hr', icon: '👥', label: 'HR - Employees' },
-    { path: '/billing', icon: '🧾', label: 'Termination Billing' },
-    { path: '/kpi', icon: '🎯', label: 'KPI Tracking' },
-  ],
-  IT: [
-    { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
-    { path: '/it', icon: '💻', label: 'IT - Equipment' },
-    { path: '/kpi', icon: '🎯', label: 'KPI Tracking' },
-  ],
-  Warehouse: [
-    { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
-    { path: '/warehouse', icon: '📦', label: 'Warehouse' },
-    { path: '/kpi', icon: '🎯', label: 'KPI Tracking' },
-  ],
-  Finance: [
-    { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
-    { path: '/finance', icon: '💰', label: 'Finance' },
-    { path: '/billing', icon: '🧾', label: 'Termination Billing' },
-    { path: '/kpi', icon: '🎯', label: 'KPI Tracking' },
-  ],
-  Operations: [
-    { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
-    { path: '/kpi', icon: '🎯', label: 'KPI Management' },
-  ],
-  'Program Manager': [
-    { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/hes-ie', icon: '📋', label: 'HES IE Program' },
-    { path: '/kpi', icon: '🎯', label: 'KPI Tracking' },
-  ],
-  Assessor: [
-    { path: '/hes-ie', icon: '📋', label: 'My Assessments' },
-  ],
-  'Scope Creator': [
-    { path: '/hes-ie', icon: '📋', label: 'Scope Builder' },
-  ],
-  Installer: [
-    { path: '/hes-ie', icon: '📋', label: 'My Jobs' },
-  ],
-  HVAC: [
-    { path: '/hes-ie', icon: '📋', label: 'HVAC Jobs' },
-  ],
-};
+const ALL_NAV_ITEMS = [
+  { path: '/', icon: '📊', label: 'Dashboard', category: 'Overview', roles: null },
+  { path: '/hes-ie', icon: '📋', label: 'HES IE Program', category: 'Programs', roles: null },
+  { path: '/hr', icon: '👥', label: 'HR - Employees', category: 'Management', roles: ['Admin', 'HR'] },
+  { path: '/it', icon: '💻', label: 'IT - Equipment', category: 'Management', roles: ['Admin', 'IT'] },
+  { path: '/warehouse', icon: '📦', label: 'Warehouse', category: 'Operations', roles: ['Admin', 'Warehouse'] },
+  { path: '/kpi', icon: '🎯', label: 'KPI Management', category: 'Operations', roles: ['Admin', 'HR', 'IT', 'Warehouse', 'Finance', 'Operations', 'Program Manager'] },
+  { path: '/finance', icon: '💰', label: 'Finance', category: 'Management', roles: ['Admin', 'Finance'] },
+  { path: '/billing', icon: '🧾', label: 'Termination Billing', category: 'Management', roles: ['Admin', 'Finance', 'HR'] },
+];
 
-export default function Sidebar({ currentRole, setCurrentRole, roles, open, toggle }) {
-  const items = NAV_ITEMS[currentRole] || NAV_ITEMS.Admin;
+const CATEGORY_ORDER = ['Overview', 'Programs', 'Operations', 'Management'];
+
+export default function Sidebar({ currentRoles, setCurrentRoles, allRoles, open, toggle }) {
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClick(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setRoleDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  // Filter nav items based on selected roles
+  const visibleItems = ALL_NAV_ITEMS.filter(item => {
+    if (!item.roles) return true;
+    return currentRoles.includes('Admin') || item.roles.some(r => currentRoles.includes(r));
+  });
+
+  // Group by category
+  const grouped = {};
+  visibleItems.forEach(item => {
+    if (!grouped[item.category]) grouped[item.category] = [];
+    grouped[item.category].push(item);
+  });
+
+  const toggleRole = (role) => {
+    setCurrentRoles(prev => {
+      if (prev.includes(role)) {
+        if (prev.length === 1) return prev;
+        return prev.filter(r => r !== role);
+      }
+      return [...prev, role];
+    });
+  };
+
+  const roleDisplayText = currentRoles.length <= 2
+    ? currentRoles.join(', ')
+    : `${currentRoles.length} roles selected`;
 
   return (
     <>
@@ -74,26 +65,49 @@ export default function Sidebar({ currentRole, setCurrentRole, roles, open, togg
           <p>Company Operations Portal</p>
         </div>
 
-        <div className="role-selector">
-          <label>Current Role View</label>
-          <select value={currentRole} onChange={e => setCurrentRole(e.target.value)}>
-            {roles.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
+        <div className="role-selector" ref={dropdownRef}>
+          <label>Active Roles</label>
+          <button
+            type="button"
+            className="role-dropdown-toggle"
+            onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
+          >
+            <span className="role-dropdown-text">{roleDisplayText}</span>
+            <span className="role-dropdown-arrow">{roleDropdownOpen ? '\u25B2' : '\u25BC'}</span>
+          </button>
+          {roleDropdownOpen && (
+            <div className="role-dropdown-menu">
+              {allRoles.map(r => (
+                <label key={r} className={`role-checkbox-label ${currentRoles.includes(r) ? 'checked' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={currentRoles.includes(r)}
+                    onChange={() => toggleRole(r)}
+                  />
+                  <span>{r}</span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="nav-section">
-          <div className="nav-section-title">Navigation</div>
-          {items.map(item => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === '/'}
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-              onClick={() => { if (window.innerWidth <= 768) toggle(); }}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              {item.label}
-            </NavLink>
+        <div className="sidebar-nav">
+          {CATEGORY_ORDER.filter(cat => grouped[cat]).map(cat => (
+            <div className="nav-section" key={cat}>
+              <div className="nav-section-title">{cat}</div>
+              {grouped[cat].map(item => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  end={item.path === '/'}
+                  className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                  onClick={() => { if (window.innerWidth <= 768) toggle(); }}
+                >
+                  <span className="nav-icon">{item.icon}</span>
+                  <span className="nav-label">{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
           ))}
         </div>
       </nav>
