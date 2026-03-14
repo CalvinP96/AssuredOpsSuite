@@ -385,9 +385,35 @@ export async function updateProgram(id, data) {
 }
 
 export async function deleteProgram(id) {
+  // Delete job children first
+  const { data: jobs } = await supabase.from('program_jobs').select('id').eq('program_id', id);
+  const jobIds = (jobs || []).map(j => j.id);
+  for (const jid of jobIds) {
+    await supabase.from('job_photos').delete().eq('job_id', jid);
+    await supabase.from('job_checklist_items').delete().eq('job_id', jid);
+    await supabase.from('change_orders').delete().eq('job_id', jid);
+    await supabase.from('hvac_replacements').delete().eq('job_id', jid);
+    await supabase.from('job_measures').delete().eq('job_id', jid);
+  }
+  await supabase.from('program_jobs').delete().eq('program_id', id);
+
+  // Delete measure children then measures
+  const { data: measures } = await supabase.from('program_measures').select('id').eq('program_id', id);
+  const measureIds = (measures || []).map(m => m.id);
+  for (const mid of measureIds) {
+    await supabase.from('measure_photo_requirements').delete().eq('measure_id', mid);
+    await supabase.from('measure_paperwork_requirements').delete().eq('measure_id', mid);
+  }
+  await supabase.from('program_measures').delete().eq('program_id', id);
+
+  // Delete other program children
+  await supabase.from('program_process_steps').delete().eq('program_id', id);
+  await supabase.from('program_eligibility_rules').delete().eq('program_id', id);
+  await supabase.from('program_deferral_rules').delete().eq('program_id', id);
   await supabase.from('program_milestones').delete().eq('program_id', id);
   await supabase.from('program_tasks').delete().eq('program_id', id);
   await supabase.from('program_documents').delete().eq('program_id', id);
+
   const { error } = await supabase.from('programs').delete().eq('id', id);
   if (error) throw error;
 }

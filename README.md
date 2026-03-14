@@ -12,6 +12,7 @@ Company Operations Portal with role-based access, KPI management, HR tracking, e
 - **Finance** — Equipment cost reports, termination billing, financial overview
 - **Operations** — KPI dashboards, department summaries
 - **Program Manager** — Program-specific workflows, docs, and tasks
+- **Assessor / Scope Creator / Installer / HVAC** — Field role views for HES IE jobs
 
 ### Core Modules
 - **HR Management** — Hire and terminate employees, track status and department
@@ -20,41 +21,45 @@ Company Operations Portal with role-based access, KPI management, HR tracking, e
 - **KPI Tracking** — Create and monitor KPIs by department with progress bars and history
 - **Termination Billing** — Auto-generates bills for unreturned equipment when employees are terminated
 - **Finance Dashboard** — Equipment cost summaries, deployed value, billing overview
-- **Program Management** — Manage programs (HES IE, WHE SF, WHE MF, CEDA, Elevate MF, IESP, etc.) with documents, tasks (Kanban board), and milestones
-- **HES IE Portal** — Embed and connect to your HES IE site directly
+- **HES IE Program** — Full Home Energy Savings - Income Eligible program management with measures, process steps, eligibility/deferral rules, job tracking, photo management, HVAC replacements, change orders, and pipeline forecasting
 
 ## Tech Stack
-- **Backend:** Node.js, Express, SQLite (better-sqlite3)
 - **Frontend:** React 18, React Router 6
-- **Database:** SQLite with WAL mode
+- **Backend:** Supabase (PostgreSQL + Row Level Security)
+- **Deployment:** Netlify (static SPA)
 
 ## Setup
 
+### 1. Supabase
+
+Create a Supabase project and run the migration and seed SQL:
+
 ```bash
-# Install server dependencies
-npm install
-
-# Install client dependencies
-cd client && npm install && cd ..
-
-# Start the server (port 4000)
-npm start
-
-# Start the React dev server (port 3000, proxies to 4000)
-npm run client
+# In Supabase SQL Editor, run in order:
+supabase/migration.sql    # Creates all tables + RLS policies
+supabase/seed-hes-ie.sql  # Seeds the HES IE program data
 ```
 
-## API Endpoints
+### 2. Environment Variables
 
-- `GET/POST /api/employees` — Employee CRUD
-- `POST /api/employees/:id/terminate` — Terminate employee and generate bill
-- `GET/POST /api/equipment/catalog` — Equipment catalog
-- `GET/POST /api/equipment/assignments` — Equipment assignments
-- `PUT /api/equipment/assignments/:id/return` — Return equipment
-- `GET /api/equipment/cost-summary/:employeeId` — Cost summary per employee
-- `GET/POST/PUT/DELETE /api/kpis` — KPI management
-- `GET/PUT /api/billing` — Termination bills
-- `GET/POST/PUT/DELETE /api/programs` — Program management
-- `POST /api/programs/:id/documents` — Program documents
-- `POST /api/programs/:id/tasks` — Program tasks
-- `POST /api/programs/:id/milestones` — Program milestones
+Set these in Netlify (Site Settings > Environment Variables) and locally in `client/.env`:
+
+```
+REACT_APP_SUPABASE_URL=https://your-project.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### 3. Local Development
+
+```bash
+cd client
+npm install
+npm start
+```
+
+### 4. Deploy to Netlify
+
+Connect your GitHub repo. Netlify will auto-detect settings from `netlify.toml`:
+- Build base: `client`
+- Build command: `npm install && npm run build`
+- Publish: `build`

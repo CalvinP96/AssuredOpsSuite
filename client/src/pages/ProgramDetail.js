@@ -51,24 +51,26 @@ export default function ProgramDetail({ role, fixedProgramId }) {
   // Document handlers
   const submitDoc = async (e) => {
     e.preventDefault();
-    if (editDoc) {
-      await api.updateDocument(editDoc.id, { ...editDoc, ...docForm });
-    } else {
-      await api.createDocument(id, docForm);
-    }
-    closeDocModal();
-    load();
+    try {
+      if (editDoc) {
+        await api.updateDocument(editDoc.id, { ...editDoc, ...docForm });
+      } else {
+        await api.createDocument(id, docForm);
+      }
+      closeDocModal();
+      load();
+    } catch (err) { alert('Failed to save document: ' + err.message); }
   };
 
   const updateDocStatus = async (doc, status) => {
-    await api.updateDocument(doc.id, { ...doc, status });
-    load();
+    try { await api.updateDocument(doc.id, { ...doc, status }); load(); }
+    catch (err) { alert('Failed to update document: ' + err.message); }
   };
 
   const deleteDoc = async (docId) => {
     if (!window.confirm('Delete this document?')) return;
-    await api.deleteDocument(docId);
-    load();
+    try { await api.deleteDocument(docId); load(); }
+    catch (err) { alert('Failed to delete document: ' + err.message); }
   };
 
   const openEditDoc = (doc) => {
@@ -82,18 +84,20 @@ export default function ProgramDetail({ role, fixedProgramId }) {
   // Task handlers
   const submitTask = async (e) => {
     e.preventDefault();
-    if (editTask) {
-      await api.updateTask(editTask.id, { ...editTask, ...taskForm });
-    } else {
-      await api.createTask(id, taskForm);
-    }
-    closeTaskModal();
-    load();
+    try {
+      if (editTask) {
+        await api.updateTask(editTask.id, { ...editTask, ...taskForm });
+      } else {
+        await api.createTask(id, taskForm);
+      }
+      closeTaskModal();
+      load();
+    } catch (err) { alert('Failed to save task: ' + err.message); }
   };
 
   const updateTaskStatus = async (task, status) => {
-    await api.updateTask(task.id, { ...task, status });
-    load();
+    try { await api.updateTask(task.id, { ...task, status }); load(); }
+    catch (err) { alert('Failed to update task: ' + err.message); }
   };
 
   const openEditTask = (task) => {
@@ -107,53 +111,59 @@ export default function ProgramDetail({ role, fixedProgramId }) {
   // Milestone handlers
   const submitMs = async (e) => {
     e.preventDefault();
-    await api.createMilestone(id, msForm);
-    setShowMsModal(false);
-    setMsForm({ title: '', target_date: '', notes: '' });
-    load();
+    try {
+      await api.createMilestone(id, msForm);
+      setShowMsModal(false);
+      setMsForm({ title: '', target_date: '', notes: '' });
+      load();
+    } catch (err) { alert('Failed to create milestone: ' + err.message); }
   };
 
   const completeMilestone = async (ms) => {
-    await api.updateMilestone(ms.id, { ...ms, status: 'completed', completed_date: new Date().toISOString().split('T')[0] });
-    load();
+    try { await api.updateMilestone(ms.id, { ...ms, status: 'completed', completed_date: new Date().toISOString().split('T')[0] }); load(); }
+    catch (err) { alert('Failed to update milestone: ' + err.message); }
   };
 
   // Job handlers
   const submitJob = async (e) => {
     e.preventDefault();
-    await api.createJob(id, jobForm);
-    setShowJobModal(false);
-    setJobForm({ job_number: '', customer_name: '', phone: '', email: '', address: '', city: '', zip: '', utility: 'ComEd', notes: '' });
-    loadJobs();
+    try {
+      await api.createJob(id, jobForm);
+      setShowJobModal(false);
+      setJobForm({ job_number: '', customer_name: '', phone: '', email: '', address: '', city: '', zip: '', utility: 'ComEd', notes: '' });
+      loadJobs();
+    } catch (err) { alert('Failed to create job: ' + err.message); }
   };
 
   const updateJobStatus = async (job, status) => {
-    await api.updateJob(job.id, { ...job, status });
-    loadJobs();
+    try { await api.updateJob(job.id, { ...job, status }); loadJobs(); }
+    catch (err) { alert('Failed to update job status: ' + err.message); }
   };
 
   const toggleChecklist = async (item) => {
-    await api.updateChecklist(item.id, { completed: !item.completed, completed_by: role });
-    loadJobs();
+    try { await api.updateChecklist(item.id, { completed: !item.completed, completed_by: role }); loadJobs(); }
+    catch (err) { alert('Failed to update checklist: ' + err.message); }
   };
 
   // HVAC Replacement handlers
   const submitHvac = async (e) => {
     e.preventDefault();
-    await api.createHvac(showHvacModal, hvacForm);
-    setShowHvacModal(null);
-    setHvacForm({ equipment_type: 'Gas Furnace', existing_make: '', existing_model: '', existing_condition: '', existing_efficiency: '', existing_age: '', decision_tree_result: '', notes: '' });
-    loadJobs();
+    try {
+      await api.createHvac(showHvacModal, hvacForm);
+      setShowHvacModal(null);
+      setHvacForm({ equipment_type: 'Gas Furnace', existing_make: '', existing_model: '', existing_condition: '', existing_efficiency: '', existing_age: '', decision_tree_result: '', notes: '' });
+      loadJobs();
+    } catch (err) { alert('Failed to create HVAC replacement: ' + err.message); }
   };
 
   const updateHvac = async (hvacId, updates) => {
-    await api.updateHvac(hvacId, updates);
-    loadJobs();
+    try { await api.updateHvac(hvacId, updates); loadJobs(); }
+    catch (err) { alert('Failed to update HVAC: ' + err.message); }
   };
 
   const updateJobField = async (job, field, value) => {
-    await api.updateJob(job.id, { ...job, [field]: value });
-    loadJobs();
+    try { await api.updateJob(job.id, { ...job, [field]: value }); loadJobs(); }
+    catch (err) { alert('Failed to update job: ' + err.message); }
   };
 
   // Forecast state
@@ -169,13 +179,13 @@ export default function ProgramDetail({ role, fixedProgramId }) {
   useEffect(() => { if (tab === 'pipeline') loadForecast(forecastFrom, forecastTo); }, [tab]); // eslint-disable-line
 
   const saveAssessment = async (jobId, data) => {
-    await api.saveAssessmentData(jobId, data);
-    loadJobs();
+    try { await api.saveAssessmentData(jobId, data); loadJobs(); }
+    catch (err) { alert('Failed to save assessment: ' + err.message); }
   };
 
   const saveScope = async (jobId, data) => {
-    await api.saveScopeData(jobId, data);
-    loadJobs();
+    try { await api.saveScopeData(jobId, data); loadJobs(); }
+    catch (err) { alert('Failed to save scope: ' + err.message); }
   };
 
   const getAssessment = (job) => {

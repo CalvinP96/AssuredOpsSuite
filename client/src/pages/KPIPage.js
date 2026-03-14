@@ -22,25 +22,29 @@ export default function KPIPage({ role }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = {
-      ...form,
-      target_value: parseFloat(form.target_value) || 0,
-      current_value: parseFloat(form.current_value) || 0
-    };
+    try {
+      const payload = {
+        ...form,
+        target_value: parseFloat(form.target_value) || 0,
+        current_value: parseFloat(form.current_value) || 0
+      };
 
-    if (editKpi) {
-      await api.updateKpi(editKpi.id, payload);
-    } else {
-      await api.createKpi(payload);
-    }
-    closeModal();
-    load();
+      if (editKpi) {
+        await api.updateKpi(editKpi.id, payload);
+      } else {
+        await api.createKpi(payload);
+      }
+      closeModal();
+      load();
+    } catch (err) { alert('Failed to save KPI: ' + err.message); }
   };
 
   const handleDeleteKpi = async (id) => {
     if (!window.confirm('Delete this KPI?')) return;
-    await api.deleteKpi(id);
-    load();
+    try {
+      await api.deleteKpi(id);
+      load();
+    } catch (err) { alert('Failed to delete KPI: ' + err.message); }
   };
 
   const openEdit = (kpi) => {

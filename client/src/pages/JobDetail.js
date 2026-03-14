@@ -38,18 +38,20 @@ export default function JobDetail({ role }) {
   useEffect(() => { load(); loadProgram(); }, [load, loadProgram]);
 
   const updateField = async (field, value) => {
-    const updated = { ...job, [field]: value };
-    setJob(updated);
-    await api.updateJob(jobId, updated);
-    load();
+    try {
+      const updated = { ...job, [field]: value };
+      setJob(updated);
+      await api.updateJob(jobId, updated);
+      load();
+    } catch (err) { alert('Failed to update: ' + err.message); }
   };
 
   const saveAssessment = async (data) => {
-    await api.saveAssessmentData(jobId, data);
+    try { await api.saveAssessmentData(jobId, data); } catch (err) { alert('Failed to save assessment: ' + err.message); }
   };
 
   const saveScope = async (data) => {
-    await api.saveScopeData(jobId, data);
+    try { await api.saveScopeData(jobId, data); } catch (err) { alert('Failed to save scope: ' + err.message); }
   };
 
   const getAssessment = () => {
@@ -104,25 +106,29 @@ export default function JobDetail({ role }) {
 
   const submitPhoto = async (phase, description, houseSide, measureName) => {
     if (!capturedPhoto && !photoModal?.ref) return;
-    await api.uploadPhoto(jobId, {
-      uploaded_by: role,
-      role: role,
-      phase: phase,
-      measure_name: measureName || null,
-      house_side: houseSide || null,
-      description: description,
-      photo_data: capturedPhoto || null,
-      photo_ref: photoModal?.ref || null,
-      file_name: `${phase}_${houseSide || 'general'}_${Date.now()}.jpg`
-    });
-    setCapturedPhoto(null);
-    setPhotoModal(null);
-    load();
+    try {
+      await api.uploadPhoto(jobId, {
+        uploaded_by: role,
+        role: role,
+        phase: phase,
+        measure_name: measureName || null,
+        house_side: houseSide || null,
+        description: description,
+        photo_data: capturedPhoto || null,
+        photo_ref: photoModal?.ref || null,
+        file_name: `${phase}_${houseSide || 'general'}_${Date.now()}.jpg`
+      });
+      setCapturedPhoto(null);
+      setPhotoModal(null);
+      load();
+    } catch (err) { alert('Failed to upload photo: ' + err.message); }
   };
 
   const loadExport = async () => {
-    const data = await api.getJobExport(jobId);
-    setExportData(data);
+    try {
+      const data = await api.getJobExport(jobId);
+      setExportData(data);
+    } catch (err) { alert('Failed to load export: ' + err.message); }
   };
 
   if (!job) return <div className="card" style={{ padding: 30 }}>Loading project...</div>;

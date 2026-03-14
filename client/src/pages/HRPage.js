@@ -23,21 +23,25 @@ export default function HRPage({ role }) {
 
   const handleHire = async (e) => {
     e.preventDefault();
-    await api.createEmployee(form);
-    setShowModal(false);
-    setForm({ first_name: '', last_name: '', email: '', phone: '', department: 'IT', position: '', hire_date: '', notes: '' });
-    load();
+    try {
+      await api.createEmployee(form);
+      setShowModal(false);
+      setForm({ first_name: '', last_name: '', email: '', phone: '', department: 'IT', position: '', hire_date: '', notes: '' });
+      load();
+    } catch (err) { alert('Failed to hire employee: ' + err.message); }
   };
 
   const handleTerminate = async (e) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
-    await api.terminateEmployee(showTerminate.id, {
-      termination_date: formData.get('termination_date'),
-      notes: formData.get('notes')
-    });
-    setShowTerminate(null);
-    load();
+    try {
+      const formData = new FormData(e.target);
+      await api.terminateEmployee(showTerminate.id, {
+        termination_date: formData.get('termination_date'),
+        notes: formData.get('notes')
+      });
+      setShowTerminate(null);
+      load();
+    } catch (err) { alert('Failed to terminate employee: ' + err.message); }
   };
 
   return (
