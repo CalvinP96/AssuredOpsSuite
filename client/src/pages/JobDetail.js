@@ -8,14 +8,22 @@ const UTILITIES = ['ComEd', 'Nicor Gas', 'Peoples Gas', 'North Shore Gas'];
 const HOUSE_SIDES = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Interior', 'Other'];
 const PHOTO_PHASES = ['assessment', 'pre_install', 'post_install', 'hvac', 'inspection'];
 
+const PHASE_STEPS = [
+  { key: 'inquiry', label: 'Inquiry', statuses: [] },
+  { key: 'assessment', label: 'Assessment', statuses: ['assessment_scheduled'] },
+  { key: 'scope', label: 'Scope', statuses: ['assessment_complete', 'pre_approval'] },
+  { key: 'install', label: 'Install', statuses: ['approved', 'install_scheduled', 'install_in_progress'] },
+  { key: 'inspection', label: 'Inspection', statuses: ['inspection'] },
+  { key: 'billing', label: 'Billing', statuses: ['submitted', 'invoiced'] },
+  { key: 'complete', label: 'Complete', statuses: ['complete'] },
+];
+
 export default function JobDetail({ role }) {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
   const [program, setProgram] = useState(null);
   const [tab, setTab] = useState('overview');
-  const [assessmentOpen, setAssessmentOpen] = useState(false);
-  const [scopeOpen, setScopeOpen] = useState(false);
   const [exportData, setExportData] = useState(null);
   const [photoModal, setPhotoModal] = useState(null);
   const cameraRef = useRef(null);
@@ -98,9 +106,7 @@ export default function JobDetail({ role }) {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setCapturedPhoto(ev.target.result);
-    };
+    reader.onload = (ev) => { setCapturedPhoto(ev.target.result); };
     reader.readAsDataURL(file);
   };
 
@@ -108,13 +114,9 @@ export default function JobDetail({ role }) {
     if (!capturedPhoto && !photoModal?.ref) return;
     try {
       await api.uploadPhoto(jobId, {
-        uploaded_by: role,
-        role: role,
-        phase: phase,
-        measure_name: measureName || null,
-        house_side: houseSide || null,
-        description: description,
-        photo_data: capturedPhoto || null,
+        uploaded_by: role, role: role, phase: phase,
+        measure_name: measureName || null, house_side: houseSide || null,
+        description: description, photo_data: capturedPhoto || null,
         photo_ref: photoModal?.ref || null,
         file_name: `${phase}_${houseSide || 'general'}_${Date.now()}.jpg`
       });
@@ -125,10 +127,7 @@ export default function JobDetail({ role }) {
   };
 
   const loadExport = async () => {
-    try {
-      const data = await api.getJobExport(jobId);
-      setExportData(data);
-    } catch (err) { alert('Failed to load export: ' + err.message); }
+    try { const data = await api.getJobExport(jobId); setExportData(data); } catch (err) { alert('Failed to load export: ' + err.message); }
   };
 
   if (!job) return <div className="card" style={{ padding: 30 }}>Loading project...</div>;
@@ -167,12 +166,61 @@ export default function JobDetail({ role }) {
   const gs = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '6px 16px', fontSize: 12 };
   const fs = { display: 'flex', alignItems: 'center', gap: 4, padding: '3px 0' };
 
+  // Determine current phase from status
+  const currentPhaseIdx = PHASE_STEPS.findIndex(p => p.statuses.includes(job.status));
+  const isDone = job.status === 'complete';
+  const isDeferred = job.status === 'deferred';
+
+  // Tab config by role
+  const getVisibleTabs = () => {
+    if (role === 'Assessor') return [
+      { key: 'overview', label: 'Overview' },
+      { key: 'assessment', label: 'MS Forms Survey' },
+      { key: 'photos', label: 'Photos' },
+    ];
+    if (role === 'Scope Creator') return [
+      { key: 'overview', label: 'Overview' },
+      { key: 'assessment', label: 'Assessor Data' },
+      { key: 'scope', label: 'Scope of Work' },
+      { key: 'photos', label: 'Photos' },
+      { key: 'scheduling', label: 'Scheduling' },
+    ];
+    if (role === 'Installer') return [
+      { key: 'overview', label: 'Overview' },
+      { key: 'scope', label: 'Scope of Work' },
+      { key: 'install', label: 'Installation' },
+      { key: 'photos', label: 'Photos' },
+      { key: 'checklist', label: 'Checklist' },
+      { key: 'change_orders', label: 'Change Orders' },
+    ];
+    if (role === 'HVAC') return [
+      { key: 'overview', label: 'Overview' },
+      { key: 'hvac', label: 'HVAC' },
+      { key: 'photos', label: 'Photos' },
+    ];
+    // Admin, Operations, Program Manager, etc.
+    return [
+      { key: 'overview', label: 'Overview' },
+      { key: 'assessment', label: 'Assessment' },
+      { key: 'scope', label: 'Scope of Work' },
+      { key: 'install', label: 'Installation' },
+      { key: 'hvac', label: 'HVAC' },
+      { key: 'inspection', label: 'Inspection' },
+      { key: 'photos', label: 'Photos' },
+      { key: 'forms', label: 'Forms & Docs' },
+      { key: 'export', label: 'Export' },
+    ];
+  };
+
+  const visibleTabs = getVisibleTabs();
+
   const tabStyle = (t) => ({
-    padding: '8px 16px', cursor: 'pointer', fontWeight: tab === t ? 700 : 400,
+    padding: '10px 18px', cursor: 'pointer', fontWeight: tab === t ? 700 : 400,
     borderBottom: tab === t ? '3px solid #1a73e8' : '3px solid transparent',
     color: tab === t ? '#1a73e8' : '#666', fontSize: 13, background: 'none', border: 'none',
     borderBottomWidth: 3, borderBottomStyle: 'solid', borderBottomColor: tab === t ? '#1a73e8' : 'transparent'
   });
+
 
   // Photo capture modal component
   const PhotoCaptureModal = () => {
@@ -189,31 +237,21 @@ export default function JobDetail({ role }) {
             <h3 style={{ margin: 0, fontSize: 16 }}>Capture Photo</h3>
             <button onClick={() => { stopCamera(); setCapturedPhoto(null); setPhotoModal(null); }} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}>X</button>
           </div>
-
-          {/* Camera / Preview Area */}
           <div style={{ background: '#000', borderRadius: 8, overflow: 'hidden', marginBottom: 12, position: 'relative', minHeight: 200 }}>
             {cameraStream && !capturedPhoto && (
               <video ref={cameraRef} autoPlay playsInline style={{ width: '100%', display: 'block' }}
                 onLoadedMetadata={() => { if (cameraRef.current) cameraRef.current.play(); }} />
             )}
-            {capturedPhoto && (
-              <img src={capturedPhoto} alt="Captured" style={{ width: '100%', display: 'block' }} />
-            )}
+            {capturedPhoto && <img src={capturedPhoto} alt="Captured" style={{ width: '100%', display: 'block' }} />}
             {!cameraStream && !capturedPhoto && (
-              <div style={{ color: '#aaa', textAlign: 'center', padding: 40, fontSize: 14 }}>
-                Use camera or upload a photo
-              </div>
+              <div style={{ color: '#aaa', textAlign: 'center', padding: 40, fontSize: 14 }}>Use camera or upload a photo</div>
             )}
           </div>
           <canvas ref={canvasRef} style={{ display: 'none' }} />
-
-          {/* Camera / Upload buttons */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
             {!cameraStream && !capturedPhoto && (
               <>
-                <button className="btn btn-primary" onClick={startCamera} style={{ fontSize: 12, padding: '6px 14px' }}>
-                  Open Camera
-                </button>
+                <button className="btn btn-primary" onClick={startCamera} style={{ fontSize: 12, padding: '6px 14px' }}>Open Camera</button>
                 <label className="btn btn-secondary" style={{ fontSize: 12, padding: '6px 14px', cursor: 'pointer' }}>
                   Upload from Gallery
                   <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
@@ -221,18 +259,12 @@ export default function JobDetail({ role }) {
               </>
             )}
             {cameraStream && !capturedPhoto && (
-              <button className="btn btn-success" onClick={captureFromCamera} style={{ fontSize: 12, padding: '8px 20px' }}>
-                Take Photo
-              </button>
+              <button className="btn btn-success" onClick={captureFromCamera} style={{ fontSize: 12, padding: '8px 20px' }}>Take Photo</button>
             )}
             {capturedPhoto && (
-              <button className="btn btn-warning" onClick={() => setCapturedPhoto(null)} style={{ fontSize: 12, padding: '6px 14px' }}>
-                Retake
-              </button>
+              <button className="btn btn-warning" onClick={() => setCapturedPhoto(null)} style={{ fontSize: 12, padding: '6px 14px' }}>Retake</button>
             )}
           </div>
-
-          {/* Photo metadata */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
             <div>
               <label style={{ fontSize: 11, fontWeight: 600 }}>Phase</label>
@@ -261,10 +293,9 @@ export default function JobDetail({ role }) {
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 11, fontWeight: 600 }}>Description *</label>
-            <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="What is this photo of? e.g. Alpha side pre-install, Furnace data plate..."
+            <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="What is this photo of?"
               style={{ width: '100%', fontSize: 12, padding: '6px 8px' }} />
           </div>
-
           <button className="btn btn-success" disabled={!desc || (!capturedPhoto && !ref)}
             onClick={() => { submitPhoto(phase, desc, side, measure); }}
             style={{ width: '100%', padding: '10px', fontSize: 14 }}>
@@ -278,49 +309,68 @@ export default function JobDetail({ role }) {
   return (
     <div>
       {/* Back button + Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
         <button onClick={() => navigate('/hes-ie')} className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 12px' }}>
           Back to Jobs
         </button>
         <div style={{ flex: 1 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>{job.customer_name || 'Unnamed Project'}</h2>
+          <h2 style={{ margin: 0, fontSize: 20 }}>{job.customer_name || 'Unnamed Project'}</h2>
           <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
             {job.job_number && <span style={{ marginRight: 12 }}>#{job.job_number}</span>}
             {job.address}, {job.city} {job.zip}
             <span style={{ marginLeft: 12, fontWeight: 600 }}>Assured Energy Solutions</span>
           </div>
         </div>
-        <span className={`badge ${job.status === 'complete' ? 'active' : 'pending'}`} style={{ fontSize: 12, padding: '4px 12px' }}>
-          {job.status.replace(/_/g, ' ').toUpperCase()}
+        <span className={`badge ${isDone ? 'active' : isDeferred ? 'expired' : 'pending'}`} style={{ fontSize: 12, padding: '4px 12px' }}>
+          {isDeferred ? 'DEFERRED' : job.status.replace(/_/g, ' ').toUpperCase()}
         </span>
       </div>
 
-      {/* Tabs - filtered by role */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #ddd', marginBottom: 16, flexWrap: 'wrap' }}>
-        {(() => {
-          const allTabs = ['overview', 'assessment', 'scope', 'photos', 'scheduling', 'checklist', 'hvac', 'change_orders', 'export'];
-          let visibleTabs = allTabs;
-          if (role === 'Assessor') {
-            visibleTabs = ['overview', 'assessment', 'photos'];
-          } else if (role === 'Scope Creator') {
-            visibleTabs = ['overview', 'assessment', 'scope', 'photos', 'scheduling'];
-          } else if (role === 'Installer') {
-            visibleTabs = ['overview', 'scope', 'photos', 'scheduling', 'checklist', 'change_orders'];
-          } else if (role === 'HVAC') {
-            visibleTabs = ['overview', 'hvac', 'photos'];
-          }
-          return visibleTabs.map(t => (
-            <button key={t} style={tabStyle(t)} onClick={() => { setTab(t); if (t === 'export') loadExport(); }}>
-              {t === 'change_orders' ? 'Change Orders' : t === 'assessment' && role === 'Assessor' ? 'MS Forms Survey' : t === 'assessment' && role === 'Scope Creator' ? 'Assessor Data' : t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ));
-        })()}
+      {/* Phase Timeline */}
+      <div style={{ display: 'flex', alignItems: 'center', margin: '12px 0 20px', padding: '12px 16px', background: '#f8f9fa', borderRadius: 8, gap: 0, overflowX: 'auto' }}>
+        {PHASE_STEPS.map((step, i) => {
+          const isActive = i === currentPhaseIdx;
+          const isPast = isDone || (currentPhaseIdx >= 0 && i < currentPhaseIdx);
+          return (
+            <React.Fragment key={step.key}>
+              {i > 0 && <div style={{ flex: '0 0 24px', height: 2, background: isPast ? '#27ae60' : '#ddd' }} />}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 70 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 700,
+                  background: isPast ? '#27ae60' : isActive ? '#1a73e8' : '#e0e0e0',
+                  color: isPast || isActive ? '#fff' : '#999',
+                  border: isActive ? '3px solid #a8c7fa' : 'none',
+                }}>
+                  {isPast ? '\u2713' : i + 1}
+                </div>
+                <div style={{ fontSize: 10, marginTop: 4, fontWeight: isActive ? 700 : 400, color: isActive ? '#1a73e8' : isPast ? '#27ae60' : '#999', whiteSpace: 'nowrap' }}>
+                  {step.label}
+                </div>
+              </div>
+            </React.Fragment>
+          );
+        })}
+        {isDeferred && (
+          <div style={{ marginLeft: 16, padding: '4px 12px', background: '#ffebee', borderRadius: 4, fontSize: 11, color: '#c62828', fontWeight: 600 }}>
+            DEFERRED
+          </div>
+        )}
       </div>
+
+      {/* Phase Tabs */}
+      <div style={{ display: 'flex', borderBottom: '2px solid #e0e0e0', marginBottom: 16, flexWrap: 'wrap', gap: 0 }}>
+        {visibleTabs.map(t => (
+          <button key={t.key} style={tabStyle(t.key)} onClick={() => { setTab(t.key); if (t.key === 'export') loadExport(); }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
 
       {/* ===================== OVERVIEW TAB ===================== */}
       {tab === 'overview' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          {/* Customer Info */}
           <div className="card" style={{ padding: 16 }}>
             <h3 style={{ fontSize: 14, marginBottom: 12, borderBottom: '1px solid #eee', paddingBottom: 8 }}>Customer Information</h3>
             <div style={{ display: 'grid', gap: 8, fontSize: 12 }}>
@@ -352,7 +402,6 @@ export default function JobDetail({ role }) {
             </div>
           </div>
 
-          {/* Status + Quick Actions */}
           <div className="card" style={{ padding: 16 }}>
             <h3 style={{ fontSize: 14, marginBottom: 12, borderBottom: '1px solid #eee', paddingBottom: 8 }}>Project Status</h3>
             <div style={{ fontSize: 12, marginBottom: 12 }}>
@@ -372,7 +421,6 @@ export default function JobDetail({ role }) {
                 onBlur={e => updateField('notes', e.target.value)} />
             </div>
 
-            {/* Permit Tracking */}
             <h4 style={{ fontSize: 13, marginTop: 12, marginBottom: 8 }}>Permit Tracking</h4>
             <div style={{ fontSize: 12 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
@@ -387,12 +435,10 @@ export default function JobDetail({ role }) {
                   <div>Applied: <input type="date" value={job.permit_applied_date || ''} disabled={!canEdit} onChange={e => updateField('permit_applied_date', e.target.value)} style={{ fontSize: 11 }} /></div>
                   <div>Received: <input type="date" value={job.permit_received_date || ''} disabled={!canEdit} onChange={e => updateField('permit_received_date', e.target.value)} style={{ fontSize: 11 }} /></div>
                   <div>Permit #: <input defaultValue={job.permit_number} disabled={!canEdit} style={{ width: 80, fontSize: 11 }} onBlur={e => updateField('permit_number', e.target.value)} /></div>
-                  <div>Jurisdiction: <input defaultValue={job.permit_jurisdiction} disabled={!canEdit} style={{ width: 100, fontSize: 11 }} onBlur={e => updateField('permit_jurisdiction', e.target.value)} /></div>
                 </div>
               ) : null}
             </div>
 
-            {/* Quick summary */}
             <div style={{ marginTop: 12, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ background: '#e3f2fd', padding: '4px 10px', borderRadius: 4, fontSize: 11 }}>
                 {(job.photos || []).length} Photos
@@ -408,42 +454,165 @@ export default function JobDetail({ role }) {
         </div>
       )}
 
+
       {/* ===================== ASSESSMENT TAB ===================== */}
       {tab === 'assessment' && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          {/* Assessor Recommendations Banner - visible to Scope Creator */}
-          {role === 'Scope Creator' && (() => {
-            const recs = ad.recommendations || {};
-            const recItems = ['attic_insulation', 'wall_insulation', 'basement_insulation', 'air_sealing', 'duct_sealing', 'rim_joist', 'hvac_tune_clean', 'hvac_replacement', 'thermostat', 'exhaust_fans', 'detectors', 'hs_repairs'].filter(r => recs[r] === 'yes');
-            return (
-              <div style={{ padding: '12px 16px', background: '#fff3e0', borderBottom: '2px solid #ffe0b2' }}>
-                <h4 style={{ fontSize: 13, color: '#e65100', marginBottom: 6 }}>Assessor Recommendations (Reference)</h4>
-                {recItems.length > 0 ? (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
-                    {recItems.map(r => (
-                      <span key={r} style={{ fontSize: 11, padding: '3px 8px', background: '#e8f5e9', borderRadius: 4, border: '1px solid #c8e6c9' }}>{r.replace(/_/g, ' ')}</span>
-                    ))}
-                  </div>
-                ) : <p style={{ fontSize: 11, color: '#888', margin: 0 }}>No recommendations from assessor yet.</p>}
-                {recs.details && <p style={{ fontSize: 11, margin: '4px 0 0' }}><strong>Notes:</strong> {recs.details}</p>}
-                {recs.deferral === 'yes' && <p style={{ fontSize: 11, margin: '4px 0 0', color: '#c0392b' }}><strong>DEFERRAL RECOMMENDED:</strong> {recs.deferral_reason || 'No reason given'}</p>}
-                <p style={{ fontSize: 10, color: '#888', margin: '8px 0 0', fontStyle: 'italic' }}>Fill out the complete Appendix D form below based on the 2026 HES IE requirements. You have final say on scope.</p>
+        <div>
+          {/* For Assessor: MS Forms Survey ONLY - nothing more */}
+          {role === 'Assessor' ? (
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 20px', background: '#4a6741', color: '#fff' }}>
+                <h3 style={{ margin: 0, fontSize: 16 }}>MS Forms Assessment Survey</h3>
+                <p style={{ margin: '4px 0 0', fontSize: 11, opacity: 0.85 }}>Complete this field survey for the customer. Only the questions from the MS Form.</p>
               </div>
-            );
-          })()}
-          <div style={{ padding: '12px 16px', background: role === 'Assessor' ? '#4a6741' : '#0f3460', color: '#fff', cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}
-            onClick={() => setAssessmentOpen(!assessmentOpen)}>
-            <h3 style={{ margin: 0, fontSize: 14 }}>{role === 'Assessor' ? 'MS Forms Assessment Survey' : 'Energy Assessment Data (Appendix D - 2026 HES)'}</h3>
-            <span>{assessmentOpen ? '\u25B2' : '\u25BC'}</span>
-          </div>
-          {assessmentOpen && (
-            <div>
-              {/* HEADER */}
+
+              {/* Section 1: General Home Info */}
+              <div style={{ ...hs, background: '#5a7a51' }}>1. General Home Information</div>
+              <div style={ss}><div style={gs}>
+                <div style={fs}><strong>Customer Name:</strong> <span style={{ fontSize: 12 }}>{job.customer_name}</span></div>
+                <div style={fs}><strong>Address:</strong> <span style={{ fontSize: 12 }}>{job.address}, {job.city} {job.zip}</span></div>
+                <div style={fs}><strong>Date of Assessment:</strong> <input type="date" style={{ fontSize: 11, padding: '2px 4px' }} value={aVal('header', 'date')} onChange={e => aSet('header', 'date', e.target.value)} /></div>
+                <div style={fs}><strong>Assessor Name:</strong> {txt('header', 'completed_by', 'Your name', 140)}</div>
+                <div style={fs}><strong>Year Built:</strong> {txt('exterior', 'year_built', 'Year', 60)}</div>
+                <div style={fs}><strong>Home Style:</strong> {txt('exterior', 'style', 'Ranch, Colonial...', 120)}</div>
+                <div style={fs}><strong>Stories:</strong> {txt('exterior', 'stories', '#', 40)}</div>
+                <div style={fs}><strong>Bedrooms:</strong> {txt('exterior', 'bedrooms', '#', 40)}</div>
+                <div style={fs}><strong>Approx SqFt:</strong> {txt('exterior', 'sq_footage', 'sqft', 70)}</div>
+                <div style={fs}><strong>Number of Occupants:</strong> {txt('exterior', 'occupants', '#', 40)}</div>
+                <div style={fs}><strong>Cladding Type:</strong> {sel('exterior', 'cladding', ['Vinyl', 'Aluminum', 'Wood Lap', 'Stucco', 'Masonry', 'Asbestos Shingle', 'Other'])}</div>
+              </div></div>
+
+              {/* Section 2: Exterior Quick Check */}
+              <div style={{ ...hs, background: '#5a7a51' }}>2. Exterior Quick Check</div>
+              <div style={ss}><div style={gs}>
+                <div style={fs}><strong>Roof Condition:</strong> {sel('exterior', 'roof_condition', ['good', 'average', 'poor'])}</div>
+                <div style={fs}><strong>Gutters Present:</strong> {yn('exterior', 'gutters')}</div>
+                <div style={fs}><strong>Gutter Condition:</strong> {sel('exterior', 'gutter_condition', ['good', 'poor'])}</div>
+                <div style={fs}><strong>Chimney:</strong> {sel('exterior', 'chimney', ['brick', 'metal', 'none'])}</div>
+                <div style={fs}><strong>Soffit Vents:</strong> {yn('exterior', 'soffit_vents')}</div>
+              </div></div>
+
+              {/* Section 3: Health & Safety Flags */}
+              <div style={{ ...hs, background: '#5a7a51' }}>3. Health & Safety Flags</div>
+              <div style={ss}><div style={gs}>
+                <div style={fs}><strong>Mold Present:</strong> {yn('interior', 'mold')}</div>
+                <div style={fs}><strong>Moisture/Water Leaks:</strong> {yn('interior', 'moisture')}</div>
+                <div style={fs}><strong>Knob & Tube Wiring:</strong> {yn('interior', 'knob_tube')}</div>
+                <div style={fs}><strong>Broken Glass:</strong> {yn('interior', 'broken_glass')}</div>
+                <div style={fs}><strong>Gas Leaks Detected:</strong> {yn('interior', 'gas_leaks')}</div>
+                <div style={fs}><strong>Smoke Detectors Present:</strong> {yn('interior', 'smoke_detector')}</div>
+                <div style={fs}><strong>CO Detectors Present:</strong> {yn('interior', 'co_detector')}</div>
+              </div>
+              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>H&S Notes:</strong> {txt('interior', 'hs_notes', 'Any health & safety concerns...', '100%')}</div>
+              </div>
+
+              {/* Section 4: Insulation Observations */}
+              <div style={{ ...hs, background: '#5a7a51' }}>4. Insulation Observations</div>
+              <div style={ss}>
+                <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>Attic</div>
+                <div style={gs}>
+                  <div style={fs}><strong>Attic Access:</strong> {sel('attic', 'access', ['Scuttle', 'Pull Down', 'Walk Up', 'No Access'])}</div>
+                  <div style={fs}><strong>Existing Insulation:</strong> {sel('attic', 'existing_insulation', ['None', 'Fiberglass Batts', 'Blown Cellulose', 'Blown Fiberglass', 'Other'])}</div>
+                  <div style={fs}><strong>Approx Depth (inches):</strong> {txt('attic', 'insulation_depth', 'in', 40)}</div>
+                  <div style={fs}><strong>Condition:</strong> {sel('attic', 'insulation_condition', ['Good', 'Fair', 'Poor', 'None'])}</div>
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>Walls</div>
+                <div style={gs}>
+                  <div style={fs}><strong>Wall Insulation Present:</strong> {yn('walls', 'has_insulation')}</div>
+                  <div style={fs}><strong>Wall Type:</strong> {sel('walls', 'wall_type_general', ['Drywall', 'Plaster', 'Other'])}</div>
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>Basement / Foundation</div>
+                <div style={gs}>
+                  <div style={fs}><strong>Basement Type:</strong> {sel('foundation', 'basement_type', ['Finished', 'Unfinished w/framing', 'Unfinished', 'No basement/slab'])}</div>
+                  <div style={fs}><strong>Basement Access:</strong> {sel('foundation', 'access', ['Full', 'Partial', 'No Access'])}</div>
+                  <div style={fs}><strong>Existing Insulation:</strong> {sel('foundation', 'existing_insulation', ['None', 'Fiberglass', 'Rigid Foam Board', 'Other'])}</div>
+                </div>
+              </div>
+
+              {/* Section 5: Mechanical Equipment */}
+              <div style={{ ...hs, background: '#5a7a51' }}>5. Mechanical Equipment</div>
+              <div style={ss}>
+                <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>Heating System</div>
+                <div style={gs}>
+                  <div style={fs}><strong>Type:</strong> {sel('mechanical', 'heating_type', ['Gas Furnace', 'Boiler', 'Electric', 'Heat Pump', 'Other'])}</div>
+                  <div style={fs}><strong>Approx Age:</strong> {txt('mechanical', 'heating_age', 'Years', 50)}</div>
+                  <div style={fs}><strong>Condition:</strong> {sel('mechanical', 'heating_condition', ['Good', 'Fair', 'Poor', 'Failed'])}</div>
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>Water Heater</div>
+                <div style={gs}>
+                  <div style={fs}><strong>Type:</strong> {sel('mechanical', 'wh_type', ['Gas', 'Electric', 'Tankless', 'Heat Pump WH'])}</div>
+                  <div style={fs}><strong>Approx Age:</strong> {txt('mechanical', 'wh_age', 'Years', 50)}</div>
+                  <div style={fs}><strong>Condition:</strong> {sel('mechanical', 'wh_condition', ['Good', 'Fair', 'Poor', 'Failed'])}</div>
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>Cooling</div>
+                <div style={gs}>
+                  <div style={fs}><strong>Type:</strong> {sel('mechanical', 'cooling_type', ['Central AC', 'Room AC', 'Heat Pump', 'None'])}</div>
+                </div>
+              </div>
+
+              {/* Section 6: Diagnostics */}
+              <div style={{ ...hs, background: '#5a7a51' }}>6. Quick Diagnostics</div>
+              <div style={ss}><div style={gs}>
+                <div style={fs}><strong>Ambient CO (ppm):</strong> {txt('diagnostics', 'ambient_co', 'ppm', 50)}</div>
+                <div style={fs}><strong>Gas Oven CO (ppm):</strong> {txt('diagnostics', 'gas_oven_co', 'ppm', 50)}</div>
+                <div style={fs}><strong>Heating System Spillage:</strong> {yn('diagnostics', 'heating_spillage')}</div>
+                <div style={fs}><strong>Heating CO (ppm):</strong> {txt('diagnostics', 'heating_co', 'ppm', 50)}</div>
+                <div style={fs}><strong>Water Heater Spillage:</strong> {yn('diagnostics', 'wh_spillage')}</div>
+                <div style={fs}><strong>Water Heater CO (ppm):</strong> {txt('diagnostics', 'wh_co', 'ppm', 50)}</div>
+              </div></div>
+
+              {/* Section 7: Assessor Recommendations */}
+              <div style={{ ...hs, background: '#2e7d32' }}>7. Assessor Recommendations</div>
+              <div style={{ ...ss, borderBottom: 'none' }}>
+                <p style={{ fontSize: 11, color: '#666', margin: '0 0 8px' }}>Check all that you recommend for this home:</p>
+                <div style={gs}>
+                  {['attic_insulation', 'wall_insulation', 'basement_insulation', 'air_sealing', 'duct_sealing', 'rim_joist', 'hvac_tune_clean', 'hvac_replacement', 'thermostat', 'exhaust_fans', 'detectors', 'hs_repairs', 'deferral'].map(r => (
+                    <div key={r} style={fs}><strong>{r.replace(/_/g, ' ')}:</strong> {yn('recommendations', r)}</div>
+                  ))}
+                </div>
+                {aVal('recommendations', 'deferral') === 'yes' && (
+                  <div style={{ marginTop: 8, padding: 8, background: '#ffebee', borderRadius: 4 }}>
+                    <strong style={{ fontSize: 12, color: '#c62828' }}>Deferral Reason (required):</strong>
+                    <textarea style={{ width: '100%', fontSize: 11, padding: 4, minHeight: 40, marginTop: 4, border: '1px solid #ef9a9a', borderRadius: 3 }}
+                      defaultValue={aVal('recommendations', 'deferral_reason')} placeholder="Why should this project be deferred?"
+                      onBlur={e => aSet('recommendations', 'deferral_reason', e.target.value)} />
+                  </div>
+                )}
+                <textarea style={{ width: '100%', fontSize: 11, padding: 4, minHeight: 60, marginTop: 8, border: '1px solid #ccc', borderRadius: 3 }}
+                  defaultValue={aVal('recommendations', 'details')} placeholder="Additional notes or recommendations..."
+                  onBlur={e => aSet('recommendations', 'details', e.target.value)} />
+              </div>
+            </div>
+
+          ) : (
+            /* For Scope Creator / Admin / Others: Full 2026 HES IE audit data */
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              {/* Assessor Recommendations Banner for Scope Creator */}
+              {role === 'Scope Creator' && (() => {
+                const recs = ad.recommendations || {};
+                const recItems = ['attic_insulation', 'wall_insulation', 'basement_insulation', 'air_sealing', 'duct_sealing', 'rim_joist', 'hvac_tune_clean', 'hvac_replacement', 'thermostat', 'exhaust_fans', 'detectors', 'hs_repairs'].filter(r => recs[r] === 'yes');
+                return (
+                  <div style={{ padding: '12px 16px', background: '#fff3e0', borderBottom: '2px solid #ffe0b2' }}>
+                    <h4 style={{ fontSize: 13, color: '#e65100', marginBottom: 6 }}>Assessor Recommendations (Reference)</h4>
+                    {recItems.length > 0 ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                        {recItems.map(r => <span key={r} style={{ fontSize: 11, padding: '3px 8px', background: '#e8f5e9', borderRadius: 4, border: '1px solid #c8e6c9' }}>{r.replace(/_/g, ' ')}</span>)}
+                      </div>
+                    ) : <p style={{ fontSize: 11, color: '#888', margin: 0 }}>No recommendations from assessor yet.</p>}
+                    {recs.details && <p style={{ fontSize: 11, margin: '4px 0 0' }}><strong>Notes:</strong> {recs.details}</p>}
+                    {recs.deferral === 'yes' && <p style={{ fontSize: 11, margin: '4px 0 0', color: '#c0392b' }}><strong>DEFERRAL RECOMMENDED:</strong> {recs.deferral_reason || 'No reason given'}</p>}
+                  </div>
+                );
+              })()}
+              <div style={{ padding: '12px 16px', background: '#0f3460', color: '#fff' }}>
+                <h3 style={{ margin: 0, fontSize: 14 }}>2026 HES IE Audit Data Collection</h3>
+              </div>
+
+              {/* Full 2026 HES IE audit data form with automated calculations */}
               <div style={ss}><div style={gs}>
                 <div style={fs}><strong>Completed By:</strong> {txt('header', 'completed_by', 'Name', 140)}</div>
                 <div style={fs}><strong>Date:</strong> <input type="date" style={{ fontSize: 11, padding: '2px 4px' }} value={aVal('header', 'date')} disabled={!canEdit} onChange={e => aSet('header', 'date', e.target.value)} /></div>
               </div></div>
-              {/* EXTERIOR */}
               <div style={hs}>EXTERIOR INSPECTION</div>
               <div style={ss}><div style={gs}>
                 <div style={fs}><strong>Style:</strong> {txt('exterior', 'style', 'Ranch...', 100)}</div>
@@ -464,7 +633,6 @@ export default function JobDetail({ role }) {
               </div>
               <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('exterior', 'notes', 'Notes...', '100%')}</div>
               </div>
-              {/* INTERIOR */}
               <div style={hs}>INTERIOR INSPECTION</div>
               <div style={ss}><div style={gs}>
                 <div style={fs}><strong>Mold:</strong> {yn('interior', 'mold')}</div>
@@ -485,14 +653,12 @@ export default function JobDetail({ role }) {
               </div>
               <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('interior', 'notes', 'Notes...', '100%')}</div>
               </div>
-              {/* DIRECT INSTALLS */}
               <div style={hs}>DIRECT INSTALLS</div>
               <div style={ss}><div style={gs}>
                 <div style={fs}><strong>Smoke Det Qty:</strong> {txt('direct_install', 'smoke_qty', '#', 40)}</div>
                 <div style={fs}><strong>CO Det Qty:</strong> {txt('direct_install', 'co_qty', '#', 40)}</div>
                 <div style={fs}><strong>Total:</strong> {txt('direct_install', 'total', '#', 40)}</div>
               </div></div>
-              {/* DOORS */}
               <div style={hs}>DOOR TYPES</div>
               <div style={ss}><div style={gs}>
                 {['Front', 'Back', 'Basement', 'Attic'].map(d => (
@@ -501,7 +667,6 @@ export default function JobDetail({ role }) {
                 <div style={fs}><strong>Other:</strong> {txt('doors', 'other', 'Type', 60)}</div>
                 <div style={fs}><strong>Total WS Needed:</strong> {txt('doors', 'total_ws', '#', 30)}</div>
               </div></div>
-              {/* HATCHES */}
               <div style={hs}>HATCHES</div>
               <div style={ss}>
                 {['Scuttle', 'Knee Wall', 'Pull Down', 'Walk Up'].map(h => (
@@ -518,7 +683,6 @@ export default function JobDetail({ role }) {
                   <div style={fs}><strong>Knee Wall:</strong> {txt('hatches', 'created_knee_wall', '#', 25)}</div>
                 </div>
               </div>
-              {/* ATTIC */}
               <div style={hs}>ATTIC</div>
               <div style={ss}><div style={gs}>
                 <div style={fs}><strong>Type:</strong> {sel('attic', 'type', ['Finished', 'Unfinished', 'Flat'])}</div>
@@ -533,7 +697,6 @@ export default function JobDetail({ role }) {
               </div>
               <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('attic', 'notes', 'Notes...', '100%')}</div>
               </div>
-              {/* COLLAR BEAM */}
               <div style={hs}>COLLAR BEAM</div>
               <div style={ss}><div style={gs}>
                 <div style={fs}><strong>Pre R:</strong> {txt('collar_beam', 'pre_r_value', 'R', 40)}</div>
@@ -544,7 +707,6 @@ export default function JobDetail({ role }) {
                 <div style={fs}><strong>Accessibles:</strong> {yn('collar_beam', 'accessibles')}</div>
                 <div style={fs}><strong>Cut In:</strong> {yn('collar_beam', 'cut_in')}</div>
               </div></div>
-              {/* OCJ */}
               <div style={hs}>OUTER CEILING JOIST</div>
               <div style={ss}><div style={gs}>
                 <div style={fs}><strong>Pre R:</strong> {txt('ocj', 'pre_r_value', 'R', 40)}</div>
@@ -556,42 +718,6 @@ export default function JobDetail({ role }) {
                 <div style={fs}><strong>Cut In:</strong> {yn('ocj', 'cut_in')}</div>
                 <div style={fs}><strong>Floor Boards:</strong> {yn('ocj', 'floor_boards')}</div>
               </div></div>
-              {/* FOUNDATION */}
-              <div style={hs}>FOUNDATION</div>
-              <div style={ss}><div style={gs}>
-                <div style={fs}><strong>Basement:</strong> {sel('foundation', 'basement_type', ['Finished', 'Unfinished w/framing', 'Unfinished', 'No basement/slab'])}</div>
-                <div style={fs}><strong>Above Grade:</strong> {txt('foundation', 'above_grade_sqft', 'sqft', 50)}</div>
-                <div style={fs}><strong>Below Grade:</strong> {txt('foundation', 'below_grade_sqft', 'sqft', 50)}</div>
-                <div style={fs}><strong>Pre R:</strong> {txt('foundation', 'pre_r_value', 'R', 40)}</div>
-                <div style={fs}><strong>Insulation:</strong> {sel('foundation', 'insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
-                <div style={fs}><strong>Band Joints:</strong> {yn('foundation', 'band_joints')} Lin Ft: {txt('foundation', 'linear_ft', 'ft', 40)}</div>
-                <div style={fs}><strong>Band R:</strong> {txt('foundation', 'band_pre_r_value', 'R', 35)} Insul: {sel('foundation', 'band_insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
-                <div style={fs}><strong>Plaster/Lath:</strong> {yn('foundation', 'plaster_lath')}</div>
-                <div style={fs}><strong>Balloon:</strong> {yn('foundation', 'balloon_const')}</div>
-                <div style={fs}><strong>Asbestos:</strong> {yn('foundation', 'asbestos')}</div>
-                <div style={fs}><strong>Ductwork:</strong> {yn('foundation', 'ductwork')} Cond: {sel('foundation', 'duct_condition', ['good', 'poor'])}</div>
-                <div style={fs}><strong>Duct Seal ft:</strong> {txt('foundation', 'duct_lin_ft', 'ft', 40)}</div>
-              </div>
-              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('foundation', 'notes', 'Notes...', '100%')}</div>
-              </div>
-              {/* CRAWLSPACE */}
-              <div style={hs}>CRAWLSPACE</div>
-              <div style={ss}><div style={gs}>
-                <div style={fs}><strong>Vented:</strong> {yn('crawlspace', 'vented')} # Vents: {txt('crawlspace', 'num_vents', '#', 25)}</div>
-                <div style={fs}><strong>Floor:</strong> {sel('crawlspace', 'floor_type', ['Concrete', 'Dirt/Gravel'])}</div>
-                <div style={fs}><strong>Vapor Barrier:</strong> {yn('crawlspace', 'vapor_barrier')} SqFt: {txt('crawlspace', 'vapor_sqft', 'sqft', 50)}</div>
-                <div style={fs}><strong>Water Issues:</strong> {yn('crawlspace', 'water_issues')}</div>
-                <div style={fs}><strong>Above Grade:</strong> {txt('crawlspace', 'above_grade', 'sqft', 50)}</div>
-                <div style={fs}><strong>Below Grade:</strong> {txt('crawlspace', 'below_grade', 'sqft', 50)}</div>
-                <div style={fs}><strong>Pre R:</strong> {txt('crawlspace', 'pre_r_value', 'R', 40)}</div>
-                <div style={fs}><strong>Insulation:</strong> {sel('crawlspace', 'insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
-                <div style={fs}><strong>Band Joints:</strong> {yn('crawlspace', 'band_joints')} Lin Ft: {txt('crawlspace', 'band_linear_ft', 'ft', 40)}</div>
-                <div style={fs}><strong>Band R:</strong> {txt('crawlspace', 'band_pre_r_value', 'R', 35)} Insul: {sel('crawlspace', 'band_insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
-                <div style={fs}><strong>Ductwork:</strong> {yn('crawlspace', 'ductwork')} Cond: {sel('crawlspace', 'duct_condition', ['good', 'poor'])}</div>
-              </div>
-              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('crawlspace', 'notes', 'Notes...', '100%')}</div>
-              </div>
-              {/* EXTERIOR WALLS */}
               <div style={hs}>EXTERIOR WALLS</div>
               <div style={ss}>
                 {['1st Floor', '2nd Floor'].map(floor => (
@@ -614,7 +740,6 @@ export default function JobDetail({ role }) {
                 <div style={fs}><strong>Drill Location:</strong> {txt('walls', 'drill_location', 'Location', 200)}</div>
                 <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('walls', 'notes', 'Notes...', '100%')}</div>
               </div>
-              {/* KNEE WALLS */}
               <div style={hs}>KNEE WALLS</div>
               <div style={ss}><div style={gs}>
                 <div style={fs}><strong>Pre R:</strong> {txt('knee_walls', 'pre_r_value', 'R', 40)}</div>
@@ -626,7 +751,39 @@ export default function JobDetail({ role }) {
                 <div style={fs}><strong>Fiberglass:</strong> {yn('knee_walls', 'fiberglass')}</div>
                 <div style={fs}><strong>Wall Type:</strong> {sel('knee_walls', 'wall_type', ['Drywall', 'Plaster'])}</div>
               </div></div>
-              {/* MECHANICAL */}
+              <div style={hs}>FOUNDATION</div>
+              <div style={ss}><div style={gs}>
+                <div style={fs}><strong>Basement:</strong> {sel('foundation', 'basement_type', ['Finished', 'Unfinished w/framing', 'Unfinished', 'No basement/slab'])}</div>
+                <div style={fs}><strong>Above Grade:</strong> {txt('foundation', 'above_grade_sqft', 'sqft', 50)}</div>
+                <div style={fs}><strong>Below Grade:</strong> {txt('foundation', 'below_grade_sqft', 'sqft', 50)}</div>
+                <div style={fs}><strong>Pre R:</strong> {txt('foundation', 'pre_r_value', 'R', 40)}</div>
+                <div style={fs}><strong>Insulation:</strong> {sel('foundation', 'insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
+                <div style={fs}><strong>Band Joints:</strong> {yn('foundation', 'band_joints')} Lin Ft: {txt('foundation', 'linear_ft', 'ft', 40)}</div>
+                <div style={fs}><strong>Band R:</strong> {txt('foundation', 'band_pre_r_value', 'R', 35)} Insul: {sel('foundation', 'band_insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
+                <div style={fs}><strong>Plaster/Lath:</strong> {yn('foundation', 'plaster_lath')}</div>
+                <div style={fs}><strong>Balloon:</strong> {yn('foundation', 'balloon_const')}</div>
+                <div style={fs}><strong>Asbestos:</strong> {yn('foundation', 'asbestos')}</div>
+                <div style={fs}><strong>Ductwork:</strong> {yn('foundation', 'ductwork')} Cond: {sel('foundation', 'duct_condition', ['good', 'poor'])}</div>
+                <div style={fs}><strong>Duct Seal ft:</strong> {txt('foundation', 'duct_lin_ft', 'ft', 40)}</div>
+              </div>
+              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('foundation', 'notes', 'Notes...', '100%')}</div>
+              </div>
+              <div style={hs}>CRAWLSPACE</div>
+              <div style={ss}><div style={gs}>
+                <div style={fs}><strong>Vented:</strong> {yn('crawlspace', 'vented')} # Vents: {txt('crawlspace', 'num_vents', '#', 25)}</div>
+                <div style={fs}><strong>Floor:</strong> {sel('crawlspace', 'floor_type', ['Concrete', 'Dirt/Gravel'])}</div>
+                <div style={fs}><strong>Vapor Barrier:</strong> {yn('crawlspace', 'vapor_barrier')} SqFt: {txt('crawlspace', 'vapor_sqft', 'sqft', 50)}</div>
+                <div style={fs}><strong>Water Issues:</strong> {yn('crawlspace', 'water_issues')}</div>
+                <div style={fs}><strong>Above Grade:</strong> {txt('crawlspace', 'above_grade', 'sqft', 50)}</div>
+                <div style={fs}><strong>Below Grade:</strong> {txt('crawlspace', 'below_grade', 'sqft', 50)}</div>
+                <div style={fs}><strong>Pre R:</strong> {txt('crawlspace', 'pre_r_value', 'R', 40)}</div>
+                <div style={fs}><strong>Insulation:</strong> {sel('crawlspace', 'insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
+                <div style={fs}><strong>Band Joints:</strong> {yn('crawlspace', 'band_joints')} Lin Ft: {txt('crawlspace', 'band_linear_ft', 'ft', 40)}</div>
+                <div style={fs}><strong>Band R:</strong> {txt('crawlspace', 'band_pre_r_value', 'R', 35)} Insul: {sel('crawlspace', 'band_insulation_type', ['Fiberglass', 'Rigid Foam Board', 'None'])}</div>
+                <div style={fs}><strong>Ductwork:</strong> {yn('crawlspace', 'ductwork')} Cond: {sel('crawlspace', 'duct_condition', ['good', 'poor'])}</div>
+              </div>
+              <div style={{ marginTop: 6 }}><strong style={{ fontSize: 12 }}>Notes:</strong> {txt('crawlspace', 'notes', 'Notes...', '100%')}</div>
+              </div>
               <div style={hs}>MECHANICAL EQUIPMENT</div>
               <div style={ss}>
                 <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>Furnace / Boiler</div>
@@ -661,19 +818,147 @@ export default function JobDetail({ role }) {
                   <div style={fs}><strong>Condition:</strong> {sel('mechanical', 'thermostat_condition', ['Good', 'Poor'])}</div>
                 </div>
               </div>
-              {/* DIAGNOSTICS */}
               <div style={hs}>DIAGNOSTIC TESTING</div>
-              <div style={ss}><div style={gs}>
-                <div style={fs}><strong>Pre Blower Door (CFM50):</strong> {txt('diagnostics', 'pre_cfm50', 'CFM50', 60)}</div>
-                <div style={fs}><strong>Post Blower Door (CFM50):</strong> {txt('diagnostics', 'post_cfm50', 'CFM50', 60)}</div>
-                <div style={fs}><strong>% Reduction:</strong> {txt('diagnostics', 'cfm50_reduction', '%', 40)}</div>
-                <div style={fs}><strong>Pre Duct Blaster (CFM25):</strong> {txt('diagnostics', 'pre_cfm25', 'CFM25', 60)}</div>
-                <div style={fs}><strong>Post Duct Blaster (CFM25):</strong> {txt('diagnostics', 'post_cfm25', 'CFM25', 60)}</div>
-                <div style={fs}><strong>Combustion Pre:</strong> {txt('diagnostics', 'combustion_pre', '%', 60)}</div>
-                <div style={fs}><strong>Combustion Post:</strong> {txt('diagnostics', 'combustion_post', '%', 60)}</div>
-                <div style={fs}><strong>CO Test:</strong> {txt('diagnostics', 'co_test', 'ppm', 50)}</div>
-              </div></div>
-              {/* RECOMMENDATIONS */}
+              <div style={ss}>
+                <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>Blower Door Test</div>
+                <div style={gs}>
+                  <div style={fs}><strong>Pre CFM50:</strong> {txt('diagnostics', 'pre_cfm50', 'CFM50', 60)}</div>
+                  <div style={fs}><strong>Post CFM50:</strong> {txt('diagnostics', 'post_cfm50', 'CFM50', 60)}</div>
+                  <div style={fs}><strong>% Reduction:</strong>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: (() => {
+                      const pre = parseFloat(aVal('diagnostics', 'pre_cfm50'));
+                      const post = parseFloat(aVal('diagnostics', 'post_cfm50'));
+                      if (!pre || !post) return '#888';
+                      const pct = ((pre - post) / pre * 100);
+                      return pct >= 25 ? '#27ae60' : pct >= 15 ? '#f39c12' : '#e74c3c';
+                    })(), marginLeft: 4 }}>
+                      {(() => {
+                        const pre = parseFloat(aVal('diagnostics', 'pre_cfm50'));
+                        const post = parseFloat(aVal('diagnostics', 'post_cfm50'));
+                        if (!pre || !post) return '--';
+                        return ((pre - post) / pre * 100).toFixed(1) + '%';
+                      })()}
+                    </span>
+                    <span style={{ fontSize: 9, color: '#888', marginLeft: 4 }}>(goal: 25%+)</span>
+                  </div>
+                  <div style={fs}><strong>Exterior Temp:</strong> {txt('diagnostics', 'exterior_temp', 'F', 40)}</div>
+                  <div style={fs}><strong>BD Location:</strong> {sel('diagnostics', 'bd_location', ['Front', 'Side', 'Back'])}</div>
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>Duct Blaster</div>
+                <div style={gs}>
+                  <div style={fs}><strong>Pre CFM25:</strong> {txt('diagnostics', 'pre_cfm25', 'CFM25', 60)}</div>
+                  <div style={fs}><strong>Post CFM25:</strong> {txt('diagnostics', 'post_cfm25', 'CFM25', 60)}</div>
+                  <div style={fs}><strong>% Reduction:</strong>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#0f3460', marginLeft: 4 }}>
+                      {(() => {
+                        const pre = parseFloat(aVal('diagnostics', 'pre_cfm25'));
+                        const post = parseFloat(aVal('diagnostics', 'post_cfm25'));
+                        if (!pre || !post) return '--';
+                        return ((pre - post) / pre * 100).toFixed(1) + '%';
+                      })()}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>CAZ Testing (Combustion Appliance Zone)</div>
+                <div style={gs}>
+                  <div style={fs}><strong>Ambient CO (ppm):</strong> {txt('diagnostics', 'ambient_co', 'ppm', 50)}</div>
+                  <div style={fs}><strong>Gas Oven CO:</strong> {txt('diagnostics', 'gas_oven_co', 'ppm', 50)} {sel('diagnostics', 'gas_oven_pass', ['Pass', 'Fail'])}</div>
+                  <div style={fs}><strong>Heating Spillage:</strong> {yn('diagnostics', 'heating_spillage')} CO: {txt('diagnostics', 'heating_co', 'ppm', 40)}</div>
+                  <div style={fs}><strong>Heating Flue Angle OK:</strong> {yn('diagnostics', 'heating_flue_ok')}</div>
+                  <div style={fs}><strong>WH Spillage:</strong> {yn('diagnostics', 'wh_spillage')} CO: {txt('diagnostics', 'wh_co', 'ppm', 40)}</div>
+                  <div style={fs}><strong>WH Flue Pitch OK:</strong> {yn('diagnostics', 'wh_flue_ok')}</div>
+                  <div style={fs}><strong>Gas Leak Found:</strong> {yn('diagnostics', 'gas_leak')} Loc: {txt('diagnostics', 'gas_leak_location', 'Location', 100)}</div>
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 12, marginTop: 8, marginBottom: 4 }}>Fan Flows</div>
+                <div style={gs}>
+                  <div style={fs}><strong>Kitchen Fan CFM:</strong> {txt('diagnostics', 'kitchen_fan_cfm', 'CFM', 50)} Window: {yn('diagnostics', 'kitchen_window')}</div>
+                  <div style={fs}><strong>Bath 1 Fan CFM:</strong> {txt('diagnostics', 'bath1_fan_cfm', 'CFM', 50)} Window: {yn('diagnostics', 'bath1_window')}</div>
+                  <div style={fs}><strong>Bath 2 Fan CFM:</strong> {txt('diagnostics', 'bath2_fan_cfm', 'CFM', 50)} Window: {yn('diagnostics', 'bath2_window')}</div>
+                </div>
+              </div>
+              {/* ASHRAE 62.2 - Auto-calculated per program rules */}
+              <div style={{ ...hs, background: '#1565c0' }}>ASHRAE 62.2 VENTILATION (AUTO-CALCULATED)</div>
+              <div style={ss}>
+                {(() => {
+                  const sqft = parseFloat(aVal('exterior', 'sq_footage')) || 0;
+                  const bedrooms = parseInt(aVal('exterior', 'bedrooms')) || 0;
+                  const postCFM = parseFloat(aVal('diagnostics', 'post_cfm50')) || parseFloat(aVal('diagnostics', 'pre_cfm50')) || 0;
+                  const stories = parseFloat(aVal('exterior', 'stories')) || 1;
+                  const storyFactor = stories === 1 ? 14.4 : stories === 2 ? 10.1 : stories >= 3 ? 8.3 : 14.4;
+                  const buildingVentRate = 0.03 * sqft + (bedrooms + 1) * 7.5;
+                  const infiltrationCredit = postCFM / storyFactor;
+                  const totalMechVent = Math.max(0, buildingVentRate - infiltrationCredit);
+                  const kitchenReq = 100;
+                  const bathReq = 50;
+                  const kitchenCFM = parseFloat(aVal('diagnostics', 'kitchen_fan_cfm')) || 0;
+                  const bath1CFM = parseFloat(aVal('diagnostics', 'bath1_fan_cfm')) || 0;
+                  const bath2CFM = parseFloat(aVal('diagnostics', 'bath2_fan_cfm')) || 0;
+                  const kitchenDeficit = Math.max(0, kitchenReq - kitchenCFM);
+                  const bath1Deficit = Math.max(0, bathReq - bath1CFM);
+                  const bath2Deficit = Math.max(0, bathReq - bath2CFM);
+                  const localDeficit = kitchenDeficit + bath1Deficit + bath2Deficit;
+
+                  return (
+                    <div>
+                      <div style={gs}>
+                        <div style={fs}><strong>Conditioned Area:</strong> <span style={{ fontWeight: 700, marginLeft: 4 }}>{sqft || '--'} sqft</span></div>
+                        <div style={fs}><strong>Bedrooms:</strong> <span style={{ fontWeight: 700, marginLeft: 4 }}>{bedrooms || '--'}</span></div>
+                        <div style={fs}><strong>Building Vent Rate:</strong> <span style={{ fontWeight: 700, marginLeft: 4, color: '#1565c0' }}>{sqft ? buildingVentRate.toFixed(1) : '--'} CFM</span></div>
+                        <div style={fs}><strong>Story Factor:</strong> <span style={{ marginLeft: 4 }}>{storyFactor}</span></div>
+                        <div style={fs}><strong>Infiltration Credit:</strong> <span style={{ fontWeight: 700, marginLeft: 4 }}>{postCFM ? infiltrationCredit.toFixed(1) : '--'} CFM</span></div>
+                        <div style={fs}><strong>Total Mech Vent Needed:</strong> <span style={{ fontWeight: 700, marginLeft: 4, color: totalMechVent > 0 ? '#e74c3c' : '#27ae60' }}>{sqft ? totalMechVent.toFixed(1) : '--'} CFM</span></div>
+                      </div>
+                      <div style={{ marginTop: 8, padding: 8, background: '#e3f2fd', borderRadius: 4 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Local Ventilation Deficits:</div>
+                        <div style={{ display: 'flex', gap: 16, fontSize: 11 }}>
+                          <span>Kitchen: {kitchenCFM}/{kitchenReq} CFM {kitchenDeficit > 0 ? <span style={{ color: '#e74c3c' }}>(-{kitchenDeficit})</span> : <span style={{ color: '#27ae60' }}>OK</span>}</span>
+                          <span>Bath 1: {bath1CFM}/{bathReq} CFM {bath1Deficit > 0 ? <span style={{ color: '#e74c3c' }}>(-{bath1Deficit})</span> : <span style={{ color: '#27ae60' }}>OK</span>}</span>
+                          <span>Bath 2: {bath2CFM}/{bathReq} CFM {bath2Deficit > 0 ? <span style={{ color: '#e74c3c' }}>(-{bath2Deficit})</span> : <span style={{ color: '#27ae60' }}>OK</span>}</span>
+                        </div>
+                        <div style={{ fontSize: 11, marginTop: 4, fontWeight: 600 }}>Total Local Deficit: <span style={{ color: localDeficit > 0 ? '#e74c3c' : '#27ae60' }}>{localDeficit} CFM</span></div>
+                        {totalMechVent > 0 && <div style={{ fontSize: 11, marginTop: 4, padding: '4px 8px', background: '#ffebee', borderRadius: 3, color: '#c62828' }}>New exhaust fan(s) required to meet ASHRAE 62.2</div>}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+              {/* Air sealing target auto-calc */}
+              <div style={{ ...hs, background: '#2e7d32' }}>PROGRAM RULE CHECKS (AUTO)</div>
+              <div style={ss}>
+                {(() => {
+                  const sqft = parseFloat(aVal('exterior', 'sq_footage')) || 0;
+                  const preCFM = parseFloat(aVal('diagnostics', 'pre_cfm50')) || 0;
+                  const postCFM = parseFloat(aVal('diagnostics', 'post_cfm50')) || 0;
+                  const reduction = preCFM && postCFM ? ((preCFM - postCFM) / preCFM * 100) : 0;
+                  const minCFM = sqft * 1.1;
+                  const atticR = parseFloat(aVal('attic', 'pre_r_value')) || 0;
+                  const foundR = parseFloat(aVal('foundation', 'pre_r_value')) || 0;
+                  const heatingAge = parseFloat(aVal('mechanical', 'heating_age')) || 0;
+                  const lastService = parseFloat(aVal('mechanical', 'heating_last_service')) || 0;
+                  const currentYear = new Date().getFullYear();
+                  const needsTune = lastService > 0 && (currentYear - lastService) >= 3;
+
+                  const rules = [
+                    { label: 'Air sealing CFM50 min (110% sqft)', value: `${minCFM.toFixed(0)} CFM`, met: !preCFM || preCFM >= minCFM, na: !sqft },
+                    { label: 'Blower door reduction goal (25%)', value: reduction ? `${reduction.toFixed(1)}%` : '--', met: reduction >= 25, na: !preCFM || !postCFM },
+                    { label: 'Attic target R-49', value: `Current: R-${atticR}`, met: atticR >= 49, na: !atticR },
+                    { label: 'Foundation target R-10 min', value: `Current: R-${foundR}`, met: foundR >= 10, na: !foundR },
+                    { label: 'Furnace tune-up (not serviced in 3+ yrs)', value: needsTune ? 'Recommended' : lastService ? 'OK' : '--', met: !needsTune, na: !lastService },
+                  ];
+
+                  return (
+                    <div style={{ display: 'grid', gap: 4 }}>
+                      {rules.map((r, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '4px 8px', background: r.na ? '#f5f5f5' : r.met ? '#e8f5e9' : '#fff3e0', borderRadius: 4 }}>
+                          <span style={{ fontSize: 14 }}>{r.na ? '\u2796' : r.met ? '\u2705' : '\u26A0\uFE0F'}</span>
+                          <span style={{ flex: 1 }}>{r.label}</span>
+                          <span style={{ fontWeight: 600, color: r.na ? '#999' : r.met ? '#27ae60' : '#e65100' }}>{r.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
               <div style={{ ...hs, background: '#4a6741' }}>ASSESSOR RECOMMENDATIONS</div>
               <div style={{ ...ss, borderBottom: 'none' }}>
                 <div style={gs}>
@@ -696,11 +981,12 @@ export default function JobDetail({ role }) {
         </div>
       )}
 
-      {/* ===================== SCOPE TAB ===================== */}
+
+      {/* ===================== SCOPE OF WORK TAB ===================== */}
       {tab === 'scope' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* Assessor Recommendations in Scope View */}
-          {(role === 'Scope Creator' || role === 'Admin' || role === 'Operations') && (() => {
+          {(() => {
             const recs = ad.recommendations || {};
             const recItems = ['attic_insulation', 'wall_insulation', 'basement_insulation', 'air_sealing', 'duct_sealing', 'rim_joist', 'hvac_tune_clean', 'hvac_replacement', 'thermostat', 'exhaust_fans', 'detectors', 'hs_repairs'].filter(r => recs[r] === 'yes');
             if (recItems.length === 0 && !recs.details) return null;
@@ -716,12 +1002,11 @@ export default function JobDetail({ role }) {
               </div>
             );
           })()}
-          <div style={{ padding: '12px 16px', background: '#0f3460', color: '#fff', cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}
-            onClick={() => setScopeOpen(!scopeOpen)}>
-            <h3 style={{ margin: 0, fontSize: 14 }}>Scope of Work Builder {role === 'Scope Creator' ? '(Final Say)' : ''}</h3>
-            <span>{scopeOpen ? '\u25B2' : '\u25BC'}</span>
+          <div style={{ padding: '12px 16px', background: '#0f3460', color: '#fff' }}>
+            <h3 style={{ margin: 0, fontSize: 14 }}>Scope of Work {role === 'Scope Creator' ? '(You Have Final Say)' : ''}</h3>
+            <p style={{ margin: '4px 0 0', fontSize: 11, opacity: 0.85 }}>Select measures and build the scope based on the 2026 HES IE form and assessor recommendations.</p>
           </div>
-          {scopeOpen && program && (() => {
+          {program && (() => {
             const canScope = ['Admin', 'Operations', 'Program Manager', 'Scope Creator'].includes(role);
             const measures = program.measures || [];
             const selectedMeasures = sc.selected_measures || [];
@@ -732,7 +1017,6 @@ export default function JobDetail({ role }) {
               saveScope(newScope);
             };
 
-            // Auto-suggest from assessment
             const suggestions = [];
             if (aVal('recommendations', 'attic_insulation') === 'yes') suggestions.push('Attic Insulation');
             if (aVal('recommendations', 'wall_insulation') === 'yes') suggestions.push('Wall Insulation');
@@ -777,7 +1061,6 @@ export default function JobDetail({ role }) {
                   </div>
                 ))}
 
-                {/* Weatherization Pricing - from 2026 HES Appendix D */}
                 {canScope && selectedMeasures.length > 0 && (
                   <div style={{ marginTop: 16, padding: 12, background: '#f5f5f5', borderRadius: 6, border: '1px solid #ddd' }}>
                     <h4 style={{ fontSize: 13, color: '#333', marginBottom: 8 }}>Weatherization Pricing Worksheet</h4>
@@ -808,7 +1091,7 @@ export default function JobDetail({ role }) {
                 <div style={{ marginTop: 12 }}>
                   <strong style={{ fontSize: 12 }}>Scope Notes:</strong>
                   <textarea style={{ width: '100%', fontSize: 11, padding: 4, minHeight: 60, marginTop: 4, border: '1px solid #ccc', borderRadius: 3 }}
-                    defaultValue={sc.notes} disabled={!canScope}
+                    defaultValue={sc.notes} disabled={!['Admin', 'Operations', 'Program Manager', 'Scope Creator'].includes(role)}
                     onBlur={e => saveScope({ ...sc, notes: e.target.value })} />
                 </div>
                 {selectedMeasures.length > 0 && (
@@ -823,6 +1106,171 @@ export default function JobDetail({ role }) {
         </div>
       )}
 
+      {/* ===================== INSTALLATION TAB ===================== */}
+      {tab === 'install' && (
+        <div>
+          <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+            <h3 style={{ fontSize: 14, marginBottom: 12, borderBottom: '1px solid #eee', paddingBottom: 8 }}>Installation Progress</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
+              {[
+                { label: 'ABC Install Date', field: 'abc_install_date' },
+                { label: 'Wall Injection Date', field: 'wall_injection_date' },
+                { label: 'Patch Date', field: 'patch_date' },
+              ].map(d => (
+                <div key={d.field} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                  <strong style={{ minWidth: 160 }}>{d.label}:</strong>
+                  <input type="date" value={job[d.field] || ''} disabled={!canEdit}
+                    onChange={e => updateField(d.field, e.target.value)}
+                    style={{ fontSize: 12, padding: '4px 6px' }} />
+                  {job[d.field] && <span style={{ color: '#27ae60', fontSize: 11 }}>Set</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Scope summary for installer reference */}
+          <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+            <h3 style={{ fontSize: 14, marginBottom: 8 }}>Scope of Work (Reference)</h3>
+            {(sc.selected_measures || []).length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {(sc.selected_measures || []).map(m => (
+                  <span key={m} style={{ fontSize: 12, padding: '4px 10px', background: '#e8f5e9', borderRadius: 4, border: '1px solid #c8e6c9' }}>{m}</span>
+                ))}
+              </div>
+            ) : <p style={{ fontSize: 12, color: '#888' }}>No scope defined yet.</p>}
+            {sc.notes && <p style={{ fontSize: 11, color: '#666', marginTop: 8 }}><strong>Notes:</strong> {sc.notes}</p>}
+          </div>
+
+          {/* Checklist for installer */}
+          <div className="card" style={{ padding: 16 }}>
+            <h3 style={{ fontSize: 14, marginBottom: 12 }}>Install Checklist</h3>
+            {(job.checklist || []).filter(c => c.item_type === 'photo' || c.item_type === 'paperwork').map(item => (
+              <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '4px 0', cursor: canEdit ? 'pointer' : 'default' }}>
+                <input type="checkbox" checked={!!item.completed} disabled={!canEdit}
+                  onChange={async () => {
+                    await api.updateChecklist(item.id, { completed: !item.completed, completed_by: role });
+                    load();
+                  }} />
+                <span style={{ textDecoration: item.completed ? 'line-through' : 'none', color: item.completed ? '#888' : '#333' }}>
+                  {item.description}
+                </span>
+                {item.completed_date && <span style={{ fontSize: 10, color: '#888' }}>({item.completed_date})</span>}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ===================== HVAC TAB ===================== */}
+      {tab === 'hvac' && (
+        <div className="card" style={{ padding: 16 }}>
+          <h3 style={{ fontSize: 14, marginBottom: 12 }}>HVAC Tune & Clean / Replacements</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12, marginBottom: 16 }}>
+            {[
+              { label: 'HVAC Tune & Clean Date', field: 'hvac_tune_clean_date' },
+              { label: 'HVAC Replacement Date', field: 'hvac_replacement_date' },
+            ].map(d => (
+              <div key={d.field} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                <strong style={{ minWidth: 180 }}>{d.label}:</strong>
+                <input type="date" value={job[d.field] || ''} disabled={!canEdit}
+                  onChange={e => updateField(d.field, e.target.value)}
+                  style={{ fontSize: 12, padding: '4px 6px' }} />
+                {job[d.field] && <span style={{ color: '#27ae60', fontSize: 11 }}>Set</span>}
+              </div>
+            ))}
+          </div>
+          {(job.hvac_replacements || []).length === 0 ? (
+            <p style={{ color: '#888', fontSize: 12 }}>No HVAC records yet.</p>
+          ) : (
+            (job.hvac_replacements || []).map(hvac => (
+              <div key={hvac.id} style={{ padding: 12, border: '1px solid #ddd', borderRadius: 6, marginBottom: 10, background: '#fafafa' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <strong style={{ fontSize: 13 }}>{hvac.equipment_type}</strong>
+                  <span className={`badge ${hvac.approval_status === 'approved' ? 'active' : 'pending'}`} style={{ fontSize: 10 }}>
+                    {hvac.approval_status}
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 6, fontSize: 12 }}>
+                  <div><strong>Make:</strong> {hvac.existing_make || '-'}</div>
+                  <div><strong>Model:</strong> {hvac.existing_model || '-'}</div>
+                  <div><strong>Condition:</strong> {hvac.existing_condition || '-'}</div>
+                  <div><strong>Efficiency:</strong> {hvac.existing_efficiency || '-'}</div>
+                  <div><strong>Age:</strong> {hvac.existing_age || '-'}</div>
+                  <div><strong>Decision Tree:</strong> {hvac.decision_tree_result || '-'}</div>
+                </div>
+                {hvac.notes && <p style={{ fontSize: 11, color: '#666', marginTop: 6 }}>{hvac.notes}</p>}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* ===================== INSPECTION TAB ===================== */}
+      {tab === 'inspection' && (
+        <div>
+          <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+            <h3 style={{ fontSize: 14, marginBottom: 12, borderBottom: '1px solid #eee', paddingBottom: 8 }}>Final Inspection</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                <strong style={{ minWidth: 160 }}>Inspection Date:</strong>
+                <input type="date" value={job.inspection_date || ''} disabled={!canEdit}
+                  onChange={e => updateField('inspection_date', e.target.value)}
+                  style={{ fontSize: 12, padding: '4px 6px' }} />
+                {job.inspection_date && <span style={{ color: '#27ae60', fontSize: 11 }}>Set</span>}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                <strong style={{ minWidth: 160 }}>Submission Date:</strong>
+                <input type="date" value={job.submission_date || ''} disabled={!canEdit}
+                  onChange={e => updateField('submission_date', e.target.value)}
+                  style={{ fontSize: 12, padding: '4px 6px' }} />
+                {job.submission_date && <span style={{ color: '#27ae60', fontSize: 11 }}>Set</span>}
+              </div>
+            </div>
+          </div>
+
+          {/* Post-install diagnostics */}
+          <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+            <h3 style={{ fontSize: 14, marginBottom: 12 }}>Post-Install Diagnostics</h3>
+            <div style={gs}>
+              <div style={fs}><strong>Post Blower Door (CFM50):</strong> {txt('diagnostics', 'post_cfm50', 'CFM50', 60)}</div>
+              <div style={fs}><strong>Post Duct Blaster (CFM25):</strong> {txt('diagnostics', 'post_cfm25', 'CFM25', 60)}</div>
+              <div style={fs}><strong>% CFM50 Reduction:</strong> {txt('diagnostics', 'cfm50_reduction', '%', 40)}</div>
+              <div style={fs}><strong>Combustion Post:</strong> {txt('diagnostics', 'combustion_post', '%', 60)}</div>
+            </div>
+          </div>
+
+          {/* QA Checklist */}
+          <div className="card" style={{ padding: 16 }}>
+            <h3 style={{ fontSize: 14, marginBottom: 12 }}>Inspection Checklist</h3>
+            {['job_paperwork', 'photo', 'paperwork'].map(type => {
+              const items = (job.checklist || []).filter(c => c.item_type === type);
+              if (items.length === 0) return null;
+              return (
+                <div key={type} style={{ marginBottom: 12 }}>
+                  <h4 style={{ fontSize: 13, marginBottom: 6, textTransform: 'capitalize' }}>
+                    {type === 'job_paperwork' ? 'Job Documentation' : type === 'photo' ? 'Photo Requirements' : 'Measure Paperwork'}
+                  </h4>
+                  {items.map(item => (
+                    <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '3px 0', cursor: canEdit ? 'pointer' : 'default' }}>
+                      <input type="checkbox" checked={!!item.completed} disabled={!canEdit}
+                        onChange={async () => {
+                          await api.updateChecklist(item.id, { completed: !item.completed, completed_by: role });
+                          load();
+                        }} />
+                      <span style={{ textDecoration: item.completed ? 'line-through' : 'none', color: item.completed ? '#888' : '#333' }}>
+                        {item.description}
+                      </span>
+                      {item.completed_date && <span style={{ fontSize: 10, color: '#888' }}>({item.completed_date})</span>}
+                    </label>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+
       {/* ===================== PHOTOS TAB ===================== */}
       {tab === 'photos' && (
         <div>
@@ -833,7 +1281,6 @@ export default function JobDetail({ role }) {
             </button>
           </div>
 
-          {/* House Side Legend */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
             {HOUSE_SIDES.map(s => {
               const colors = { Alpha: '#e3f2fd', Bravo: '#fce4ec', Charlie: '#e8f5e9', Delta: '#fff3e0', Interior: '#f3e5f5', Other: '#f5f5f5' };
@@ -846,7 +1293,6 @@ export default function JobDetail({ role }) {
             })}
           </div>
 
-          {/* Photos by Phase */}
           {PHOTO_PHASES.map(phase => {
             const photos = (job.photos || []).filter(p => p.phase === phase);
             if (photos.length === 0) return null;
@@ -918,7 +1364,75 @@ export default function JobDetail({ role }) {
         </div>
       )}
 
-      {/* ===================== CHECKLIST TAB ===================== */}
+      {/* ===================== FORMS & DOCUMENTS TAB ===================== */}
+      {tab === 'forms' && (
+        <div>
+          <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+            <h3 style={{ fontSize: 14, marginBottom: 12, borderBottom: '1px solid #eee', paddingBottom: 8 }}>Required Forms & Signatures</h3>
+            <p style={{ fontSize: 12, color: '#666', marginBottom: 12 }}>Track all forms that need to be signed and submitted for this project per 2026 HES requirements.</p>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {[
+                { name: 'Customer Authorization Form', desc: 'Customer signs to authorize work', key: 'auth_form' },
+                { name: 'Customer-Signed Final Scope of Work', desc: 'Customer approves the final scope before install', key: 'signed_scope' },
+                { name: 'Assessment Report', desc: 'MS Forms assessment survey completed', key: 'assessment_report' },
+                { name: 'Hazardous Conditions Form', desc: 'Document any H&S hazards found', key: 'hazardous_form' },
+                { name: 'Sub-Contractor Estimates', desc: 'If applicable, for work outside scope', key: 'sub_estimates' },
+                { name: 'Final Inspection Form', desc: 'QA inspector completes after install', key: 'final_inspection' },
+                { name: 'Final Invoice', desc: 'Invoice for completed work', key: 'final_invoice' },
+              ].map(form => {
+                const formStatus = (sc.forms || {})[form.key] || 'pending';
+                return (
+                  <div key={form.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: formStatus === 'signed' ? '#e8f5e9' : '#f9f9f9', borderRadius: 6, border: '1px solid #eee' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{form.name}</div>
+                      <div style={{ fontSize: 11, color: '#888' }}>{form.desc}</div>
+                    </div>
+                    <select value={formStatus} disabled={!canEdit}
+                      onChange={e => saveScope({ ...sc, forms: { ...(sc.forms || {}), [form.key]: e.target.value } })}
+                      style={{ fontSize: 11, padding: '4px 8px', borderRadius: 4 }}>
+                      <option value="pending">Pending</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="signed">Signed/Complete</option>
+                      <option value="na">N/A</option>
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Documentation Checklist */}
+          <div className="card" style={{ padding: 16 }}>
+            <h3 style={{ fontSize: 14, marginBottom: 12 }}>Documentation Checklist</h3>
+            {['job_paperwork', 'photo', 'paperwork'].map(type => {
+              const items = (job.checklist || []).filter(c => c.item_type === type);
+              if (items.length === 0) return null;
+              return (
+                <div key={type} style={{ marginBottom: 16 }}>
+                  <h4 style={{ fontSize: 13, marginBottom: 8, textTransform: 'capitalize' }}>
+                    {type === 'job_paperwork' ? 'Job Documentation' : type === 'photo' ? 'Photo Requirements' : 'Measure Paperwork'}
+                  </h4>
+                  {items.map(item => (
+                    <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '4px 0', cursor: canEdit ? 'pointer' : 'default' }}>
+                      <input type="checkbox" checked={!!item.completed} disabled={!canEdit}
+                        onChange={async () => {
+                          await api.updateChecklist(item.id, { completed: !item.completed, completed_by: role });
+                          load();
+                        }} />
+                      <span style={{ textDecoration: item.completed ? 'line-through' : 'none', color: item.completed ? '#888' : '#333' }}>
+                        {item.description}
+                      </span>
+                      {item.completed_date && <span style={{ fontSize: 10, color: '#888' }}>({item.completed_date})</span>}
+                    </label>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ===================== CHECKLIST TAB (Installer view) ===================== */}
       {tab === 'checklist' && (
         <div className="card" style={{ padding: 16 }}>
           <h3 style={{ fontSize: 14, marginBottom: 12 }}>Documentation & Photo Checklist</h3>
@@ -946,36 +1460,6 @@ export default function JobDetail({ role }) {
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* ===================== HVAC TAB ===================== */}
-      {tab === 'hvac' && (
-        <div className="card" style={{ padding: 16 }}>
-          <h3 style={{ fontSize: 14, marginBottom: 12 }}>HVAC Tune & Clean / Replacements</h3>
-          {(job.hvac_replacements || []).length === 0 ? (
-            <p style={{ color: '#888', fontSize: 12 }}>No HVAC records yet.</p>
-          ) : (
-            (job.hvac_replacements || []).map(hvac => (
-              <div key={hvac.id} style={{ padding: 12, border: '1px solid #ddd', borderRadius: 6, marginBottom: 10, background: '#fafafa' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <strong style={{ fontSize: 13 }}>{hvac.equipment_type}</strong>
-                  <span className={`badge ${hvac.approval_status === 'approved' ? 'active' : 'pending'}`} style={{ fontSize: 10 }}>
-                    {hvac.approval_status}
-                  </span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 6, fontSize: 12 }}>
-                  <div><strong>Make:</strong> {hvac.existing_make || '-'}</div>
-                  <div><strong>Model:</strong> {hvac.existing_model || '-'}</div>
-                  <div><strong>Condition:</strong> {hvac.existing_condition || '-'}</div>
-                  <div><strong>Efficiency:</strong> {hvac.existing_efficiency || '-'}</div>
-                  <div><strong>Age:</strong> {hvac.existing_age || '-'}</div>
-                  <div><strong>Decision Tree:</strong> {hvac.decision_tree_result || '-'}</div>
-                </div>
-                {hvac.notes && <p style={{ fontSize: 11, color: '#666', marginTop: 6 }}>{hvac.notes}</p>}
-              </div>
-            ))
-          )}
         </div>
       )}
 
@@ -1037,7 +1521,6 @@ export default function JobDetail({ role }) {
                 </div>
               </div>
 
-              {/* By House Side */}
               <h4 style={{ fontSize: 13, marginBottom: 8 }}>Photos by Side of House</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 16 }}>
                 {Object.entries(exportData.by_side || {}).map(([side, photos]) => (
@@ -1053,7 +1536,6 @@ export default function JobDetail({ role }) {
                 ))}
               </div>
 
-              {/* By Phase */}
               <h4 style={{ fontSize: 13, marginBottom: 8 }}>Photos by Phase</h4>
               {Object.entries(exportData.photos_by_phase || {}).map(([phase, photos]) => (
                 <div key={phase} style={{ marginBottom: 12 }}>
@@ -1069,7 +1551,6 @@ export default function JobDetail({ role }) {
                 </div>
               ))}
 
-              {/* Checklist summary */}
               <h4 style={{ fontSize: 13, marginTop: 16, marginBottom: 8 }}>Documentation Checklist</h4>
               {(exportData.checklist || []).map(item => (
                 <div key={item.id} style={{ fontSize: 12, padding: '2px 0', display: 'flex', gap: 6 }}>
