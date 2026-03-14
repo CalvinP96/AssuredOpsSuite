@@ -386,14 +386,22 @@ export default function ProgramDetail({ role }) {
               {/* ELIGIBILITY SUB-TAB */}
               {rulesSubTab === 'eligibility' && (
                 <div>
-                  {['property', 'customer', 'prioritization'].map(type => {
+                  {['property', 'customer', 'prioritization', 'compliance'].map(type => {
                     const rules = (program.eligibilityRules || []).filter(r => r.rule_type === type);
                     if (rules.length === 0) return null;
+                    const isCompliance = type === 'compliance';
                     return (
                       <div key={type} style={{ marginBottom: 20 }}>
-                        <h3 style={{ textTransform: 'capitalize', marginBottom: 10 }}>{type} Eligibility</h3>
+                        <h3 style={{ textTransform: 'capitalize', marginBottom: 10, color: isCompliance ? '#c0392b' : undefined }}>
+                          {isCompliance ? 'Protected Utility Documents' : `${type} Eligibility`}
+                        </h3>
+                        {isCompliance && (
+                          <div style={{ padding: '12px 16px', background: '#f8d7da', border: '1px solid #c0392b', borderRadius: 6, marginBottom: 12, fontSize: 13 }}>
+                            <strong>DO NOT ALTER.</strong> Any form with ComEd, Nicor Gas, Peoples Gas, or North Shore Gas logos is utility-owned. Cannot be edited, reprinted, or modified in any way. Must be signed by customer. Customer must receive a copy.
+                          </div>
+                        )}
                         {rules.map(r => (
-                          <div key={r.id} className="card" style={{ marginBottom: 8, padding: '12px 16px' }}>
+                          <div key={r.id} className="card" style={{ marginBottom: 8, padding: '12px 16px', borderLeft: isCompliance ? '4px solid #c0392b' : undefined }}>
                             <strong>{r.title}</strong>
                             <p style={{ margin: '6px 0 0', color: '#666', fontSize: 13 }}>{r.description}</p>
                           </div>

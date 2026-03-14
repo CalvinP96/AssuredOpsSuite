@@ -532,7 +532,12 @@ router.post('/:id/seed-hes-rules', (req, res) => {
     { type: 'prioritization', title: 'A. SF-Type Configuration', desc: 'In-unit mechanical equipment. Customer has decision-making power over building envelope. Attic and/or basement can be served without impacting other units.' },
     { type: 'prioritization', title: 'B. No Obvious Deferrable Conditions', desc: 'No blatantly obvious issues exceeding per-home H&S funding: roof leaks, vermiculite, hoarding, active water damage, cracked ceilings, knob and tube wiring, severe disrepair of access points.' },
     { type: 'prioritization', title: 'C. Attic Opportunity', desc: 'Attic insulation less than 6 inches average. If no hatch: yes if customer willing to have one cut. If no attic: waived. If customer refuses access: no.' },
-    { type: 'prioritization', title: 'D. Basement/Crawlspace Opportunity', desc: 'At least 20% of rim joist accessible and not air sealed. If no basement/crawlspace: waived. If finished basement with crawlspace: yes.' }
+    { type: 'prioritization', title: 'D. Basement/Crawlspace Opportunity', desc: 'At least 20% of rim joist accessible and not air sealed. If no basement/crawlspace: waived. If finished basement with crawlspace: yes.' },
+    // Protected Utility Documents - CANNOT be altered
+    { type: 'compliance', title: 'Customer Authorization Form (Appendix E)', desc: 'UTILITY-PROTECTED DOCUMENT. Contains ComEd/Nicor/utility logos. CANNOT be altered, modified, or reprinted in any way. Must be the original program-issued form exactly as provided. Must be signed by customer. Customer MUST receive a copy.' },
+    { type: 'compliance', title: 'Consent and Release / Health & Safety Form (Appendix I)', desc: 'UTILITY-PROTECTED DOCUMENT. Contains utility branding. CANNOT be altered, modified, or reprinted in any way. Must be the original program-issued form exactly as provided. Must be signed by customer. Customer MUST receive a copy. Used internally as the "Health and Safety Form."' },
+    { type: 'compliance', title: 'Customer Satisfaction Survey (Appendix K)', desc: 'UTILITY-PROTECTED DOCUMENT. Contains utility logos. CANNOT be altered or reprinted. Must be the original program-issued form. Left with customer to mail in.' },
+    { type: 'compliance', title: 'All Utility-Branded Forms', desc: 'ANY document bearing ComEd, Nicor Gas, Peoples Gas, or North Shore Gas logos is a utility-owned document. These forms CANNOT be altered even slightly - no edits, no reprinting, no modifications. Must use the exact original form as provided by the program. Must be signed by customer where required. Customer must always receive a copy of any signed form.' }
   ];
 
   eligibility.forEach((e, i) => {
