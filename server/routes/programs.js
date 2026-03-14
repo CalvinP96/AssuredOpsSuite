@@ -24,8 +24,18 @@ router.get('/:id', (req, res) => {
   const documents = db.prepare('SELECT * FROM program_documents WHERE program_id = ? ORDER BY updated_at DESC').all(req.params.id);
   const tasks = db.prepare('SELECT * FROM program_tasks WHERE program_id = ? ORDER BY priority DESC, due_date ASC').all(req.params.id);
   const milestones = db.prepare('SELECT * FROM program_milestones WHERE program_id = ? ORDER BY target_date ASC').all(req.params.id);
+  const measures = db.prepare('SELECT * FROM program_measures WHERE program_id = ? ORDER BY sort_order, category').all(req.params.id);
+  const processSteps = db.prepare('SELECT * FROM program_process_steps WHERE program_id = ? ORDER BY sort_order, step_number').all(req.params.id);
+  const eligibilityRules = db.prepare('SELECT * FROM program_eligibility_rules WHERE program_id = ? ORDER BY sort_order').all(req.params.id);
+  const deferralRules = db.prepare('SELECT * FROM program_deferral_rules WHERE program_id = ? ORDER BY sort_order').all(req.params.id);
 
-  res.json({ ...program, documents, tasks, milestones });
+  // Attach photo and paperwork requirements to each measure
+  measures.forEach(m => {
+    m.photo_requirements = db.prepare('SELECT * FROM measure_photo_requirements WHERE measure_id = ? ORDER BY sort_order').all(m.id);
+    m.paperwork_requirements = db.prepare('SELECT * FROM measure_paperwork_requirements WHERE measure_id = ? ORDER BY sort_order').all(m.id);
+  });
+
+  res.json({ ...program, documents, tasks, milestones, measures, processSteps, eligibilityRules, deferralRules });
 });
 
 router.post('/', (req, res) => {
@@ -137,6 +147,339 @@ router.put('/milestones/:msId', (req, res) => {
     'UPDATE program_milestones SET title=?, target_date=?, completed_date=?, status=?, notes=? WHERE id=?'
   ).run(title, target_date, completed_date, status, notes, req.params.msId);
   res.json(db.prepare('SELECT * FROM program_milestones WHERE id = ?').get(req.params.msId));
+});
+
+// --- Jobs ---
+
+router.get('/:id/jobs', (req, res) => {
+  const db = getDb();
+  const jobs = db.prepare('SELECT * FROM program_jobs WHERE program_id = ? ORDER BY created_at DESC').all(req.params.id);
+  jobs.forEach(j => {
+    j.measures = db.prepare(`
+      SELECT jm.*, pm.name as measure_name, pm.category as measure_category
+      FROM job_measures jm JOIN program_measures pm ON jm.measure_id = pm.id
+      WHERE jm.job_id = ?
+    `).all(j.id);
+    j.checklist = db.prepare('SELECT * FROM job_checklist_items WHERE job_id = ? ORDER BY item_type, id').all(j.id);
+    j.hvac_replacements = db.prepare('SELECT * FROM hvac_replacements WHERE job_id = ? ORDER BY created_at DESC').all(j.id);
+  });
+  res.json(jobs);
+});
+
+router.post('/:id/jobs', (req, res) => {
+  const db = getDb();
+  const { job_number, customer_name, address, city, zip, utility, assigned_contractor, notes } = req.body;
+  const result = db.prepare(
+    'INSERT INTO program_jobs (program_id, job_number, customer_name, address, city, zip, utility, assigned_contractor, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(req.params.id, job_number || null, customer_name || null, address || null, city || null, zip || null, utility || null, assigned_contractor || null, notes || null);
+
+  const job = db.prepare('SELECT * FROM program_jobs WHERE id = ?').get(result.lastInsertRowid);
+
+  // Auto-generate checklist items from program measures
+  const measures = db.prepare('SELECT * FROM program_measures WHERE program_id = ?').all(req.params.id);
+  measures.forEach(m => {
+    const photoReqs = db.prepare('SELECT * FROM measure_photo_requirements WHERE measure_id = ?').all(m.id);
+    photoReqs.forEach(pr => {
+      db.prepare('INSERT INTO job_checklist_items (job_id, item_type, description, measure_id) VALUES (?, ?, ?, ?)').run(job.id, 'photo', pr.photo_description, m.id);
+    });
+    const paperReqs = db.prepare('SELECT * FROM measure_paperwork_requirements WHERE measure_id = ?').all(m.id);
+    paperReqs.forEach(pr => {
+      db.prepare('INSERT INTO job_checklist_items (job_id, item_type, description, measure_id) VALUES (?, ?, ?, ?)').run(job.id, 'paperwork', pr.document_name, m.id);
+    });
+  });
+
+  // Add job-level paperwork items
+  const jobPaperwork = [
+    'Signed Customer Authorization Form',
+    'Signed Scope of Work',
+    'Signed Final Inspection Form',
+    'Customer Satisfaction Survey Left with Customer',
+    'All data entered in RISE',
+    'Photos uploaded as zip or Company Cam link',
+    'Documents named with address'
+  ];
+  jobPaperwork.forEach(item => {
+    db.prepare('INSERT INTO job_checklist_items (job_id, item_type, description) VALUES (?, ?, ?)').run(job.id, 'job_paperwork', item);
+  });
+
+  res.status(201).json(job);
+});
+
+router.put('/jobs/:jobId', (req, res) => {
+  const db = getDb();
+  const { status, customer_name, address, city, zip, utility, assessment_date, install_date, inspection_date, assigned_contractor, notes } = req.body;
+  db.prepare(
+    "UPDATE program_jobs SET status=?, customer_name=?, address=?, city=?, zip=?, utility=?, assessment_date=?, install_date=?, inspection_date=?, assigned_contractor=?, notes=?, updated_at=datetime('now') WHERE id=?"
+  ).run(status, customer_name, address, city, zip, utility, assessment_date, install_date, inspection_date, assigned_contractor, notes, req.params.jobId);
+  res.json(db.prepare('SELECT * FROM program_jobs WHERE id = ?').get(req.params.jobId));
+});
+
+router.post('/jobs/:jobId/measures', (req, res) => {
+  const db = getDb();
+  const { measure_id, notes } = req.body;
+  const result = db.prepare('INSERT INTO job_measures (job_id, measure_id, notes) VALUES (?, ?, ?)').run(req.params.jobId, measure_id, notes || null);
+  res.status(201).json(db.prepare('SELECT jm.*, pm.name as measure_name FROM job_measures jm JOIN program_measures pm ON jm.measure_id = pm.id WHERE jm.id = ?').get(result.lastInsertRowid));
+});
+
+router.put('/jobs/measures/:jmId', (req, res) => {
+  const db = getDb();
+  const { status, pre_condition, post_condition, notes } = req.body;
+  db.prepare('UPDATE job_measures SET status=?, pre_condition=?, post_condition=?, notes=? WHERE id=?').run(status, pre_condition, post_condition, notes, req.params.jmId);
+  res.json({ success: true });
+});
+
+router.put('/jobs/checklist/:itemId', (req, res) => {
+  const db = getDb();
+  const { completed, completed_by, notes } = req.body;
+  const completedDate = completed ? new Date().toISOString().split('T')[0] : null;
+  db.prepare('UPDATE job_checklist_items SET completed=?, completed_date=?, completed_by=?, notes=? WHERE id=?').run(completed ? 1 : 0, completedDate, completed_by || null, notes || null, req.params.itemId);
+  res.json({ success: true });
+});
+
+// --- HVAC Replacements ---
+
+router.get('/jobs/:jobId/hvac', (req, res) => {
+  const db = getDb();
+  const replacements = db.prepare('SELECT * FROM hvac_replacements WHERE job_id = ? ORDER BY created_at DESC').all(req.params.jobId);
+  res.json(replacements);
+});
+
+router.post('/jobs/:jobId/hvac', (req, res) => {
+  const db = getDb();
+  const { equipment_type, existing_make, existing_model, existing_condition, existing_efficiency, existing_age, decision_tree_result, notes } = req.body;
+  const result = db.prepare(
+    'INSERT INTO hvac_replacements (job_id, equipment_type, existing_make, existing_model, existing_condition, existing_efficiency, existing_age, decision_tree_result, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(req.params.jobId, equipment_type, existing_make || null, existing_model || null, existing_condition || null, existing_efficiency || null, existing_age || null, decision_tree_result || null, notes || null);
+  const id = db.prepare('SELECT id FROM hvac_replacements WHERE job_id = ? ORDER BY id DESC LIMIT 1').get(req.params.jobId);
+  res.status(201).json(db.prepare('SELECT * FROM hvac_replacements WHERE id = ?').get(id.id));
+});
+
+router.put('/hvac/:hvacId', (req, res) => {
+  const db = getDb();
+  const fields = req.body;
+  const sets = Object.keys(fields).map(k => `${k}=?`).join(', ');
+  const vals = Object.values(fields);
+  db.prepare(`UPDATE hvac_replacements SET ${sets}, updated_at=datetime('now') WHERE id=?`).run(...vals, req.params.hvacId);
+  res.json(db.prepare('SELECT * FROM hvac_replacements WHERE id = ?').get(req.params.hvacId));
+});
+
+// --- Seed HES IE Program Rules ---
+
+router.post('/:id/seed-hes-rules', (req, res) => {
+  const db = getDb();
+  const pid = req.params.id;
+
+  // Check if already seeded
+  const existing = db.prepare('SELECT COUNT(*) as count FROM program_measures WHERE program_id = ?').get(pid);
+  if (existing.count > 0) return res.json({ message: 'Rules already seeded', count: existing.count });
+
+  // --- MEASURES ---
+  const measuresData = [
+    // Assessment
+    { cat: 'Assessment', name: 'Single Family Assessment', desc: 'Initial home energy assessment by BPI Building Analyst Professional (BA-P). Includes diagnostic testing, data collection, health & safety evaluation, and project scoping.', baseline: 'N/A', eff: 'N/A', install: 'Staff must be BPI Building Analyst Professional (BA-P) certified. Use Energy Audit Data Collection Form. Collect baseline conditions, photos of each eligible measure, general home characteristics (occupants, sq ft, stories, year built, home type).', emergency: 0, sort: 1 },
+    // Direct Install
+    { cat: 'Direct Install', name: 'Programmable Thermostat', desc: 'Replace manual thermostat with programmable thermostat capable of 7-day schedule.', baseline: 'Existing thermostat must be functional. Customer requests programmable over advanced.', eff: 'Must have capability to adjust temperature set points according to a 7-day schedule.', install: 'Power shut off at furnace switch. Remove old thermostat carefully (avoid paint/drywall damage). Mercury thermostats disposed per protocol. Install per manufacturer specs. Test furnace and AC functionality (AC not tested if outdoor temp ≤65°F). Program with customer input. Provide tutorial on ENERGY STAR settings. Install backplate if needed.', emergency: 0, sort: 10 },
+    { cat: 'Direct Install', name: 'Advanced Thermostat', desc: 'Smart/advanced thermostat for homes with furnace and/or CAC.', baseline: 'Existing thermostat must be functional. Replaces manual or programmable. Boiler homes: only if existing thermostat in poor condition.', eff: 'Must be advanced/smart thermostat with occupancy sensing.', install: 'Screen customer: smartphone not required, Wi-Fi not required but encouraged. Verify HVAC compatibility. Power shut off at furnace switch. Remove old thermostat carefully. Install per manufacturer specs. Test functionality. Program with customer. Provide tutorial on ENERGY STAR settings.', emergency: 0, sort: 11 },
+    // Insulation
+    { cat: 'Insulation', name: 'Attic Insulation', desc: 'Insulate attic to R-49 when existing insulation ≤R-19.', baseline: 'Existing attic insulation rated R-19 or lower.', eff: 'Bring up to R-49.', install: 'Attic must be accessible and free of clutter. H&S issues resolved first. Install per BPI specs. Air sealing must accompany attic insulation. Chimney dams required when insulation contacts chimney. Inspect ceiling integrity: check for cracks, sagging/bowing, fastener type (screws required if nails found), joist spacing ≤16" OC. Consider cellulose weight on poor ceilings (fiberglass alternative). Inspect ceiling fans for secure structural attachment.', emergency: 0, sort: 20 },
+    { cat: 'Insulation', name: 'Basement/Crawlspace Wall Insulation', desc: 'Insulate basement or crawlspace walls with minimum R-10.', baseline: 'No existing insulation on basement/crawlspace walls.', eff: 'Minimum R-10.', install: 'Install per BPI specifications.', emergency: 0, sort: 21 },
+    { cat: 'Insulation', name: 'Floor Insulation Above Crawlspace', desc: 'Insulate floor above unconditioned crawlspace to minimum R-20.', baseline: 'No existing floor insulation above unconditioned crawlspace.', eff: 'Minimum R-20. If ductwork in crawlspace, thermal boundary = crawlspace walls instead.', install: 'Install per BPI specifications.', emergency: 0, sort: 22 },
+    { cat: 'Insulation', name: 'Wall Insulation', desc: 'Insulate walls when no existing insulation or existing is in poor condition.', baseline: 'No existing wall insulation or existing in poor condition.', eff: 'Per BPI standards.', install: 'Install per BPI specifications.', emergency: 0, sort: 23 },
+    { cat: 'Insulation', name: 'Wall Insulation (Knee Wall)', desc: 'Insulate attic knee walls and sloped ceiling spaces to R-11+.', baseline: 'No existing effective thermal resistance in cavity.', eff: 'R-11 or greater.', install: 'For attic knee walls and attic spaces with sloped ceilings.', emergency: 0, sort: 24 },
+    { cat: 'Insulation', name: 'Rim Joist Insulation', desc: 'Insulate rim/band joist with minimum R-10.', baseline: 'No existing rim joist insulation.', eff: 'Minimum R-10.', install: 'Seal all penetrations in rim joist before insulating.', emergency: 0, sort: 25 },
+    { cat: 'Insulation', name: 'Low-e Storm Windows', desc: 'Add storm windows to inoperable single pane windows.', baseline: 'Single pane, inoperable windows.', eff: 'Low-e storm window.', install: 'Measure IGU in sash (W x H x Thickness).', emergency: 0, sort: 26 },
+    { cat: 'Insulation', name: 'AC Covers', desc: 'Rigid or flexible insulated cover for indoor side of room AC unit.', baseline: 'Room AC unit (window, sleeve, through-wall, PTAC, PTHP) poorly installed with gaps.', eff: 'Must remain installed throughout winter heating season.', install: 'Rigid cover with foam gaskets to seal edges, or flexible well-insulated cover. For wall-thru/sleeve units removed for heating season: rigid cover fits inside sleeve with foam gaskets.', emergency: 0, sort: 27 },
+    // Air Sealing & Duct Sealing
+    { cat: 'Air Sealing & Duct Sealing', name: 'Air Sealing', desc: 'Reduce air infiltration with goal of 25%+ CFM50 reduction.', baseline: 'CFM50 reading ≥110% of conditioned square footage.', eff: 'Goal: 25% or greater overall reduction in CFM50.', install: 'Per BPI specifications. Not completed where unsafe (CAZ issue, indoor air quality concern, improper ventilation, medical conditions). Must be accompanied by proper ventilation (ASHRAE 62.2).', emergency: 0, sort: 30 },
+    { cat: 'Air Sealing & Duct Sealing', name: 'Duct Sealing', desc: 'Seal ducts in unconditioned and semi-conditioned spaces using mastic.', baseline: 'Leaky ductwork in unconditioned or semi-conditioned spaces.', eff: 'Must have CFM25 pre/post readings. Seal plenums, main ducts, takeoffs, and boots minimum.', install: 'Use mastic sealant, DuctEZ, or HVAC tape. Measure total leakage at CFM25 before and after with duct blaster. Duct system needing repairs requires sufficient H&S budget.', emergency: 0, sort: 31 },
+    // Mechanicals
+    { cat: 'Mechanicals', name: 'Gas Furnace Replacement', desc: 'Emergency replacement of gas furnace. Must have ≥95% efficiency.', baseline: 'See Mechanical Replacement Decision Trees (Appendix H).', eff: 'New furnace must be ≥95% efficiency.', install: 'Emergency replacement only. Install by qualified contractor per manufacturer specs and local/regional/state codes. Should not be performed unless accompanying air sealing and insulation measures. Recommended to install after other measures complete.', emergency: 1, sort: 40 },
+    { cat: 'Mechanicals', name: 'Boiler Replacement', desc: 'Emergency replacement of boiler. New boiler efficiency ≥95%.', baseline: 'See Mechanical Replacement Decision Trees (Appendix H).', eff: 'New boiler efficiency ≥95%.', install: 'Emergency replacement only. Install by qualified contractor per manufacturer specs and codes.', emergency: 1, sort: 41 },
+    { cat: 'Mechanicals', name: 'Natural Gas Water Heater Replacement', desc: 'Emergency replacement. Energy factor ≥0.67.', baseline: 'See Mechanical Replacement Decision Trees (Appendix H).', eff: 'Energy factor of new water heater must be ≥0.67.', install: 'Emergency replacement only. Install by qualified contractor per manufacturer specs and codes.', emergency: 1, sort: 42 },
+    { cat: 'Mechanicals', name: 'Electric Water Heater Replacement (Heat Pump)', desc: 'Replace electric resistance water heaters with Heat Pump Water Heaters regardless of age/condition.', baseline: 'Any existing electric resistance water heater.', eff: 'Must be Energy Star rated Heat Pump Water Heater.', install: 'Consult homeowner, especially if recently replaced. Provide customer education on heat pump WH routine maintenance. Do not proceed if customer cannot keep up with regular maintenance.', emergency: 0, sort: 43 },
+    { cat: 'Mechanicals', name: 'Central Air Conditioner Replacement', desc: 'Emergency replacement. Must be ≤SEER 10 and manufactured before 2000.', baseline: 'CAC must be ≤SEER 10 and manufactured before 2000.', eff: 'New CAC must have SEER 2 ≥15.2 (16 SEER equivalent).', install: 'Emergency replacement only. See Mechanical Replacement Decision Trees (Appendix H).', emergency: 1, sort: 44 },
+    { cat: 'Mechanicals', name: 'Gas Furnace Tune-Up', desc: 'Tune-up for gas furnaces not serviced in 3+ years.', baseline: 'Must not have received tune-up within last 3 years. Not allowed on propane furnaces.', eff: 'Per IL TRM requirements.', install: 'Measure combustion efficiency. Check/clean blower assembly. Lubricate motor, inspect fan belt. Inspect for gas leaks. Clean burner, adjust. Check ignition/safety systems. Check/clean heat exchanger. Inspect exhaust/flue. Inspect control box/wiring. Check air filter. Inspect ductwork. Measure temperature rise. Check volts/amps. Check thermostat operation. Perform CO test and adjust.', emergency: 0, sort: 45 },
+    { cat: 'Mechanicals', name: 'Boiler Tune-Up', desc: 'Tune-up for boilers not serviced in 3+ years.', baseline: 'Must not have received tune-up within last 3 years.', eff: 'Per IL TRM requirements.', install: 'Measure combustion efficiency. Adjust airflow/stack temps. Adjust burner and gas input. Check venting, piping insulation, safety controls, combustion air. Clean fireside surfaces. Inspect refractory, gaskets, doors. Clean water cut-off controls. Flush boiler. Clean burner and pilot. Check electrode. Clean damper/blower. Check motor starter contacts. Perform flame safeguard checks. Troubleshoot problems.', emergency: 0, sort: 46 },
+    { cat: 'Mechanicals', name: 'Room Air Conditioner Replacement', desc: 'Emergency replacement of nonfunctional room AC.', baseline: 'Room AC must be nonfunctional.', eff: 'Replace with Energy Star efficiency.', install: 'Emergency replacement only.', emergency: 1, sort: 47 },
+    { cat: 'Mechanicals', name: 'EC Motors', desc: 'Electronically commutated motor for older but running HVAC systems.', baseline: 'System is older but running well.', eff: 'Static pressure taken to ensure system functioning as specified.', install: 'Take static pressure reading before and after.', emergency: 0, sort: 48 },
+    // Health & Safety
+    { cat: 'Health & Safety', name: 'Kitchen Exhaust Fan', desc: 'Install per ASHRAE 62.2 mechanical ventilation requirements.', baseline: 'As required to meet ASHRAE 62.2 ventilation rates.', eff: 'Meet required ventilation rates plus spot ventilation for moisture.', install: 'Install minimum fans needed. Use existing exterior exhaust runs where possible. ASHRAE 62.2 allows whole-house ventilation to cover spot deficiencies. Upload RedCalc screenshot to RISE. Include basement area in ASHRAE calc. Include fan flow rates on assessment report.', emergency: 0, sort: 50, hsExempt: 1 },
+    { cat: 'Health & Safety', name: 'Bathroom Exhaust Fan', desc: 'Install per ASHRAE 62.2 requirements.', baseline: 'As required per ASHRAE 62.2.', eff: 'Meet ASHRAE 62.2 ventilation rates.', install: 'Same requirements as kitchen exhaust fan. Upload RedCalc screenshot to RISE.', emergency: 0, sort: 51, hsExempt: 1 },
+    { cat: 'Health & Safety', name: 'Bathroom Exhaust Fan w/ Light', desc: 'Combination exhaust fan with light per ASHRAE 62.2.', baseline: 'As required per ASHRAE 62.2.', eff: 'Meet ASHRAE 62.2 ventilation rates.', install: 'Same requirements as exhaust fans.', emergency: 0, sort: 52, hsExempt: 1 },
+    { cat: 'Health & Safety', name: 'Smoke Detector - Change Out', desc: '10-year sealed battery. Replace any battery-operated detector older than 10 years.', baseline: 'Install per local code requirements.', eff: 'UL 217 listed.', install: 'Use 10-year sealed battery. Replace any battery-operated smoke detector older than 10 years per 2023 law.', emergency: 0, sort: 53 },
+    { cat: 'Health & Safety', name: 'Smoke Detector - Hardwired', desc: 'Hardwired smoke detector per local code.', baseline: 'Install per local code requirements.', eff: 'UL 217 listed.', install: 'Install per code and manufacturer instructions.', emergency: 0, sort: 54 },
+    { cat: 'Health & Safety', name: 'CO Detector', desc: 'Carbon monoxide detector per UL 2034.', baseline: 'Install per local code requirements.', eff: 'Must meet Standard UL 2034.', install: 'Install per code and manufacturer instructions.', emergency: 0, sort: 55 },
+    { cat: 'Health & Safety', name: 'CO Detector Hardwired', desc: 'Hardwired CO detector.', baseline: 'Per local code.', eff: 'UL 2034.', install: 'Install per code and manufacturer instructions.', emergency: 0, sort: 56 },
+    { cat: 'Health & Safety', name: 'CO/Smoke Combo - Hardwired', desc: 'Combination CO and smoke detector, hardwired.', baseline: 'Per local code.', eff: 'UL 217 and UL 2034.', install: 'Install per code and manufacturer instructions.', emergency: 0, sort: 57 },
+    { cat: 'Health & Safety', name: 'Dryer Vent Pipe', desc: 'Replace improperly installed or missing dryer/combustion exhaust vent.', baseline: 'Exhaust vent improperly installed or missing.', eff: 'Must terminate outside building shell, never in attic.', install: 'Minimum semi-rigid dryer duct for new dryer vent.', emergency: 0, sort: 58 },
+    { cat: 'Health & Safety', name: 'Dryer Vent Termination', desc: 'Proper termination of dryer vent.', baseline: 'Vent not properly terminated outside.', eff: 'Terminate outside building shell.', install: 'Must terminate outside building shell.', emergency: 0, sort: 59 },
+    { cat: 'Health & Safety', name: 'Gas Mechanical Repairs', desc: 'Repair existing gas furnace, boiler, or water heater that does not meet replacement guidelines.', baseline: 'Equipment does not meet replacement guidelines and needs operational or H&S repair.', eff: 'N/A.', install: 'Resolve operational issue or health & safety issue. Included in $1,000 H&S cap.', emergency: 0, sort: 60 },
+    { cat: 'Health & Safety', name: 'Battery Replacements (9V, AA, AAA)', desc: 'Replace non-functioning batteries in CO detectors.', baseline: 'Existing battery on CO detector not functioning.', eff: 'N/A.', install: 'Replace with appropriate battery.', emergency: 0, sort: 61 },
+    { cat: 'Health & Safety', name: 'Exhaust Vent Termination', desc: 'If not associated with fan installation.', baseline: 'Vent not properly terminated.', eff: 'Terminate outside building shell.', install: 'If not associated with installation of a fan.', emergency: 0, sort: 62 },
+    { cat: 'Health & Safety', name: 'Miscellaneous H&S', desc: 'Any H&S items outside listed items, case-by-case basis.', baseline: 'Case-by-case. Home should not be deferred without proposing all H&S measures.', eff: 'N/A.', install: 'List measures with associated costs in RISE.', emergency: 0, sort: 63 },
+    { cat: 'Health & Safety', name: 'Building Permit Fee', desc: 'Building permit fee associated with the job.', baseline: 'As required by local jurisdiction.', eff: 'N/A.', install: 'Include in list of measures in RISE. Input as Health & Safety measure.', emergency: 0, sort: 64 }
+  ];
+
+  measuresData.forEach(m => {
+    db.prepare(
+      'INSERT INTO program_measures (program_id, category, name, description, baseline_requirements, efficiency_requirements, installation_standards, is_emergency_only, h_and_s_cap_exempt, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(pid, m.cat, m.name, m.desc, m.baseline, m.eff, m.install, m.emergency, m.hsExempt || 0, m.sort);
+  });
+
+  // Build measureIds lookup after all inserts
+  const measureIds = {};
+  db.prepare('SELECT id, name FROM program_measures WHERE program_id = ?').all(pid).forEach(row => {
+    measureIds[row.name] = row.id;
+  });
+
+  // --- PHOTO REQUIREMENTS ---
+  const photoReqs = [
+    { measure: 'Single Family Assessment', photos: ['Front of home exterior', 'Utility meter(s)', 'Existing HVAC system nameplate', 'Existing water heater nameplate', 'Existing thermostat', 'Attic access point', 'Existing attic insulation (with ruler for depth)', 'Basement/crawlspace overview', 'Rim joist area', 'Ductwork condition', 'Electrical panel', 'All health & safety concerns found'] },
+    { measure: 'Programmable Thermostat', photos: ['Existing thermostat (before)', 'New thermostat installed (after)', 'Thermostat programming display', 'Furnace switch in OFF position (during install)'] },
+    { measure: 'Advanced Thermostat', photos: ['Existing thermostat (before)', 'New thermostat installed (after)', 'Thermostat display/programming', 'Furnace switch in OFF position (during install)'] },
+    { measure: 'Attic Insulation', photos: ['Existing insulation with ruler showing depth (before)', 'Attic access point', 'Ceiling condition from below', 'Ceiling fans secured to structure (if present)', 'Chimney dam installed', 'Insulation depth rulers at multiple points (after)', 'Completed insulation coverage (after)'] },
+    { measure: 'Basement/Crawlspace Wall Insulation', photos: ['Bare walls (before)', 'Completed wall insulation (after)'] },
+    { measure: 'Floor Insulation Above Crawlspace', photos: ['Exposed floor (before)', 'Completed floor insulation (after)'] },
+    { measure: 'Wall Insulation', photos: ['Wall cavity (before)', 'Drill holes filled/patched (after)', 'Dense-pack verification'] },
+    { measure: 'Rim Joist Insulation', photos: ['Exposed rim joist (before)', 'Sealed penetrations', 'Completed rim joist insulation (after)'] },
+    { measure: 'Air Sealing', photos: ['Blower door setup', 'Pre-test CFM50 reading on manometer', 'Key air sealing locations (top plates, penetrations, etc.)', 'Post-test CFM50 reading on manometer'] },
+    { measure: 'Duct Sealing', photos: ['Duct blaster setup', 'Pre-test CFM25 reading', 'Ducts before sealing', 'Mastic/sealant applied to joints', 'Post-test CFM25 reading'] },
+    { measure: 'Gas Furnace Replacement', photos: ['Existing furnace nameplate (before)', 'Existing furnace condition', 'New furnace installed (after)', 'New furnace nameplate', 'Venting/exhaust connection', 'Gas line connection'] },
+    { measure: 'Boiler Replacement', photos: ['Existing boiler nameplate (before)', 'New boiler installed (after)', 'New boiler nameplate', 'Venting connections'] },
+    { measure: 'Natural Gas Water Heater Replacement', photos: ['Existing water heater nameplate (before)', 'New water heater installed (after)', 'New water heater nameplate', 'Venting connection', 'T&P valve and discharge pipe'] },
+    { measure: 'Electric Water Heater Replacement (Heat Pump)', photos: ['Existing electric water heater (before)', 'New heat pump water heater installed (after)', 'Energy Star label', 'Condensate drain connection'] },
+    { measure: 'Central Air Conditioner Replacement', photos: ['Existing CAC nameplate showing SEER and manufacture date (before)', 'New CAC unit installed (after)', 'New CAC nameplate showing SEER 2 rating', 'Line set connections'] },
+    { measure: 'Gas Furnace Tune-Up', photos: ['Furnace nameplate', 'Combustion analyzer readings (before)', 'Combustion analyzer readings (after)', 'Clean burner assembly', 'Filter replaced'] },
+    { measure: 'Boiler Tune-Up', photos: ['Boiler nameplate', 'Combustion analyzer readings (before)', 'Combustion analyzer readings (after)'] },
+    { measure: 'Kitchen Exhaust Fan', photos: ['Existing ventilation (before)', 'New fan installed (after)', 'Exterior termination', 'RedCalc screenshot'] },
+    { measure: 'Bathroom Exhaust Fan', photos: ['Existing ventilation (before)', 'New fan installed (after)', 'Exterior termination', 'RedCalc screenshot'] },
+    { measure: 'Smoke Detector - Change Out', photos: ['Old detector (before)', 'New detector installed (after)'] },
+    { measure: 'CO Detector', photos: ['New CO detector installed'] },
+    { measure: 'Dryer Vent Pipe', photos: ['Existing dryer vent condition (before)', 'New dryer vent installed (after)', 'Exterior termination'] }
+  ];
+
+  photoReqs.forEach(pr => {
+    const mid = measureIds[pr.measure];
+    if (!mid) return;
+    pr.photos.forEach((photo, i) => {
+      db.prepare('INSERT INTO measure_photo_requirements (measure_id, photo_description, timing, sort_order) VALUES (?, ?, ?, ?)').run(mid, photo, 'both', i);
+    });
+  });
+
+  // --- PAPERWORK REQUIREMENTS ---
+  const paperReqs = [
+    { measure: 'Single Family Assessment', docs: ['Energy Audit Data Collection Form (Appendix D)', 'Customer Authorization Form - Signed (Appendix E)', 'Hazardous Conditions Form if deferral (Appendix I)', 'Scope of Work - Signed by Customer', 'All baseline data entered in RISE'] },
+    { measure: 'Attic Insulation', docs: ['Pre/post insulation depth measurements in RISE', 'Ceiling inspection notes documented'] },
+    { measure: 'Air Sealing', docs: ['Pre/post blower door test results (CFM50) in RISE', 'ASHRAE 62.2 ventilation calculation'] },
+    { measure: 'Duct Sealing', docs: ['Pre/post duct blaster results (CFM25) in RISE'] },
+    { measure: 'Gas Furnace Replacement', docs: ['Mechanical Replacement Decision Tree documentation (Appendix H)', 'Manufacturer warranty info provided to customer', 'Equipment specs entered in RISE'] },
+    { measure: 'Boiler Replacement', docs: ['Mechanical Replacement Decision Tree documentation (Appendix H)', 'Manufacturer warranty info provided to customer'] },
+    { measure: 'Natural Gas Water Heater Replacement', docs: ['Mechanical Replacement Decision Tree documentation (Appendix H)', 'Manufacturer warranty info provided to customer'] },
+    { measure: 'Electric Water Heater Replacement (Heat Pump)', docs: ['Customer approval to replace documented', 'Energy Star certification', 'Maintenance instructions provided to customer'] },
+    { measure: 'Central Air Conditioner Replacement', docs: ['Mechanical Replacement Decision Tree documentation (Appendix H)', 'Existing unit SEER and manufacture date documented', 'Manufacturer warranty info provided to customer'] },
+    { measure: 'Gas Furnace Tune-Up', docs: ['Combustion efficiency readings (before/after) in RISE', 'All IL TRM required tune-up activities documented'] },
+    { measure: 'Boiler Tune-Up', docs: ['Combustion efficiency readings (before/after) in RISE', 'All IL TRM required tune-up activities documented'] },
+    { measure: 'Kitchen Exhaust Fan', docs: ['RedCalc screenshot uploaded to RISE', 'ASHRAE 62.2 calculation (include basement area)', 'Fan flow rates on assessment report'] },
+    { measure: 'Bathroom Exhaust Fan', docs: ['RedCalc screenshot uploaded to RISE', 'ASHRAE 62.2 calculation', 'Fan flow rates on assessment report'] }
+  ];
+
+  paperReqs.forEach(pr => {
+    const mid = measureIds[pr.measure];
+    if (!mid) return;
+    pr.docs.forEach((doc, i) => {
+      db.prepare('INSERT INTO measure_paperwork_requirements (measure_id, document_name, required, sort_order) VALUES (?, ?, ?, ?)').run(mid, doc, 1, i);
+    });
+  });
+
+  // --- PROCESS STEPS (AES Workflow) ---
+  const steps = [
+    { phase: 'Intake', step: 1, title: 'Leads from RISE', desc: 'Project Coordinator receives leads from RISE every morning and enters them into the system.', cert: null, forms: null, timeline: 'Daily - every morning' },
+    { phase: 'Intake', step: 2, title: 'Call & Schedule Assessment', desc: 'Project Coordinator contacts customer to schedule assessment appointment.', cert: null, forms: null, timeline: 'Within 2 business days of lead' },
+    { phase: 'Assessment', step: 3, title: 'SLAM LiDAR Scan', desc: 'Assessor performs full SLAM LiDAR scan of home using BLK2GO. Scans stored in SharePoint. LiDAR used to measure the house.', cert: 'BPI Building Analyst Professional (BA-P)', forms: null, timeline: null },
+    { phase: 'Assessment', step: 4, title: 'MS Forms Data Collection', desc: 'Fill out MS Forms checklist for items that cannot be captured by LiDAR scan (e.g., nameplate data, equipment conditions, existing insulation depth).', cert: null, forms: 'MS Forms Assessment Checklist', timeline: null },
+    { phase: 'Assessment', step: 5, title: 'Required Photos', desc: 'Take all required pre-installation photos per the Documentation and Photo Checklist. Photos of each existing condition and eligible measure area.', cert: null, forms: 'Documentation and Photo Checklist (Appendix J)', timeline: null },
+    { phase: 'Assessment', step: 6, title: 'Store LiDAR Scans', desc: 'Upload completed LiDAR scans to SharePoint in proper folder structure.', cert: null, forms: null, timeline: 'Same day as assessment' },
+    { phase: 'Assessment', step: 7, title: 'Handle Deferrals', desc: 'If deferral needed: cite under Customer Status in RISE, complete Hazardous Conditions Form, present to customer for signature, upload to RISE.', cert: null, forms: 'Hazardous Conditions Form (Appendix I)', timeline: null },
+    { phase: 'Scope & Pre-Approval', step: 8, title: 'Create Scope of Work', desc: 'Build scope of work based on program rules and assessment findings. Include all eligible measures identified during assessment.', cert: null, forms: 'Scope of Work', timeline: null },
+    { phase: 'Scope & Pre-Approval', step: 9, title: 'Get Required Forms Signed', desc: 'Customer signs Customer Authorization Form and Scope of Work. Collect all signatures needed for pre-approval.', cert: null, forms: 'Customer Authorization Form (Appendix E), Scope of Work - Signed', timeline: null },
+    { phase: 'Scope & Pre-Approval', step: 10, title: 'Upload Pre-Pictures', desc: 'Upload all pre-installation photos to RISE as zip folder or Company Cam link. Ensure documents named with address and are legible.', cert: null, forms: null, timeline: null },
+    { phase: 'Scope & Pre-Approval', step: 11, title: 'Create Estimate with Program Pricing', desc: 'Create estimate using program pricing for all scoped measures. Upload estimate to RISE.', cert: null, forms: 'Program Estimate', timeline: null },
+    { phase: 'Scope & Pre-Approval', step: 12, title: 'Submit for Pre-Approval', desc: 'Submit complete package to RI for pre-approval: signed forms, photos, estimate, all RISE data.', cert: null, forms: 'All pre-approval documents', timeline: 'RI target turnaround: 2 business days' },
+    { phase: 'HVAC Replacement', step: 13, title: 'Mechanical Decision Tree Evaluation', desc: 'Follow Mechanical Replacement Decision Trees (Appendix H) to determine if furnace, boiler, water heater, or CAC qualifies for replacement vs. repair/tune-up.', cert: null, forms: 'Mechanical Decision Trees (Appendix H)', timeline: null },
+    { phase: 'HVAC Replacement', step: 14, title: 'Submit Tech Report for Replacement', desc: 'When replacement is needed: create tech report documenting equipment condition, decision tree results, and recommended replacement. Email tech report to RI program contacts for approval.', cert: null, forms: 'Tech Report (emailed to RI contacts)', timeline: null },
+    { phase: 'HVAC Replacement', step: 15, title: 'Receive Replacement Approval', desc: 'RI reviews tech report and approves or denies replacement request. Track approval status.', cert: null, forms: 'Replacement Approval from RI', timeline: null },
+    { phase: 'HVAC Replacement', step: 16, title: 'Manual J & Equipment Selection', desc: 'Complete Manual J load calculation to determine proper equipment sizing. Document what equipment will be installed (make, model, efficiency, size). Required for proper billing.', cert: null, forms: 'Manual J Calculation, Equipment Spec Sheet', timeline: 'Before installation' },
+    { phase: 'Installation', step: 17, title: 'Schedule & Perform Work', desc: 'Call customer and schedule installation. Install all approved measures per program specs and BPI standards.', cert: 'Varies by measure type', forms: null, timeline: 'After approval received' },
+    { phase: 'Installation', step: 18, title: 'Final Inspection', desc: 'Inspect all work to ensure safe conditions and proper installation. Staff must be BPI BA-P certified.', cert: 'BPI Building Analyst Professional (BA-P)', forms: 'Final Inspection Form (Appendix F)', timeline: null },
+    { phase: 'Installation', step: 19, title: 'Customer Sign-Off', desc: 'Customer acknowledges work complete by signing Final Inspection Form.', cert: null, forms: 'Final Inspection Form (Appendix F)', timeline: null },
+    { phase: 'Closeout', step: 20, title: 'Post Photos & Documentation', desc: 'Upload all post-installation photos. Ensure all documentation complete per Photo Checklist.', cert: null, forms: 'Documentation and Photo Checklist (Appendix J)', timeline: null },
+    { phase: 'Closeout', step: 21, title: 'Customer Education & Survey', desc: 'Educate customer on installed measures. Provide satisfaction survey for customer to mail in.', cert: null, forms: 'Customer Satisfaction Survey (Appendix K)', timeline: null },
+    { phase: 'Closeout', step: 22, title: 'Submit for Invoicing', desc: 'Enter all final data into RISE. Ensure HVAC billing matches Manual J and approved equipment. Submit for final approval.', cert: null, forms: 'All closeout documents, RISE submission', timeline: 'Per program calendar' },
+    { phase: 'QA/QC', step: 23, title: 'QA/QC Inspection', desc: 'CMC conducts QA/QC inspections on 5% of projects. New contractors: first 5 inspected (80% pass required). Probation: next 10 inspected (80% pass required).', cert: null, forms: 'QAQC Observation Form (Appendix G)', timeline: 'Ongoing' }
+  ];
+
+  steps.forEach((s, i) => {
+    db.prepare(
+      'INSERT INTO program_process_steps (program_id, phase, step_number, title, description, required_certification, required_forms, timeline, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(pid, s.phase, s.step, s.title, s.desc, s.cert, s.forms, s.timeline, i);
+  });
+
+  // --- ELIGIBILITY RULES ---
+  const eligibility = [
+    { type: 'property', title: 'Single Family Property', desc: 'Properties with fewer than 3 dwelling units. Manufactured homes NOT eligible for retrofits (refer to IHWAP).' },
+    { type: 'property', title: 'Not For Sale or Foreclosure', desc: 'Property must not be for sale, in process of being sold, or in process of legal foreclosure. Receipt of foreclosure notice alone does not disqualify.' },
+    { type: 'property', title: 'Not Vacant or Under Construction', desc: 'Property must be currently occupied. Cannot be under construction/renovation with open walls, major system work, or missing mechanical systems.' },
+    { type: 'property', title: 'Size Check', desc: 'If home >4,500 sq ft, Resource Innovations will confirm income eligibility with customer.' },
+    { type: 'customer', title: 'Active Utility Account', desc: 'Must have active residential account with ComEd, Nicor Gas, Peoples Gas, or North Shore Gas.' },
+    { type: 'customer', title: 'Income Eligible', desc: 'Qualifying household income. Customer attests during intake process.' },
+    { type: 'customer', title: '15-Year Rule', desc: 'Customer eligible to participate in Retrofits program every 15 years.' },
+    { type: 'customer', title: 'ComEd for Electric Measures', desc: 'Must have ComEd account to receive electric savings measures (jointly funded program).' },
+    { type: 'prioritization', title: 'A. SF-Type Configuration', desc: 'In-unit mechanical equipment. Customer has decision-making power over building envelope. Attic and/or basement can be served without impacting other units.' },
+    { type: 'prioritization', title: 'B. No Obvious Deferrable Conditions', desc: 'No blatantly obvious issues exceeding per-home H&S funding: roof leaks, vermiculite, hoarding, active water damage, cracked ceilings, knob and tube wiring, severe disrepair of access points.' },
+    { type: 'prioritization', title: 'C. Attic Opportunity', desc: 'Attic insulation less than 6 inches average. If no hatch: yes if customer willing to have one cut. If no attic: waived. If customer refuses access: no.' },
+    { type: 'prioritization', title: 'D. Basement/Crawlspace Opportunity', desc: 'At least 20% of rim joist accessible and not air sealed. If no basement/crawlspace: waived. If finished basement with crawlspace: yes.' }
+  ];
+
+  eligibility.forEach((e, i) => {
+    db.prepare('INSERT INTO program_eligibility_rules (program_id, rule_type, title, description, sort_order) VALUES (?, ?, ?, ?, ?)').run(pid, e.type, e.title, e.desc, i);
+  });
+
+  // --- DEFERRAL RULES ---
+  const deferrals = [
+    'Customer has health conditions prohibiting insulation/weatherization installation',
+    'Building structure or mechanical/electrical/plumbing in severe disrepair prohibiting weatherization',
+    'Sewage or sanitary problems endangering client and installers',
+    'House condemned or systems red-tagged by officials/utilities',
+    'Moisture/drainage problems too severe for allowable H&S measures',
+    'Client is uncooperative, abusive, or threatening to crew',
+    'Lead-based paint creating additional H&S hazards that cannot be corrected',
+    'Illegal activities conducted in dwelling',
+    'Mold/moisture too severe to resolve within H&S limit',
+    'Areas too cluttered/obstructed for worker access',
+    'Pest infestation that cannot be removed and poses H&S risk',
+    'Hazardous products (air pollutants, flammable liquids, VOCs) present',
+    'Pet prohibiting access or disturbing site visit',
+    'Property for sale, being sold, or in legal foreclosure',
+    'Any H&S condition present, created by, or exacerbated by services that cannot be corrected',
+    'Property is vacant/not currently lived in',
+    'Property under construction/renovation',
+    'Customer recording assessment/project work and refuses to stop',
+    'H&S costs exceed $1,000 (not including exhaust fans or mechanical replacements)'
+  ];
+
+  deferrals.forEach((d, i) => {
+    db.prepare('INSERT INTO program_deferral_rules (program_id, condition_text, sort_order) VALUES (?, ?, ?)').run(pid, d, i);
+  });
+
+  const totalMeasures = db.prepare('SELECT COUNT(*) as count FROM program_measures WHERE program_id = ?').get(pid).count;
+  const totalPhotos = db.prepare('SELECT COUNT(*) as count FROM measure_photo_requirements mpr JOIN program_measures pm ON mpr.measure_id = pm.id WHERE pm.program_id = ?').get(pid).count;
+  const totalPaperwork = db.prepare('SELECT COUNT(*) as count FROM measure_paperwork_requirements mpr JOIN program_measures pm ON mpr.measure_id = pm.id WHERE pm.program_id = ?').get(pid).count;
+
+  res.json({
+    success: true,
+    message: 'HES IE rules seeded successfully',
+    counts: { measures: totalMeasures, photo_requirements: totalPhotos, paperwork_requirements: totalPaperwork, process_steps: steps.length, eligibility_rules: eligibility.length, deferral_rules: deferrals.length }
+  });
 });
 
 module.exports = router;

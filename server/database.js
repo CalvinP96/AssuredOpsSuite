@@ -213,6 +213,150 @@ async function initDatabase() {
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (program_id) REFERENCES programs(id)
     );
+
+    CREATE TABLE IF NOT EXISTS program_measures (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      program_id INTEGER NOT NULL,
+      category TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      baseline_requirements TEXT,
+      efficiency_requirements TEXT,
+      installation_standards TEXT,
+      is_emergency_only INTEGER DEFAULT 0,
+      h_and_s_cap_exempt INTEGER DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (program_id) REFERENCES programs(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS measure_photo_requirements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      measure_id INTEGER NOT NULL,
+      photo_description TEXT NOT NULL,
+      timing TEXT DEFAULT 'both',
+      required INTEGER DEFAULT 1,
+      sort_order INTEGER DEFAULT 0,
+      FOREIGN KEY (measure_id) REFERENCES program_measures(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS measure_paperwork_requirements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      measure_id INTEGER NOT NULL,
+      document_name TEXT NOT NULL,
+      description TEXT,
+      required INTEGER DEFAULT 1,
+      sort_order INTEGER DEFAULT 0,
+      FOREIGN KEY (measure_id) REFERENCES program_measures(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS program_process_steps (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      program_id INTEGER NOT NULL,
+      phase TEXT NOT NULL,
+      step_number INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      required_certification TEXT,
+      required_forms TEXT,
+      timeline TEXT,
+      sort_order INTEGER DEFAULT 0,
+      FOREIGN KEY (program_id) REFERENCES programs(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS program_eligibility_rules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      program_id INTEGER NOT NULL,
+      rule_type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      sort_order INTEGER DEFAULT 0,
+      FOREIGN KEY (program_id) REFERENCES programs(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS program_deferral_rules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      program_id INTEGER NOT NULL,
+      condition_text TEXT NOT NULL,
+      sort_order INTEGER DEFAULT 0,
+      FOREIGN KEY (program_id) REFERENCES programs(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS program_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      program_id INTEGER NOT NULL,
+      job_number TEXT,
+      customer_name TEXT,
+      address TEXT,
+      city TEXT,
+      zip TEXT,
+      utility TEXT,
+      status TEXT DEFAULT 'assessment_scheduled',
+      assessment_date TEXT,
+      install_date TEXT,
+      inspection_date TEXT,
+      assigned_contractor TEXT,
+      notes TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (program_id) REFERENCES programs(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS job_measures (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER NOT NULL,
+      measure_id INTEGER NOT NULL,
+      status TEXT DEFAULT 'scoped',
+      pre_condition TEXT,
+      post_condition TEXT,
+      notes TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (job_id) REFERENCES program_jobs(id),
+      FOREIGN KEY (measure_id) REFERENCES program_measures(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS hvac_replacements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER NOT NULL,
+      equipment_type TEXT NOT NULL,
+      existing_make TEXT,
+      existing_model TEXT,
+      existing_condition TEXT,
+      existing_efficiency TEXT,
+      existing_age TEXT,
+      decision_tree_result TEXT,
+      tech_report_sent INTEGER DEFAULT 0,
+      tech_report_date TEXT,
+      tech_report_sent_to TEXT,
+      approval_status TEXT DEFAULT 'pending',
+      approval_date TEXT,
+      manual_j_complete INTEGER DEFAULT 0,
+      manual_j_btu TEXT,
+      new_make TEXT,
+      new_model TEXT,
+      new_efficiency TEXT,
+      new_size TEXT,
+      install_date TEXT,
+      billing_amount REAL,
+      notes TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (job_id) REFERENCES program_jobs(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS job_checklist_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER NOT NULL,
+      item_type TEXT NOT NULL,
+      description TEXT NOT NULL,
+      measure_id INTEGER,
+      completed INTEGER DEFAULT 0,
+      completed_date TEXT,
+      completed_by TEXT,
+      notes TEXT,
+      FOREIGN KEY (job_id) REFERENCES program_jobs(id),
+      FOREIGN KEY (measure_id) REFERENCES program_measures(id)
+    );
   `);
 
   return db;
