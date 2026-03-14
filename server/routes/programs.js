@@ -216,37 +216,53 @@ router.post('/:id/jobs', (req, res) => {
 router.put('/jobs/:jobId', (req, res) => {
   const db = getDb();
   const {
-    status, customer_name, address, city, zip, utility,
+    status, customer_name, phone, email, address, city, zip, utility,
     assessment_date, submission_date, estimate_amount,
     abc_install_date, wall_injection_date, patch_date,
     hvac_tune_clean_date, hvac_replacement_date,
-    install_date, inspection_date, assigned_contractor,
+    install_date, inspection_date,
     needs_permit, permit_status, permit_applied_date, permit_received_date,
     permit_number, permit_jurisdiction, permit_notes,
     notes
   } = req.body;
   db.prepare(
     `UPDATE program_jobs SET
-      status=?, customer_name=?, address=?, city=?, zip=?, utility=?,
+      status=?, customer_name=?, phone=?, email=?, address=?, city=?, zip=?, utility=?,
       assessment_date=?, submission_date=?, estimate_amount=?,
       abc_install_date=?, wall_injection_date=?, patch_date=?,
       hvac_tune_clean_date=?, hvac_replacement_date=?,
-      install_date=?, inspection_date=?, assigned_contractor=?,
+      install_date=?, inspection_date=?,
       needs_permit=?, permit_status=?, permit_applied_date=?, permit_received_date=?,
       permit_number=?, permit_jurisdiction=?, permit_notes=?,
       notes=?, updated_at=datetime('now')
     WHERE id=?`
   ).run(
-    status, customer_name, address, city, zip, utility,
+    status, customer_name, phone || null, email || null, address, city, zip, utility,
     assessment_date, submission_date, estimate_amount || null,
     abc_install_date, wall_injection_date, patch_date,
     hvac_tune_clean_date, hvac_replacement_date,
-    install_date, inspection_date, assigned_contractor,
+    install_date, inspection_date,
     needs_permit ? 1 : 0, permit_status || 'not_needed', permit_applied_date, permit_received_date,
     permit_number, permit_jurisdiction, permit_notes,
     notes, req.params.jobId
   );
   res.json(db.prepare('SELECT * FROM program_jobs WHERE id = ?').get(req.params.jobId));
+});
+
+// Save assessment data (JSON blob)
+router.put('/jobs/:jobId/assessment', (req, res) => {
+  const db = getDb();
+  const data = JSON.stringify(req.body.assessment_data || {});
+  db.prepare("UPDATE program_jobs SET assessment_data=?, updated_at=datetime('now') WHERE id=?").run(data, req.params.jobId);
+  res.json({ success: true });
+});
+
+// Save scope data (JSON blob)
+router.put('/jobs/:jobId/scope', (req, res) => {
+  const db = getDb();
+  const data = JSON.stringify(req.body.scope_data || {});
+  db.prepare("UPDATE program_jobs SET scope_data=?, updated_at=datetime('now') WHERE id=?").run(data, req.params.jobId);
+  res.json({ success: true });
 });
 
 router.post('/jobs/:jobId/measures', (req, res) => {
