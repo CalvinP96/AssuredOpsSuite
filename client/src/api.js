@@ -571,6 +571,11 @@ export async function updateJob(jobId, data) {
   if (error) throw error;
 }
 
+export async function deleteJob(jobId) {
+  const { error } = await supabase.from('program_jobs').delete().eq('id', jobId);
+  if (error) throw error;
+}
+
 export async function saveAssessmentData(jobId, assessmentData) {
   const { error } = await supabase.from('program_jobs')
     .update({ assessment_data: typeof assessmentData === 'string' ? assessmentData : JSON.stringify(assessmentData) })

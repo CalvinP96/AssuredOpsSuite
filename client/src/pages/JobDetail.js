@@ -11,12 +11,9 @@ import FormsDocsTab from './FormsDocsTab';
 import ExportTab from './ExportTab';
 import LogTab from './LogTab';
 
-const JOB_STATUSES = ['assessment_scheduled', 'assessment_complete', 'pre_approval', 'approved', 'install_scheduled', 'install_in_progress', 'inspection', 'submitted', 'invoiced', 'complete', 'deferred'];
-const UTILITIES = ['ComEd', 'Nicor Gas', 'Peoples Gas', 'North Shore Gas'];
-
 const PHASES = [
   { key: 'intake', icon: '📥', label: 'Intake', tab: 'overview' },
-  { key: 'schedule', icon: '📅', label: 'Schedule', tab: 'overview' },
+  { key: 'schedule', icon: '📅', label: 'Schedule', tab: 'schedule' },
   { key: 'assess', icon: '🔍', label: 'Assess', tab: 'assessment' },
   { key: 'scope', icon: '📋', label: 'Scope', tab: 'scope' },
   { key: 'approve', icon: '✅', label: 'Approve', tab: 'overview' },
@@ -57,6 +54,7 @@ export default function JobDetail({ role, user }) {
   const [job, setJob] = useState(null);
   const [program, setProgram] = useState(null);
   const [tab, setTab] = useState('overview');
+  const [confirmDel, setConfirmDel] = useState(false);
 
   const canEdit = ['Admin', 'Operations', 'Program Manager', 'Assessor', 'Installer', 'HVAC'].includes(role);
 
@@ -88,8 +86,6 @@ export default function JobDetail({ role, user }) {
 
   if (!job) return <div className="card" style={{ padding: 30 }}>Loading project...</div>;
 
-  const utilities = (job.utility || '').split(',').map(u => u.trim()).filter(Boolean);
-
   // Phase bar status
   const phaseStatus = getPhaseStatus(job);
   const isDeferred = job.status === 'deferred';
@@ -100,28 +96,33 @@ export default function JobDetail({ role, user }) {
   const getVisibleTabs = () => {
     if (role === 'Assessor') return [
       { key: 'overview', label: 'Overview' },
+      { key: 'schedule', label: 'Schedule' },
       { key: 'assessment', label: 'MS Forms Survey' },
       { key: 'photos', label: 'Photos' },
     ];
     if (role === 'Scope Creator') return [
       { key: 'overview', label: 'Overview' },
+      { key: 'schedule', label: 'Schedule' },
       { key: 'assessment', label: 'Assessor Data' },
       { key: 'scope', label: 'Scope of Work' },
       { key: 'photos', label: 'Photos' },
     ];
     if (role === 'Installer') return [
       { key: 'overview', label: 'Overview' },
+      { key: 'schedule', label: 'Schedule' },
       { key: 'scope', label: 'Scope of Work' },
       { key: 'install', label: 'Installation' },
       { key: 'photos', label: 'Photos' },
     ];
     if (role === 'HVAC') return [
       { key: 'overview', label: 'Overview' },
+      { key: 'schedule', label: 'Schedule' },
       { key: 'hvac', label: 'HVAC' },
       { key: 'photos', label: 'Photos' },
     ];
     return [
       { key: 'overview', label: 'Overview' },
+      { key: 'schedule', label: 'Schedule' },
       { key: 'assessment', label: 'Assessment' },
       { key: 'scope', label: 'Scope of Work' },
       { key: 'install', label: 'Installation' },
@@ -194,15 +195,19 @@ export default function JobDetail({ role, user }) {
         ))}
       </div>
 
-      {/* ===== OVERVIEW TAB (inline — small) ===== */}
+      {/* ===== OVERVIEW TAB (ported from InfoTab) ===== */}
       {tab === 'overview' && (
         <div style={{ display: 'grid', gap: 16 }}>
           <div className="jd-card">
-            <div className="jd-card-title">Customer Information</div>
+            <div className="jd-card-title">Customer</div>
             <div className="jd-field-grid">
               <div className="jd-field">
-                <label className="jd-field-label">Customer Name</label>
+                <label className="jd-field-label">Name</label>
                 <input defaultValue={job.customer_name} disabled={!canEdit} onBlur={e => updateField('customer_name', e.target.value)} />
+              </div>
+              <div className="jd-field">
+                <label className="jd-field-label">Address</label>
+                <input defaultValue={job.address} disabled={!canEdit} onBlur={e => updateField('address', e.target.value)} />
               </div>
               <div className="jd-field">
                 <label className="jd-field-label">Phone</label>
@@ -212,122 +217,113 @@ export default function JobDetail({ role, user }) {
                 <label className="jd-field-label">Email</label>
                 <input defaultValue={job.email} disabled={!canEdit} onBlur={e => updateField('email', e.target.value)} />
               </div>
-              <div className="jd-field">
-                <label className="jd-field-label">Address</label>
-                <input defaultValue={job.address} disabled={!canEdit} onBlur={e => updateField('address', e.target.value)} />
-              </div>
-              <div className="jd-field">
-                <label className="jd-field-label">City</label>
-                <input defaultValue={job.city} disabled={!canEdit} onBlur={e => updateField('city', e.target.value)} />
-              </div>
-              <div className="jd-field">
-                <label className="jd-field-label">Zip</label>
-                <input defaultValue={job.zip} disabled={!canEdit} onBlur={e => updateField('zip', e.target.value)} />
-              </div>
-              <div className="jd-field">
-                <label className="jd-field-label">Job Number</label>
-                <input defaultValue={job.job_number} disabled={!canEdit} onBlur={e => updateField('job_number', e.target.value)} />
-              </div>
-              <div className="jd-field">
-                <label className="jd-field-label">Contractor</label>
-                <input value="Assured Energy Solutions" disabled />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label className="jd-field-label" style={{ marginBottom: 6, display: 'block' }}>Utility Company</label>
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  {UTILITIES.map(u => (
-                    <label key={u} style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: canEdit ? 'pointer' : 'default' }}>
-                      <input type="checkbox" checked={utilities.includes(u)} disabled={!canEdit}
-                        onChange={e => {
-                          const newUtils = e.target.checked ? [...utilities, u] : utilities.filter(x => x !== u);
-                          updateField('utility', newUtils.join(', '));
-                        }} />
-                      {u}
-                    </label>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
           <div className="jd-card">
-            <div className="jd-card-title">Project Status</div>
+            <div className="jd-card-title">System IDs</div>
+            <p style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>Lookup customer in ST, enter IDs here</p>
             <div className="jd-field-grid">
               <div className="jd-field">
-                <label className="jd-field-label">Status</label>
-                <select value={job.status} disabled={!canEdit} onChange={e => updateField('status', e.target.value)}>
-                  {JOB_STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
-                </select>
+                <label className="jd-field-label">RISE PID</label>
+                <input defaultValue={job.rise_id} disabled={!canEdit} onBlur={e => updateField('rise_id', e.target.value)} />
               </div>
               <div className="jd-field">
-                <label className="jd-field-label">Estimate Amount</label>
-                <input type="number" defaultValue={job.estimate_amount} disabled={!canEdit}
-                  onBlur={e => updateField('estimate_amount', parseFloat(e.target.value) || null)} placeholder="$0.00" />
+                <label className="jd-field-label">ServiceTitan ID</label>
+                <input defaultValue={job.st_id} disabled={!canEdit} onBlur={e => updateField('st_id', e.target.value)} />
               </div>
-              <div className="jd-field" style={{ gridColumn: '1 / -1' }}>
-                <label className="jd-field-label">Notes</label>
-                <textarea defaultValue={job.notes} disabled={!canEdit} onBlur={e => updateField('notes', e.target.value)} />
+              <div className="jd-field">
+                <label className="jd-field-label">Utility</label>
+                <input defaultValue={job.utility} disabled={!canEdit} onBlur={e => updateField('utility', e.target.value)} placeholder="Nicor, ComEd…" />
               </div>
-            </div>
-            <div className="jd-summary-pills">
-              <span className="jd-summary-pill" style={{ background: '#dbeafe', color: '#1e40af' }}>{(job.photos || []).length} Photos</span>
-              <span className="jd-summary-pill" style={{ background: '#dcfce7', color: '#166534' }}>{(job.measures || []).length} Measures</span>
-              <span className="jd-summary-pill" style={{ background: '#fef3c7', color: '#92400e' }}>{(job.change_orders || []).filter(c => c.status === 'pending').length} Pending COs</span>
             </div>
           </div>
           <div className="jd-card">
-            <div className="jd-card-title">Scheduling</div>
-            <div className="jd-schedule-grid">
-              {[
-                { label: 'Assessment Date', field: 'assessment_date' },
-                { label: 'Assessment Scheduled', field: 'assessment_scheduled' },
-                { label: 'Install Date', field: 'install_date' },
-                { label: 'Install Scheduled', field: 'install_scheduled' },
-              ].map(d => (
-                <div key={d.field} className="jd-field">
-                  <label className="jd-field-label">{d.label}</label>
-                  <input type="date" className="jd-date-input" value={job[d.field] || ''} disabled={!canEdit}
-                    onChange={e => updateField(d.field, e.target.value)} />
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="jd-card">
-            <div className="jd-card-title">Permit Tracking</div>
+            <div className="jd-card-title">Flags & Notes</div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: canEdit ? 'pointer' : 'default' }}>
-              <input type="checkbox" checked={!!job.needs_permit} disabled={!canEdit}
-                onChange={e => updateField('needs_permit', e.target.checked ? 1 : 0)}
+              <input type="checkbox" checked={!!job.flagged} disabled={!canEdit}
+                onChange={e => updateField('flagged', e.target.checked)}
                 style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }} />
-              <strong>Needs Permit</strong>
+              <span>⚠️ Flag this project</span>
             </label>
-            {job.needs_permit ? (
-              <div className="jd-permit-fields">
+            {job.flagged && (
+              <div className="jd-field" style={{ marginTop: 6 }}>
+                <label className="jd-field-label">Reason</label>
+                <input defaultValue={job.flag_reason} disabled={!canEdit} onBlur={e => updateField('flag_reason', e.target.value)} />
+              </div>
+            )}
+            <div className="jd-field" style={{ marginTop: 8 }}>
+              <label className="jd-field-label">Notes</label>
+              <textarea defaultValue={job.notes} disabled={!canEdit} onBlur={e => updateField('notes', e.target.value)} rows={3} />
+            </div>
+          </div>
+          {role === 'Admin' && (
+            <div className="jd-card" style={{ borderColor: '#fca5a5' }}>
+              <div className="jd-card-title" style={{ color: '#dc2626' }}>Danger Zone</div>
+              {!confirmDel ? (
+                <button className="btn btn-secondary" style={{ color: '#ef4444', borderColor: '#ef4444' }} onClick={() => setConfirmDel(true)}>Delete Project</button>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button className="btn btn-danger" onClick={async () => { try { await api.deleteJob(jobId); navigate('/hes-ie'); } catch (err) { alert('Failed to delete: ' + err.message); } }}>Confirm Delete</button>
+                  <button className="btn btn-secondary" onClick={() => setConfirmDel(false)}>Cancel</button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===== SCHEDULE TAB (ported from SchedTab) ===== */}
+      {tab === 'schedule' && (
+        <div style={{ display: 'grid', gap: 16 }}>
+          <div className="jd-card">
+            <div className="jd-card-title">Assessment</div>
+            <div className="jd-field">
+              <label className="jd-field-label">Assessment Date</label>
+              <input type="date" className="jd-date-input" value={job.assessment_date || ''} disabled={!canEdit}
+                onChange={e => updateField('assessment_date', e.target.value)} />
+            </div>
+            <div className="jd-field" style={{ marginTop: 6 }}>
+              <textarea style={{ width: '100%', minHeight: 60, resize: 'vertical', padding: '6px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', fontSize: 14, background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                value={job.schedule_notes || ''} disabled={!canEdit}
+                onChange={e => updateField('schedule_notes', e.target.value)} rows={2}
+                placeholder="Customer availability, access notes…" />
+            </div>
+          </div>
+          {['approved', 'install_scheduled', 'install_in_progress', 'inspection', 'submitted', 'invoiced', 'complete'].includes(job.status) ? (
+            <div className="jd-card">
+              <div className="jd-card-title">Install Scheduling</div>
+              <div className="jd-field-grid">
                 <div className="jd-field">
-                  <label className="jd-field-label">Permit Status</label>
-                  <select value={job.permit_status || 'not_applied'} disabled={!canEdit} onChange={e => updateField('permit_status', e.target.value)}>
-                    <option value="not_applied">Not Applied</option>
-                    <option value="applied">Applied</option>
-                    <option value="received">Received</option>
-                    <option value="issue">Issue</option>
-                  </select>
+                  <label className="jd-field-label">Install Date</label>
+                  <input type="date" className="jd-date-input" value={job.install_date || ''} disabled={!canEdit}
+                    onChange={e => updateField('install_date', e.target.value)} />
                 </div>
                 <div className="jd-field">
-                  <label className="jd-field-label">Date Applied</label>
-                  <input type="date" className="jd-date-input" value={job.permit_applied_date || ''} disabled={!canEdit}
-                    onChange={e => updateField('permit_applied_date', e.target.value)} />
+                  <label className="jd-field-label">Tune/Clean</label>
+                  <input type="date" className="jd-date-input" value={job.tune_clean_date || ''} disabled={!canEdit}
+                    onChange={e => updateField('tune_clean_date', e.target.value)} />
                 </div>
                 <div className="jd-field">
-                  <label className="jd-field-label">Date Received</label>
-                  <input type="date" className="jd-date-input" value={job.permit_received_date || ''} disabled={!canEdit}
-                    onChange={e => updateField('permit_received_date', e.target.value)} />
-                </div>
-                <div className="jd-field">
-                  <label className="jd-field-label">Permit Number</label>
-                  <input defaultValue={job.permit_number} disabled={!canEdit}
-                    onBlur={e => updateField('permit_number', e.target.value)} />
+                  <label className="jd-field-label">Final Insp.</label>
+                  <input type="date" className="jd-date-input" value={job.final_insp_date || ''} disabled={!canEdit}
+                    onChange={e => updateField('final_insp_date', e.target.value)} />
                 </div>
               </div>
-            ) : null}
-          </div>
+              <div style={{ marginTop: 8 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: canEdit ? 'pointer' : 'default' }}>
+                  <input type="checkbox" checked={!!job.install_confirmed} disabled={!canEdit}
+                    onChange={e => updateField('install_confirmed', e.target.checked)}
+                    style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }} />
+                  <span>Install Confirmed in ST</span>
+                </label>
+              </div>
+            </div>
+          ) : (
+            <div className="jd-card">
+              <div className="jd-card-title">Install Scheduling</div>
+              <p style={{ fontSize: 12, color: '#64748b' }}>Install scheduling opens after scope is approved.</p>
+            </div>
+          )}
         </div>
       )}
 
