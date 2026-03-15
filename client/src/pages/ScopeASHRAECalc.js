@@ -15,14 +15,16 @@ const Sec = ({ title, children }) => (
   </div>
 );
 
-const Rec = ({ type, children }) => {
-  const c = { rec: { bg: '#dcfce7', bd: '#86efac', fg: '#166534' }, info: { bg: '#eff6ff', bd: '#93c5fd', fg: '#1e40af' }, warn: { bg: '#fef3c7', bd: '#fcd34d', fg: '#92400e' }, flag: { bg: '#fee2e2', bd: '#fca5a5', fg: '#991b1b' } }[type] || { bg: '#eff6ff', bd: '#93c5fd', fg: '#1e40af' };
-  return <div style={{ padding: '8px 12px', background: c.bg, border: `1px solid ${c.bd}`, borderRadius: 'var(--radius)', fontSize: 12, color: c.fg, marginTop: 6 }}>{children}</div>;
-};
-
 export default function ScopeASHRAECalc({ job, scopeData, onChange, canEdit }) {
-  const s = scopeData;
-  const sn = onChange;
+  const s = scopeData || {};
+  const a = job?.audit || {};
+
+  // Helper: update ashrae sub-object and call onChange with full scopeData
+  const sn = (key, value) => {
+    const updated = { ...s.ashrae, [key]: value };
+    onChange({ ...s, ashrae: updated });
+  };
+
   const baseSqft = Number(job?.sqft) || 0;
   const finBasement = s.fnd?.type === 'Finished' ? (Number(s.fnd?.aboveSqft) || 0) + (Number(s.fnd?.belowSqft) || 0) : 0;
   const Afl = baseSqft + finBasement;
@@ -33,13 +35,15 @@ export default function ScopeASHRAECalc({ job, scopeData, onChange, canEdit }) {
   const Q50 = canAirSeal ? Math.round(preQ50 * (1 - PROGRAM.airSealGoal / 100)) : preQ50;
   const st = Number(job?.stories) || 1;
   const H = st >= 2 ? 16 : st >= 1.5 ? 14 : 8;
+  const Hr = 8.202;
   const wsf = 0.56;
 
-  // Fan flows — overridable
-  const kRaw = s.ashrae?.kitchenCFM ?? '';
-  const b1Raw = s.ashrae?.bath1CFM ?? '';
-  const b2Raw = s.ashrae?.bath2CFM ?? '';
-  const b3Raw = s.ashrae?.bath3CFM ?? '';
+  // Fan flows from assessment, overridable
+  // Raw values to check presence (blank = no fan = no requirement)
+  const kRaw = s.ashrae?.kitchenCFM ?? a.kitchenFan ?? '';
+  const b1Raw = s.ashrae?.bath1CFM ?? a.bathFan1 ?? '';
+  const b2Raw = s.ashrae?.bath2CFM ?? a.bathFan2 ?? '';
+  const b3Raw = s.ashrae?.bath3CFM ?? a.bathFan3 ?? '';
   const kPresent = String(kRaw).trim() !== '';
   const b1Present = String(b1Raw).trim() !== '';
   const b2Present = String(b2Raw).trim() !== '';
@@ -54,16 +58,32 @@ export default function ScopeASHRAECalc({ job, scopeData, onChange, canEdit }) {
   const b3Win = s.ashrae?.b3Win || false;
 
   /* ══ ASHRAE 62.2-2016 CALCULATIONS ══
+     Section 4.1.1 — Total Required Ventilation Rate
      Qtot = 0.03 × Afl + 7.5 × (Nbr + 1)
+     (Nbr = number of bedrooms, Nocc = Nbr + 1)
+
+     Infiltration Credit
      Qinf = 0.052 × Q50 × wsf × (H / 8.2)^0.4
-     Local deficits: Kitchen 100 CFM, Bath 50 CFM (intermittent)
-     Window = 20 CFM credit. Blank = no fan = no requirement.
-     supplement = totalDeficit × 0.25
+
+     Local Ventilation — Alternative Compliance:
+     Intermittent exhaust rates: Kitchen 100 CFM, Bath 50 CFM
+     Deficit = max(0, required - measured). Window = 20 CFM credit.
+     Blank = no fan = no requirement.
+     Alternative compliance supplement = totalDeficit × 0.25
+     (converts intermittent deficit to continuous equivalent)
+
      Qfan = Qtot + supplement - Qinf
   */
-  const Qinf_eff = Q50 > 0 ? 0.052 * Q50 * wsf * Math.pow(H / 8.2, 0.4) : 0;
-  const Qtot = Afl > 0 ? 0.03 * Afl + 7.5 * (Nbr + 1) : 0;
 
+  // Infiltration credit
+  const Qinf_eff = Q50 > 0 ? 0.052 * Q50 * wsf * Math.pow(H / 8.2, 0.4) : 0;
+
+  // Qtot (Eq 4.1a)
+  const Qtot = (Afl > 0) ? 0.03 * Afl + 7.5 * (Nbr + 1) : 0;
+
+  // Local ventilation deficits — Alternative Compliance
+  // Intermittent rates: Kitchen 100 CFM, Bath 50 CFM
+  // Window = 20 CFM credit. Blank = no fan = no requirement.
   const kReq = kPresent ? 100 : 0;
   const b1Req = b1Present ? 50 : 0;
   const b2Req = b2Present ? 50 : 0;
@@ -73,17 +93,24 @@ export default function ScopeASHRAECalc({ job, scopeData, onChange, canEdit }) {
   const b2Def = !b2Present ? 0 : Math.max(0, b2Req - (b2Win ? 20 : b2));
   const b3Def = !b3Present ? 0 : Math.max(0, b3Req - (b3Win ? 20 : b3));
   const totalDef = kDef + b1Def + b2Def + b3Def;
+
+  // Alternative compliance supplement (intermittent → continuous: ×0.25)
   const supplement = totalDef * 0.25;
+
+  // Infiltration credit — existing: FULL credit
   const Qinf_credit = Qinf_eff;
+
+  // Required mechanical ventilation rate
   const Qfan = Qtot + supplement - Qinf_credit;
 
+  // Fan setting selector (continuous run: 50 / 80 / 110 CFM)
   const FAN_SETTINGS = [50, 80, 110];
   const recFan = FAN_SETTINGS.find(f => f >= Qfan) || FAN_SETTINGS[FAN_SETTINGS.length - 1];
 
   const R = v => Math.round(v * 100) / 100;
   const Ri = v => Math.round(v);
 
-  // Styles — light theme
+  // Styles — light theme using CSS vars
   const hdr = { fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', margin: '14px 0 6px', borderBottom: '1px solid var(--color-border)', paddingBottom: 4 };
   const row = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', fontSize: 12, borderBottom: '1px solid var(--color-border)' };
   const lbl = { color: 'var(--color-text-muted)', flex: 1 };
@@ -111,13 +138,13 @@ export default function ScopeASHRAECalc({ job, scopeData, onChange, canEdit }) {
 
         {/* ══ BUILDING INPUTS ══ */}
         <div style={hdr}>Building Inputs</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
           <div><div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 3 }}>Floor area [ft²]</div><div style={autoBox}>{Afl || '—'}</div><div style={autoSub}>{finBasement > 0 ? `${baseSqft} + ${finBasement} fin. bsmt` : '← Sq Footage'}</div></div>
           <div><div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 3 }}>Nocc (occupants)</div><div style={autoBox}>{Nbr + 1}</div><div style={autoSub}>{Nbr} bedrooms + 1 = {Nbr + 1}</div></div>
           <div><div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 3 }}>Height [ft]</div><div style={autoBox}>{H}</div><div style={autoSub}>{st >= 2 ? '2-story' : '1' + (st >= 1.5 ? '.5' : '') + '-story'}</div></div>
           <div><div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 3 }}>Q50 [CFM] — est. post</div><div style={{ ...autoBox, color: canAirSeal ? 'var(--color-warning)' : 'var(--color-text)' }}>{Q50 || '—'}</div><div style={autoSub}>{canAirSeal ? `${preQ50} × 0.75 (25% reduction)` : `${preQ50} (no air seal)`}</div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 10, color: canAirSeal ? 'var(--color-warning)' : 'var(--color-text-muted)', cursor: 'pointer', justifyContent: 'center' }}>
-              <input type="checkbox" checked={!!canAirSeal} disabled={!canEdit} onChange={e => sn('ashrae', 'canAirSeal', e.target.checked)} style={{ accentColor: 'var(--color-primary)', width: 13, height: 13 }} />
+              <input type="checkbox" checked={!!canAirSeal} disabled={!canEdit} onChange={e => sn('canAirSeal', e.target.checked)} style={{ accentColor: 'var(--color-primary)', width: 13, height: 13 }} />
               Air seal eligible
             </label>
           </div>
@@ -135,15 +162,15 @@ export default function ScopeASHRAECalc({ job, scopeData, onChange, canEdit }) {
           <span style={{ fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'center' }}>Deficit</span>
         </div>
         {[
-          { n: 'Kitchen', v: kCFM, k: 'kitchenCFM', w: kWin, wk: 'kWin', r: kReq, d: kDef, present: kPresent },
-          { n: 'Bath #1', v: b1, k: 'bath1CFM', w: b1Win, wk: 'b1Win', r: b1Req, d: b1Def, present: b1Present },
-          { n: 'Bath #2', v: b2, k: 'bath2CFM', w: b2Win, wk: 'b2Win', r: b2Req, d: b2Def, present: b2Present },
-          { n: 'Bath #3', v: b3, k: 'bath3CFM', w: b3Win, wk: 'b3Win', r: b3Req, d: b3Def, present: b3Present },
+          { n: 'Kitchen', v: kCFM, k: 'kitchenCFM', ak: 'kitchenFan', w: kWin, wk: 'kWin', r: kReq, d: kDef, present: kPresent },
+          { n: 'Bath #1', v: b1, k: 'bath1CFM', ak: 'bathFan1', w: b1Win, wk: 'b1Win', r: b1Req, d: b1Def, present: b1Present },
+          { n: 'Bath #2', v: b2, k: 'bath2CFM', ak: 'bathFan2', w: b2Win, wk: 'b2Win', r: b2Req, d: b2Def, present: b2Present },
+          { n: 'Bath #3', v: b3, k: 'bath3CFM', ak: 'bathFan3', w: b3Win, wk: 'b3Win', r: b3Req, d: b3Def, present: b3Present },
         ].map(f => (
           <div key={f.n} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 60px 50px 55px', gap: '2px 6px', alignItems: 'center', marginBottom: 2 }}>
             <span style={{ fontSize: 12, color: 'var(--color-text)' }}>{f.n}</span>
-            <input style={inp} value={s.ashrae?.[f.k] ?? ''} disabled={!canEdit} onChange={e => sn('ashrae', f.k, e.target.value)} placeholder="blank = none" />
-            <div style={{ textAlign: 'center' }}><input type="checkbox" checked={f.w} disabled={!canEdit} onChange={e => sn('ashrae', f.wk, e.target.checked)} style={{ accentColor: 'var(--color-primary)' }} /></div>
+            <input style={inp} value={s.ashrae?.[f.k] ?? a[f.ak] ?? ''} disabled={!canEdit} onChange={e => sn(f.k, e.target.value)} placeholder="blank = none" />
+            <div style={{ textAlign: 'center' }}><input type="checkbox" checked={f.w} disabled={!canEdit} onChange={e => sn(f.wk, e.target.checked)} style={{ accentColor: 'var(--color-primary)' }} /></div>
             <div style={{ textAlign: 'center', fontSize: 11, color: f.present ? 'var(--color-text-muted)' : '#ccc' }}>{f.present ? f.r : '—'}</div>
             <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: !f.present ? '#ccc' : f.d > 0 ? 'var(--color-warning)' : 'var(--color-success)' }}>{f.present ? f.d : '—'}</div>
           </div>
@@ -179,7 +206,7 @@ export default function ScopeASHRAECalc({ job, scopeData, onChange, canEdit }) {
           {Qfan < PROGRAM.fanMinCFM && <div style={{ marginTop: 6, padding: '8px 12px', background: '#dcfce7', border: '1px solid #86efac', borderRadius: 6, fontSize: 12, color: '#166534', fontWeight: 600 }}>Qfan below {PROGRAM.fanMinCFM} CFM — no mechanical ventilation fan required</div>}
         </div>
 
-        {/* ══ FAN SOLVER ══ */}
+        {/* ══ DWELLING-UNIT VENTILATION RUN-TIME SOLVER ══ */}
         {Qfan >= PROGRAM.fanMinCFM && <div style={solverBox}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary)', marginBottom: 6 }}>Dwelling-Unit Ventilation Run-Time Solver</div>
           <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 8 }}>Select fan setting. Recommended = lowest setting ≥ Qfan ({R(Qfan)} CFM). All fans run continuous.</div>
@@ -188,7 +215,7 @@ export default function ScopeASHRAECalc({ job, scopeData, onChange, canEdit }) {
               const meets = cfm >= Qfan && Qfan > 0;
               const isRec = cfm === recFan && Qfan > 0;
               const sel = Number(s.ashrae?.fanSetting) === cfm;
-              return <button key={cfm} type="button" disabled={!canEdit} onClick={() => sn('ashrae', 'fanSetting', cfm)} style={{
+              return <button key={cfm} type="button" disabled={!canEdit} onClick={() => sn('fanSetting', cfm)} style={{
                 flex: 1, padding: '10px 8px', borderRadius: 8, cursor: canEdit ? 'pointer' : 'default', fontFamily: 'inherit',
                 border: sel ? `2px solid ${isRec ? 'var(--color-success)' : 'var(--color-primary)'}` : `1px solid ${meets ? '#86efac' : 'var(--color-border)'}`,
                 background: sel ? (isRec ? '#dcfce7' : '#eff6ff') : 'var(--color-surface)',
