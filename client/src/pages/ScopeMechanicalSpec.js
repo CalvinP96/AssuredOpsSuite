@@ -66,8 +66,17 @@ const Rec = ({ type, children }) => {
 };
 
 export default function ScopeMechanicalSpec({ job, scopeData, onChange, canEdit }) {
-  const s = scopeData || {};
-  const sn = onChange;
+  const s = scopeData?.mechanical || {};
+
+  const sn = (section, field, value) => {
+    const updated = { ...s, [section]: { ...(s[section] || {}), [field]: value } };
+    onChange({ ...scopeData, mechanical: updated });
+  };
+
+  const updateHtg = (fields) => {
+    const updated = { ...s, htg: { ...(s.htg || {}), ...fields } };
+    onChange({ ...scopeData, mechanical: updated });
+  };
 
   return (
     <>
@@ -101,9 +110,9 @@ export default function ScopeMechanicalSpec({ job, scopeData, onChange, canEdit 
             const autoOn = age > 3 && s.htg?.fuel === 'Natural Gas' && !s.htg?.replaceRec;
             const val = s.htg?.cleanTuneOverride !== undefined ? s.htg.cleanTuneOverride : (autoOn || !!s.htg?.cleanTune);
             return <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <CK checked={val} onChange={v => { sn('htg', 'cleanTune', v); sn('htg', 'cleanTuneOverride', v); }} label="Clean & Tune" />
+              <CK checked={val} onChange={v => { updateHtg({ cleanTune: v, cleanTuneOverride: v }); }} label="Clean & Tune" />
               {autoOn && s.htg?.cleanTuneOverride === undefined && <span style={{ fontSize: 8, color: 'var(--color-primary)' }}>auto</span>}
-              {s.htg?.cleanTuneOverride !== undefined && autoOn && <span style={{ fontSize: 8, color: 'var(--color-primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => { sn('htg', 'cleanTuneOverride', undefined); sn('htg', 'cleanTune', true); }}>&#8635; auto</span>}
+              {s.htg?.cleanTuneOverride !== undefined && autoOn && <span style={{ fontSize: 8, color: 'var(--color-primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => { updateHtg({ cleanTuneOverride: undefined, cleanTune: true }); }}>&#8635; auto</span>}
             </div>;
           })()}
         </div>
