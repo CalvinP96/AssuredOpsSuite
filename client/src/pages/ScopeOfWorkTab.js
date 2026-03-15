@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import * as api from '../api';
 import ScopeMeasureBuilder from './ScopeMeasureBuilder';
 import ScopeInsulationSpec from './ScopeInsulationSpec';
 import ScopeMechanicalSpec from './ScopeMechanicalSpec';
@@ -45,7 +44,7 @@ export default function ScopeOfWorkTab({ job, program, canEdit, onUpdate, user }
   const assessmentData = parseJSON(job.assessment_data);
 
   // Build assessment recommendation names for ScopeMeasureBuilder
-  let rawRecs = assessmentData.weatherization_recommendations || assessmentData.recommendations || {};
+  let rawRecs = assessmentData?.weatherization_recommendations || assessmentData?.recommendations || {};
   if (Array.isArray(rawRecs)) {
     const obj = {};
     rawRecs.forEach(r => { obj[r] = 'yes'; });
@@ -58,14 +57,9 @@ export default function ScopeOfWorkTab({ job, program, canEdit, onUpdate, user }
     }
   });
 
-  // Persist scope data via updateJob
-  const saveScope = async (updated) => {
-    try {
-      await api.updateJob(job.id, { scope_data: JSON.stringify(updated) });
-      if (onUpdate) onUpdate('_reload');
-    } catch (err) {
-      alert('Failed to save scope: ' + err.message);
-    }
+  // Save scope data via parent onUpdate
+  const saveScope = (updated) => {
+    onUpdate('scope_data', updated);
   };
 
   const handleMeasuresChange = (measures) => {
@@ -78,15 +72,17 @@ export default function ScopeOfWorkTab({ job, program, canEdit, onUpdate, user }
 
   // Summary helpers
   const measures = (scopeData.measures || []).filter(m => m.type !== 'meta');
-  const pricing = scopeData.pricing || {};
-  const totalCost = measures.reduce((sum, m) => sum + (parseFloat(pricing[m.name]?.cost) || 0), 0);
 
   return (
     <div>
-      {/* Sub-tab bar */}
+      {/* Sub-tab bar — same underline-active style as main tab bar */}
       <div className="jd-tabs" style={{ marginBottom: 16 }}>
         {SUB_TABS.map(t => (
-          <button key={t.key} className={`jd-tab${subTab === t.key ? ' active' : ''}`} onClick={() => setSubTab(t.key)}>
+          <button
+            key={t.key}
+            className={`jd-tab${subTab === t.key ? ' active' : ''}`}
+            onClick={() => setSubTab(t.key)}
+          >
             {t.label}
           </button>
         ))}
@@ -130,49 +126,50 @@ export default function ScopeOfWorkTab({ job, program, canEdit, onUpdate, user }
 
       {subTab === 'summary' && (
         <div className="jd-card">
-          <div className="jd-card-title">Scope Summary ({measures.length} measures)</div>
+          <div className="jd-card-title">Scope Summary ({measures.length} measure{measures.length !== 1 ? 's' : ''})</div>
           {measures.length === 0 ? (
             <p style={{ color: 'var(--color-text-muted)', fontSize: 13, padding: 12 }}>
               No measures selected. Go to the Measures tab to add measures.
             </p>
           ) : (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 80px 1fr', gap: '4px 8px', fontSize: 12, padding: '0 12px 12px', alignItems: 'center' }}>
-                <div style={{ fontWeight: 700, borderBottom: '1px solid var(--color-border)', paddingBottom: 4 }}>Measure</div>
-                <div style={{ fontWeight: 700, borderBottom: '1px solid var(--color-border)', paddingBottom: 4 }}>Qty</div>
-                <div style={{ fontWeight: 700, borderBottom: '1px solid var(--color-border)', paddingBottom: 4 }}>Unit</div>
-                <div style={{ fontWeight: 700, borderBottom: '1px solid var(--color-border)', paddingBottom: 4 }}>Cost ($)</div>
-                {measures.map(m => (
-                  <React.Fragment key={m.name}>
-                    <div>{m.name}</div>
-                    <div>{m.qty || '\u2014'}</div>
-                    <div style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{getUnit(m.name)}</div>
-                    <input
-                      style={{ fontSize: 12, padding: '4px 8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
-                      defaultValue={pricing[m.name]?.cost || ''}
-                      disabled={!canEdit}
-                      onBlur={e => {
-                        saveScope({
-                          ...scopeData,
-                          pricing: { ...pricing, [m.name]: { ...(pricing[m.name] || {}), cost: e.target.value } },
-                        });
-                      }}
-                      placeholder="0.00"
-                    />
-                  </React.Fragment>
-                ))}
-              </div>
-              <div style={{ padding: 12, textAlign: 'right', fontSize: 14, fontWeight: 700, borderTop: '2px solid var(--color-border)' }}>
-                Total Estimate: ${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-            </>
-          )}
-
-          {scopeData.notes && (
-            <div style={{ padding: '0 12px 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
-              <strong>Notes:</strong> {scopeData.notes}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 80px', gap: '4px 8px', fontSize: 13, padding: '0 12px 12px', alignItems: 'center' }}>
+              <div style={{ fontWeight: 700, borderBottom: '1px solid var(--color-border)', paddingBottom: 4 }}>Measure</div>
+              <div style={{ fontWeight: 700, borderBottom: '1px solid var(--color-border)', paddingBottom: 4, textAlign: 'right' }}>Qty</div>
+              <div style={{ fontWeight: 700, borderBottom: '1px solid var(--color-border)', paddingBottom: 4 }}>Unit</div>
+              {measures.map(m => (
+                <React.Fragment key={m.name}>
+                  <div>{m.name}</div>
+                  <div style={{ textAlign: 'right' }}>{m.qty || '\u2014'}</div>
+                  <div style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{getUnit(m.name)}</div>
+                </React.Fragment>
+              ))}
             </div>
           )}
+
+          <div style={{ padding: '12px 12px 0', borderTop: '1px solid var(--color-border)', marginTop: 8, fontSize: 13, fontWeight: 600 }}>
+            Total: {measures.length} measure{measures.length !== 1 ? 's' : ''}
+          </div>
+
+          <div style={{ padding: 12 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>Notes</label>
+            <textarea
+              style={{
+                width: '100%',
+                minHeight: 80,
+                padding: '8px 10px',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius)',
+                fontSize: 13,
+                background: 'var(--color-surface)',
+                color: 'var(--color-text)',
+                resize: 'vertical',
+              }}
+              value={scopeData.notes || ''}
+              disabled={!canEdit}
+              onChange={e => saveScope({ ...scopeData, notes: e.target.value })}
+              placeholder="Scope notes..."
+            />
+          </div>
         </div>
       )}
     </div>
