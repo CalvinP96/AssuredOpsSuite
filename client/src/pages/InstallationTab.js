@@ -10,23 +10,23 @@ function getInstallData(job) {
   try { return JSON.parse(job.install_data || '{}'); } catch { return {}; }
 }
 
-export default function InstallationTab({ job, program, canEdit, onUpdate, user }) {
+export default function InstallationTab({ job, canEdit, onUpdate, user }) {
   const [coText, setCoText] = useState('');
   const [coResponse, setCoResponse] = useState({});
   const [saving, setSaving] = useState(false);
+
   const sc = useMemo(() => getScope(job), [job.scope_data]);
-  const installData = useMemo(() => getInstallData(job), [job.install_data]);
+  const data = useMemo(() => getInstallData(job), [job.install_data]);
   const measures = sc.selected_measures || [];
-  const measureStatus = installData.measure_status || {};
+  const measureStatus = data.measure_status || {};
   const co = job.change_orders || [];
 
   // ── Persist install data ──
-  const saveInstall = async (updates) => {
-    const merged = { ...installData, ...updates };
+  const save = async (updates) => {
+    const merged = { ...data, ...updates };
     try {
       setSaving(true);
-      await api.updateJob(job.id, { install_data: JSON.stringify(merged) });
-      onUpdate('_reload');
+      onUpdate('install_data', JSON.stringify(merged));
     } catch (err) {
       alert('Save failed: ' + err.message);
     } finally {
@@ -34,10 +34,12 @@ export default function InstallationTab({ job, program, canEdit, onUpdate, user 
     }
   };
 
-  const toggleMeasure = (m, field, val) => {
+  const setField = (field, val) => save({ [field]: val });
+
+  const updateMeasure = (m, field, val) => {
     const ms = { ...measureStatus };
     ms[m] = { ...(ms[m] || {}), [field]: val };
-    saveInstall({ measure_status: ms });
+    save({ measure_status: ms });
   };
 
   // ── Change order ──
@@ -74,41 +76,52 @@ export default function InstallationTab({ job, program, canEdit, onUpdate, user 
   const isAdmin = user?.role === 'admin' || user?.role === 'Admin';
   const installedCount = measures.filter(m => measureStatus[m]?.installed).length;
 
+  // ── Blower door reduction ──
+  const preCFM = Number(data.pre_cfm50) || 0;
+  const postCFM = Number(data.post_cfm50) || 0;
+  const reduction = preCFM && postCFM ? Math.round(((preCFM - postCFM) / preCFM) * 100) : null;
+
   return (
     <div>
-      {/* ── Installation Dates ── */}
+      {/* ── Install Info ── */}
       <div className="jd-card">
-        <div className="jd-card-title">Installation Progress</div>
+        <div className="jd-card-title">Install Completion</div>
+        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+          Complete all sections before leaving the job site.
+        </p>
         <div className="jd-schedule-grid">
-          {[
-            { label: 'Install Date', field: 'install_date' },
-            { label: 'Crew Lead', field: 'crew_lead' },
-            { label: 'ABC Install Date', field: 'abc_install_date' },
-            { label: 'Wall Injection Date', field: 'wall_injection_date' },
-            { label: 'Patch Date', field: 'patch_date' },
-          ].map(d => (
-            <div key={d.field} className="jd-field">
-              <label className="jd-field-label">{d.label}</label>
-              {d.field === 'crew_lead' ? (
-                <input
-                  className="jd-date-input"
-                  style={{ cursor: 'text' }}
-                  value={job[d.field] || ''}
-                  disabled={!canEdit}
-                  placeholder="Enter crew lead name"
-                  onChange={e => onUpdate(d.field, e.target.value)}
-                />
-              ) : (
-                <input
-                  type="date"
-                  className="jd-date-input"
-                  value={job[d.field] || ''}
-                  disabled={!canEdit}
-                  onChange={e => onUpdate(d.field, e.target.value)}
-                />
-              )}
-            </div>
-          ))}
+          <div className="jd-field">
+            <label className="jd-field-label">Install Date</label>
+            <input
+              type="date"
+              className="jd-date-input"
+              value={data.install_date || ''}
+              disabled={!canEdit}
+              onChange={e => setField('install_date', e.target.value)}
+            />
+          </div>
+          <div className="jd-field">
+            <label className="jd-field-label">Crew Lead</label>
+            <input
+              className="jd-date-input"
+              style={{ cursor: 'text' }}
+              value={data.crew_lead || ''}
+              disabled={!canEdit}
+              placeholder="Enter crew lead name"
+              onChange={e => setField('crew_lead', e.target.value)}
+            />
+          </div>
+          <div className="jd-field">
+            <label className="jd-field-label">Technician / Inspector</label>
+            <input
+              className="jd-date-input"
+              style={{ cursor: 'text' }}
+              value={data.technician || ''}
+              disabled={!canEdit}
+              placeholder="Enter technician name"
+              onChange={e => setField('technician', e.target.value)}
+            />
+          </div>
         </div>
         {saving && <div style={{ fontSize: 11, color: 'var(--color-primary)', marginTop: 8 }}>Saving...</div>}
       </div>
@@ -142,13 +155,14 @@ export default function InstallationTab({ job, program, canEdit, onUpdate, user 
                   padding: '12px 0',
                   borderBottom: '1px solid var(--color-border)',
                 }}>
+                  {/* Installed checkbox + measure name */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: canEdit ? 'pointer' : 'default', flex: 1 }}>
                       <input
                         type="checkbox"
                         checked={!!ms.installed}
                         disabled={!canEdit}
-                        onChange={() => toggleMeasure(m, 'installed', !ms.installed)}
+                        onChange={() => updateMeasure(m, 'installed', !ms.installed)}
                         style={{ width: 18, height: 18, accentColor: 'var(--color-success)' }}
                       />
                       <span style={{
@@ -163,8 +177,12 @@ export default function InstallationTab({ job, program, canEdit, onUpdate, user 
                     {ms.installed && (
                       <span className="badge active" style={{ fontSize: 10 }}>Installed</span>
                     )}
+                    {ms.issues && (
+                      <span className="badge terminated" style={{ fontSize: 10 }}>Issue</span>
+                    )}
                   </div>
-                  {/* Notes field per measure */}
+
+                  {/* Notes + issues per measure */}
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingLeft: 28 }}>
                     <input
                       style={{
@@ -172,24 +190,29 @@ export default function InstallationTab({ job, program, canEdit, onUpdate, user 
                         border: '1px solid var(--color-border)', borderRadius: 'var(--radius)',
                         background: 'var(--color-surface)', color: 'var(--color-text)'
                       }}
-                      value={ms.notes || ''}
+                      defaultValue={ms.notes || ''}
                       disabled={!canEdit}
                       placeholder="Install notes..."
                       onBlur={e => {
                         if (e.target.value !== (ms.notes || '')) {
-                          toggleMeasure(m, 'notes', e.target.value);
+                          updateMeasure(m, 'notes', e.target.value);
                         }
                       }}
-                      onChange={e => {
-                        // Local state update — saves onBlur
-                        const el = e.target;
-                        el.dataset.val = el.value;
-                      }}
-                      defaultValue={ms.notes || ''}
                     />
-                    {ms.photo_ref && (
-                      <span style={{ fontSize: 11, color: 'var(--color-primary)' }}>Photo linked</span>
-                    )}
+                    <label style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      fontSize: 11, color: ms.issues ? '#dc2626' : 'var(--color-text-muted)',
+                      cursor: canEdit ? 'pointer' : 'default', whiteSpace: 'nowrap'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={!!ms.issues}
+                        disabled={!canEdit}
+                        onChange={() => updateMeasure(m, 'issues', !ms.issues)}
+                        style={{ width: 14, height: 14, accentColor: '#dc2626' }}
+                      />
+                      Issues
+                    </label>
                   </div>
                 </div>
               );
@@ -205,47 +228,11 @@ export default function InstallationTab({ job, program, canEdit, onUpdate, user 
         )}
       </div>
 
-      {/* ── Existing Checklist Items ── */}
-      {(job.checklist || []).filter(c => c.item_type === 'photo' || c.item_type === 'paperwork').length > 0 && (
-        <div className="jd-card">
-          <div className="jd-card-title">Documentation Checklist</div>
-          {(job.checklist || []).filter(c => c.item_type === 'photo' || c.item_type === 'paperwork').map(item => (
-            <label key={item.id} style={{
-              display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '6px 0',
-              cursor: canEdit ? 'pointer' : 'default'
-            }}>
-              <input
-                type="checkbox"
-                checked={!!item.completed}
-                disabled={!canEdit}
-                onChange={async () => {
-                  await api.updateChecklist(item.id, {
-                    completed: !item.completed,
-                    completed_by: user?.name || user?.email || 'Unknown'
-                  });
-                  onUpdate('_reload');
-                }}
-                style={{ width: 16, height: 16, accentColor: 'var(--color-success)' }}
-              />
-              <span style={{
-                textDecoration: item.completed ? 'line-through' : 'none',
-                color: item.completed ? 'var(--color-text-muted)' : 'var(--color-text)'
-              }}>
-                {item.description}
-              </span>
-              {item.completed_date && (
-                <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>({item.completed_date})</span>
-              )}
-            </label>
-          ))}
-        </div>
-      )}
-
-      {/* ── Change Orders ── */}
+      {/* ── Change Order Requests ── */}
       <div className="jd-card">
         <div className="jd-card-title">Change Order Requests ({co.length})</div>
         <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 12 }}>
-          Describe any scope changes needed. Admin reviews and approves/denies.
+          Installer describes what needs to change. Admin reviews and approves/denies.
         </p>
 
         {/* Submit new COR */}
@@ -343,6 +330,151 @@ export default function InstallationTab({ job, program, canEdit, onUpdate, user 
               )}
             </div>
           ))
+        )}
+      </div>
+
+      {/* ── Blower Door Post-Test ── */}
+      <div className="jd-card">
+        <div className="jd-card-title">Post-Work Blower Door</div>
+        <div className="jd-schedule-grid">
+          <div className="jd-field">
+            <label className="jd-field-label">Pre CFM50</label>
+            <input
+              type="number"
+              className="jd-date-input"
+              style={{ cursor: 'text' }}
+              value={data.pre_cfm50 || ''}
+              disabled={!canEdit}
+              placeholder="0"
+              onChange={e => setField('pre_cfm50', e.target.value)}
+            />
+          </div>
+          <div className="jd-field">
+            <label className="jd-field-label">Post CFM50</label>
+            <input
+              type="number"
+              className="jd-date-input"
+              style={{ cursor: 'text' }}
+              value={data.post_cfm50 || ''}
+              disabled={!canEdit}
+              placeholder="0"
+              onChange={e => setField('post_cfm50', e.target.value)}
+            />
+          </div>
+        </div>
+        {reduction !== null && (
+          <div style={{
+            marginTop: 12, padding: '10px 14px',
+            background: reduction >= 25 ? '#f0fdf4' : '#fffbeb',
+            border: `1px solid ${reduction >= 25 ? '#bbf7d0' : '#fde68a'}`,
+            borderRadius: 'var(--radius)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+          }}>
+            <span style={{ fontSize: 13, color: 'var(--color-text)' }}>
+              Air Seal Reduction: <strong>{reduction}%</strong>
+            </span>
+            <span style={{
+              fontSize: 12, fontWeight: 600,
+              color: reduction >= 25 ? '#16a34a' : '#d97706'
+            }}>
+              {reduction >= 25 ? 'Meets 25% target' : 'Below 25% target'}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Follow-up ── */}
+      <div className="jd-card">
+        <div className="jd-card-title">Follow-up</div>
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 8, fontSize: 13,
+          cursor: canEdit ? 'pointer' : 'default', marginBottom: 8
+        }}>
+          <input
+            type="checkbox"
+            checked={data.followup_needed || false}
+            disabled={!canEdit}
+            onChange={() => setField('followup_needed', !data.followup_needed)}
+            style={{ width: 16, height: 16, accentColor: 'var(--color-warning)' }}
+          />
+          Follow-up needed
+        </label>
+        {data.followup_needed && (
+          <textarea
+            style={{
+              width: '100%', padding: '8px 10px', fontSize: 12,
+              border: '1px solid var(--color-border)', borderRadius: 'var(--radius)',
+              background: 'var(--color-surface)', color: 'var(--color-text)',
+              minHeight: 50, resize: 'vertical'
+            }}
+            value={data.followup_notes || ''}
+            disabled={!canEdit}
+            placeholder="What needs follow-up..."
+            onChange={e => setField('followup_notes', e.target.value)}
+          />
+        )}
+      </div>
+
+      {/* ── Final Sign-off ── */}
+      <div className="jd-card">
+        <div className="jd-card-title">Final Sign-off</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 8, fontSize: 13,
+            cursor: canEdit ? 'pointer' : 'default'
+          }}>
+            <input
+              type="checkbox"
+              checked={data.final_passed || false}
+              disabled={!canEdit}
+              onChange={() => setField('final_passed', !data.final_passed)}
+              style={{ width: 18, height: 18, accentColor: 'var(--color-success)' }}
+            />
+            <span style={{ fontWeight: 600 }}>Final Inspection Passed</span>
+          </label>
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 8, fontSize: 13,
+            cursor: canEdit ? 'pointer' : 'default'
+          }}>
+            <input
+              type="checkbox"
+              checked={data.customer_signoff || false}
+              disabled={!canEdit}
+              onChange={() => setField('customer_signoff', !data.customer_signoff)}
+              style={{ width: 18, height: 18, accentColor: 'var(--color-success)' }}
+            />
+            <span style={{ fontWeight: 600 }}>Customer Signature Collected</span>
+          </label>
+        </div>
+
+        {/* Sign-off notes */}
+        <div style={{ marginTop: 12 }}>
+          <label className="jd-field-label">Sign-off Notes</label>
+          <textarea
+            style={{
+              width: '100%', padding: '8px 10px', fontSize: 12,
+              border: '1px solid var(--color-border)', borderRadius: 'var(--radius)',
+              background: 'var(--color-surface)', color: 'var(--color-text)',
+              minHeight: 50, resize: 'vertical'
+            }}
+            value={data.sign_off_notes || ''}
+            disabled={!canEdit}
+            placeholder="Any final notes or observations..."
+            onChange={e => setField('sign_off_notes', e.target.value)}
+          />
+        </div>
+
+        {/* Completion summary */}
+        {(data.final_passed && data.customer_signoff) && (
+          <div style={{
+            marginTop: 12, padding: '10px 14px',
+            background: '#f0fdf4', border: '1px solid #bbf7d0',
+            borderRadius: 'var(--radius)', textAlign: 'center'
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
+              Install complete — ready for Post-QC
+            </span>
+          </div>
         )}
       </div>
     </div>
