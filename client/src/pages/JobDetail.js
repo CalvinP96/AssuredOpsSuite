@@ -332,7 +332,7 @@ export default function JobDetail({ role, user }) {
       )}
 
       {/* ===== TAB COMPONENTS ===== */}
-      {tab === 'assessment' && <AssessmentTab job={job} onSave={saveAssessment} />}
+      {tab === 'assessment' && <AssessmentTab job={job} onSave={saveAssessment} user={user} />}
       {tab === 'scope' && <ScopeOfWorkTab {...tabProps} />}
       {tab === 'install' && <InstallationTab {...tabProps} />}
       {tab === 'hvac' && <HVACTab {...tabProps} />}

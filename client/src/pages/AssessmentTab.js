@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import HSConsentForm from './HSConsentForm';
 
 const PHOTO_SLOTS = [
   { key: 'front_of_home', label: 'Front of Home', timing: 'PRE' },
@@ -114,11 +115,12 @@ function pillStyle(selected, pos) {
 }
 
 /* ── component ── */
-export default function AssessmentTab({ job, onSave }) {
+export default function AssessmentTab({ job, onSave, user }) {
   const [form, setForm] = useState(DEFAULTS);
   const [saving, setSaving] = useState(false);
   const [photos, setPhotos] = useState({});
   const [uploading, setUploading] = useState({});
+  const [showHSForm, setShowHSForm] = useState(false);
   const fileInputRefs = useRef({});
 
   useEffect(() => {
@@ -337,6 +339,33 @@ export default function AssessmentTab({ job, onSave }) {
         </Field>
       </div>
 
+      {/* ─── H&S Consent Banner ─── */}
+      {job.hs_consent_signed_at ? (
+        <div style={{
+          marginBottom: 20, padding: '10px 14px',
+          background: '#dcfce7', border: '1px solid #86efac',
+          borderRadius: 'var(--radius)', fontSize: 13, fontWeight: 600, color: '#166534',
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <span>&#10003;</span>
+          H&amp;S Consent signed on {new Date(job.hs_consent_signed_at).toLocaleDateString()}
+        </div>
+      ) : Array.isArray(form.health_safety) && form.health_safety.length > 0 ? (
+        <div style={{
+          marginBottom: 20, padding: '10px 14px',
+          background: '#fff7ed', border: '1px solid #fdba74',
+          borderRadius: 'var(--radius)', fontSize: 13, fontWeight: 600, color: '#9a3412',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+        }}>
+          <span>H&amp;S conditions identified &mdash; obtain customer consent</span>
+          <button type="button" onClick={() => setShowHSForm(true)}
+            className="btn btn-sm"
+            style={{ background: '#ea580c', color: '#fff', border: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}>
+            Sign H&amp;S Consent
+          </button>
+        </div>
+      ) : null}
+
       <div style={{ marginBottom: 20 }}>
         <Field label="Project Deferred?">
           <PillRadio field="project_deferred" options={['YES', 'NO']} />
@@ -449,6 +478,16 @@ export default function AssessmentTab({ job, onSave }) {
         }}>
         {saving ? 'Saving...' : 'Save Assessment'}
       </button>
+
+      {showHSForm && (
+        <HSConsentForm
+          job={job}
+          user={user}
+          hsConditions={form.health_safety || []}
+          onClose={() => setShowHSForm(false)}
+          onSigned={() => { setShowHSForm(false); window.location.reload(); }}
+        />
+      )}
     </div>
   );
 }

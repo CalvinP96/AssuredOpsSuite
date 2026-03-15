@@ -785,13 +785,16 @@ export async function uploadPhoto(jobId, data) {
   if (error) throw error;
 }
 
-export async function uploadJobPhoto(jobId, zone, label, timing, file) {
-  const ext = file.name.split('.').pop();
-  const path = `job-photos/${jobId}/${zone}/${Date.now()}.${ext}`;
-  const { data: upload, error: uploadErr } = await supabase.storage.from('job-photos').upload(path, file);
+export async function uploadJobPhoto(jobId, zone, label, timing, file, uploadedBy) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const path = `${jobId}/${zone}/${label.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.${ext}`;
+  const { error: uploadErr } = await supabase.storage.from('job-photos').upload(path, file, { upsert: true });
   if (uploadErr) throw uploadErr;
   const { data: { publicUrl } } = supabase.storage.from('job-photos').getPublicUrl(path);
-  const { error } = await supabase.from('job_photos').insert([{ job_id: jobId, phase: timing, house_side: zone, photo_url: publicUrl, label }]);
+  const { error } = await supabase.from('job_photos').insert([{
+    job_id: jobId, phase: timing, house_side: zone, photo_url: publicUrl, label,
+    uploaded_by: uploadedBy || null,
+  }]);
   if (error) throw error;
   return publicUrl;
 }
@@ -808,6 +811,14 @@ export async function getPhotoData(photoId) {
 }
 
 export async function deletePhoto(photoId) {
+  const { error } = await supabase.from('job_photos').delete().eq('id', photoId);
+  if (error) throw error;
+}
+
+export async function deleteJobPhoto(photoId, storagePath) {
+  if (storagePath) {
+    await supabase.storage.from('job-photos').remove([storagePath]);
+  }
   const { error } = await supabase.from('job_photos').delete().eq('id', photoId);
   if (error) throw error;
 }

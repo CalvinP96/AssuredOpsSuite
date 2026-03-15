@@ -146,7 +146,7 @@ function matchPhoto(photos, zone, itemName) {
   });
 }
 
-export default function PhotosTab({ job, program, canEdit, onUpdate, role }) {
+export default function PhotosTab({ job, program, canEdit, onUpdate, role, user }) {
   const [viewMode, setViewMode] = useState('all');
   const [collapsed, setCollapsed] = useState({});
   const [lightbox, setLightbox] = useState(null);
@@ -172,13 +172,30 @@ export default function PhotosTab({ job, program, canEdit, onUpdate, role }) {
     if (!file) return;
     setUploading(`${zone}-${itemName}`);
     try {
-      await api.uploadJobPhoto(job.id, zone, itemName, timing.toLowerCase(), file);
+      await api.uploadJobPhoto(job.id, zone, itemName, timing.toLowerCase(), file, user?.full_name);
       await loadPhotos();
       if (onUpdate) onUpdate('_reload');
     } catch (err) {
       alert('Upload failed: ' + err.message);
     } finally {
       setUploading(null);
+    }
+  };
+
+  const handleDelete = async (photo) => {
+    if (!window.confirm('Delete this photo?')) return;
+    try {
+      let storagePath = null;
+      if (photo.photo_url) {
+        const marker = '/object/public/job-photos/';
+        const idx = photo.photo_url.indexOf(marker);
+        if (idx >= 0) storagePath = photo.photo_url.substring(idx + marker.length);
+      }
+      await api.deleteJobPhoto(photo.id, storagePath);
+      await loadPhotos();
+      if (onUpdate) onUpdate('_reload');
+    } catch (err) {
+      alert('Delete failed: ' + err.message);
     }
   };
 
@@ -384,8 +401,16 @@ export default function PhotosTab({ job, program, canEdit, onUpdate, role }) {
                       {hasPhotoMatch && matched.slice(0, 3).map((p, i) => {
                         const url = getPhotoUrl(p);
                         return url ? (
-                          <img key={i} src={url} alt={item.name} onClick={() => openLightbox(p)}
-                            style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, flexShrink: 0, cursor: 'pointer', border: '1px solid #e0e0e0' }} />
+                          <div key={i} style={{ position: 'relative', flexShrink: 0 }}>
+                            <img src={url} alt={item.name} onClick={() => openLightbox(p)}
+                              style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, cursor: 'pointer', border: '1px solid #e0e0e0', display: 'block' }} />
+                            {canEdit && (
+                              <button type="button" onClick={(e) => { e.stopPropagation(); handleDelete(p); }}
+                                style={{ position: 'absolute', top: -5, right: -5, width: 16, height: 16, borderRadius: '50%', background: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0 }}>
+                                &#10005;
+                              </button>
+                            )}
+                          </div>
                         ) : null;
                       })}
                       {matched.length > 3 && <span style={{ fontSize: 10, color: '#666', flexShrink: 0 }}>+{matched.length - 3}</span>}
@@ -407,7 +432,7 @@ export default function PhotosTab({ job, program, canEdit, onUpdate, role }) {
                       {canEdit && (
                         <label style={{ fontSize: 10, padding: '4px 10px', background: hasPhotoMatch ? '#e8f5e9' : '#1976d2', color: hasPhotoMatch ? '#2e7d32' : '#fff', border: 'none', borderRadius: 4, cursor: isUploading ? 'wait' : 'pointer', flexShrink: 0, whiteSpace: 'nowrap', fontWeight: 600, display: 'inline-block' }}>
                           {isUploading ? 'Uploading...' : hasPhotoMatch ? '+ Add' : 'Upload'}
-                          <input type="file" accept="image/*" style={{ display: 'none' }} disabled={isUploading}
+                          <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} disabled={isUploading}
                             onChange={(e) => { handleUpload(zoneData.zone, item.name, item.timing, e.target.files[0]); e.target.value = ''; }} />
                         </label>
                       )}
