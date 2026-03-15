@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 // ═══ Measure constants (exact from hes-tracker) ═══
 const EE_MEASURES = [
@@ -50,94 +50,82 @@ const getUnit = (name) => {
   return 'ea';
 };
 
-// ═══ UI Helpers (light theme) ═══
-const Sec = ({ title, children }) => (
-  <div className="jd-card">
-    <div className="jd-card-title">{title}</div>
-    {children}
-  </div>
-);
+// ═══ Build initial selected map from existing measures + assessment recs ═══
+function buildInitial(existingMeasures, recs) {
+  const map = {};
+  // Seed from saved measures
+  if (Array.isArray(existingMeasures)) {
+    existingMeasures.forEach(m => {
+      map[m.name] = { checked: true, qty: m.qty || '' };
+    });
+  }
+  // Pre-check assessment recommendations not already present
+  if (Array.isArray(recs)) {
+    recs.forEach(name => {
+      if (!map[name]) map[name] = { checked: true, qty: '' };
+    });
+  }
+  return map;
+}
 
-const CK = ({ checked, onChange, label, disabled }) => (
-  <label style={{
-    display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
-    cursor: disabled ? 'default' : 'pointer', padding: '3px 0',
-    color: 'var(--color-text)', opacity: disabled ? 0.6 : 1,
-  }}>
-    <input
-      type="checkbox"
-      checked={!!checked}
-      onChange={onChange}
-      disabled={disabled}
-      style={{ accentColor: 'var(--color-primary)', width: 15, height: 15 }}
-    />
-    {label}
-  </label>
-);
+export default function ScopeMeasureBuilder({ job = {}, measures = [], onChange, canEdit = true }) {
+  const recs = job.assessment_data?.weatherization_recommendations || [];
+  const [selected, setSelected] = useState(() => buildInitial(measures, recs));
 
-export default function ScopeMeasureBuilder({ measures = [], onChange, assessmentRecs = [], canEdit = true }) {
-  const [uncheckedRecs, setUncheckedRecs] = useState({});
-
-  // ── Helpers ──
-  const realMeasures = measures.filter(m => m.type !== 'meta');
-  const getMeta = (key) => measures.find(m => m.name === key && m.type === 'meta');
-  const findMeasure = (name) => realMeasures.find(m => m.name === name);
-  const isRec = (name) => assessmentRecs.includes(name);
-  const isChecked = (name) => !!findMeasure(name) || (isRec(name) && !uncheckedRecs[name]);
-  const isAutoOnly = (name) => isRec(name) && !uncheckedRecs[name] && !findMeasure(name);
-
-  // ── Mutations ──
-  const fire = (next) => onChange(next);
-
-  const setMeta = (key, text) => {
-    const ex = getMeta(key);
-    if (ex) fire(measures.map(m => m.name === key && m.type === 'meta' ? { ...m, notes: text } : m));
-    else fire([...measures, { name: key, type: 'meta', qty: '', specs: '', notes: text }]);
-  };
-
-  const updateField = (name, type, field, value) => {
-    const ex = findMeasure(name);
-    if (ex) {
-      fire(measures.map(m => m.name === name && m.type !== 'meta' ? { ...m, [field]: value } : m));
-    } else {
-      fire([...measures, { name, type, qty: '', specs: '', notes: '', [field]: value }]);
+  // Emit changes upstream
+  const emit = useCallback((next) => {
+    if (!onChange) return;
+    const out = [];
+    for (const [name, v] of Object.entries(next)) {
+      if (v.checked) {
+        const section = EE_MEASURES.includes(name) ? 'ee' : 'hs';
+        out.push({ name, type: section, qty: v.qty || '', unit: section === 'ee' ? getUnit(name) : 'ea' });
+      }
     }
-  };
+    onChange(out);
+  }, [onChange]);
 
-  const toggle = (name, type) => {
+  // Re-seed if job recs change
+  useEffect(() => {
+    setSelected(prev => {
+      const next = { ...prev };
+      let changed = false;
+      recs.forEach(name => {
+        if (!next[name]) { next[name] = { checked: true, qty: '' }; changed = true; }
+      });
+      if (changed) emit(next);
+      return changed ? next : prev;
+    });
+  }, [recs.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggle = (name) => {
     if (!canEdit) return;
-    const ex = findMeasure(name);
-    const rec = isRec(name);
-    const checked = isChecked(name);
-
-    if (checked && !ex && rec) {
-      // Auto-only (from assessmentRecs) → dismiss recommendation
-      setUncheckedRecs(p => ({ ...p, [name]: true }));
-    } else if (checked && ex && rec) {
-      // Manual + rec → remove from measures and dismiss rec
-      fire(measures.filter(m => !(m.name === name && m.type !== 'meta')));
-      setUncheckedRecs(p => ({ ...p, [name]: true }));
-    } else if (checked && ex) {
-      // Manual only → remove from measures
-      fire(measures.filter(m => !(m.name === name && m.type !== 'meta')));
-    } else {
-      // Unchecked → check (clear rec dismissal if any, add to measures)
-      const next = { ...uncheckedRecs };
-      delete next[name];
-      setUncheckedRecs(next);
-      if (!ex) fire([...measures, { name, type, qty: '', specs: '', notes: '' }]);
-    }
+    setSelected(prev => {
+      const cur = prev[name];
+      const next = { ...prev, [name]: { checked: !cur?.checked, qty: cur?.qty || '' } };
+      emit(next);
+      return next;
+    });
   };
+
+  const setQty = (name, qty) => {
+    if (!canEdit) return;
+    setSelected(prev => {
+      const next = { ...prev, [name]: { ...prev[name], qty } };
+      emit(next);
+      return next;
+    });
+  };
+
+  const isChecked = (name) => !!selected[name]?.checked;
+  const isRec = (name) => recs.includes(name);
 
   // ── Counts ──
   const eeCount = EE_MEASURES.filter(isChecked).length;
   const hsCount = HS_MEASURES.filter(isChecked).length;
+  const totalCount = eeCount + hsCount;
 
-  // ── Meta values ──
-  const workNotes = getMeta('_workNotes')?.notes || '';
-  const hsNotes = getMeta('_hsNotes')?.notes || '';
-
-  // ── Styles ──
+  // ── Styles (light theme CSS vars) ──
   const qtyInput = {
     width: 70, textAlign: 'center', fontSize: 11,
     height: 28, padding: '4px 6px',
@@ -146,32 +134,45 @@ export default function ScopeMeasureBuilder({ measures = [], onChange, assessmen
     background: 'var(--color-surface)',
     color: 'var(--color-text)',
   };
-  const ta = {
-    width: '100%', minHeight: 50, padding: '6px 10px',
-    border: '1px solid var(--color-border)',
-    borderRadius: 'var(--radius)',
-    fontSize: 13, resize: 'vertical',
-    background: 'var(--color-surface)',
-    color: 'var(--color-text)',
-    fontFamily: 'inherit',
+  const recBadge = {
+    fontSize: 9, color: 'var(--color-primary)', fontWeight: 700,
+    background: 'rgba(37,99,235,0.08)', padding: '1px 6px', borderRadius: 4,
   };
-  const recBadge = { fontSize: 8, color: 'var(--color-primary)', fontWeight: 600 };
   const unitLabel = { fontSize: 9, color: 'var(--color-text-muted)', minWidth: 28 };
+  const totalPill = {
+    display: 'inline-block', padding: '4px 14px', borderRadius: 20,
+    fontSize: 13, fontWeight: 700,
+    background: totalCount > 0 ? 'var(--color-primary)' : 'var(--color-surface-alt)',
+    color: totalCount > 0 ? '#fff' : 'var(--color-text-muted)',
+    marginBottom: 16,
+  };
 
   // ── Render measure row ──
-  const renderRow = (name, type) => {
+  const renderRow = (name, section) => {
     const checked = isChecked(name);
-    const auto = isAutoOnly(name);
-    const m = findMeasure(name);
-    const qty = m?.qty || '';
-    const unit = type === 'ee' ? getUnit(name) : 'ea';
+    const rec = isRec(name);
+    const qty = selected[name]?.qty || '';
+    const unit = section === 'ee' ? getUnit(name) : 'ea';
 
     return (
-      <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <CK checked={checked} onChange={() => toggle(name, type)} label={name} disabled={!canEdit} />
-        {auto && <span style={recBadge}>rec</span>}
+      <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
+          cursor: canEdit ? 'pointer' : 'default',
+          color: 'var(--color-text)', opacity: canEdit ? 1 : 0.6, flex: 1, minWidth: 0,
+        }}>
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={() => toggle(name)}
+            disabled={!canEdit}
+            style={{ accentColor: 'var(--color-primary)', width: 15, height: 15, flexShrink: 0 }}
+          />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+        </label>
+        {rec && <span style={recBadge}>rec</span>}
         {checked && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
             <input
               style={qtyInput}
               inputMode="decimal"
@@ -179,7 +180,7 @@ export default function ScopeMeasureBuilder({ measures = [], onChange, assessmen
               disabled={!canEdit}
               onChange={e => {
                 const v = e.target.value;
-                if (v === '' || /^-?\d*\.?\d*$/.test(v)) updateField(name, type, 'qty', v);
+                if (v === '' || /^-?\d*\.?\d*$/.test(v)) setQty(name, v);
               }}
               placeholder="qty"
             />
@@ -192,39 +193,21 @@ export default function ScopeMeasureBuilder({ measures = [], onChange, assessmen
 
   return (
     <>
-      <Sec title={`Energy Efficiency Measures (${eeCount})`}>
-        <div style={{ display: 'grid', gap: 4 }}>
+      <div style={totalPill}>{totalCount} measure{totalCount !== 1 ? 's' : ''} selected</div>
+
+      <div className="jd-card">
+        <div className="jd-card-title">Energy Efficiency Measures ({eeCount})</div>
+        <div style={{ display: 'grid', gap: 2 }}>
           {EE_MEASURES.map(m => renderRow(m, 'ee'))}
         </div>
-      </Sec>
+      </div>
 
-      <Sec title={`Health & Safety Measures (${hsCount})`}>
-        <div style={{ display: 'grid', gap: 4 }}>
+      <div className="jd-card">
+        <div className="jd-card-title">Health &amp; Safety Measures ({hsCount})</div>
+        <div style={{ display: 'grid', gap: 2 }}>
           {HS_MEASURES.map(m => renderRow(m, 'hs'))}
         </div>
-      </Sec>
-
-      <Sec title="Notes on Work">
-        <textarea
-          style={ta}
-          value={workNotes}
-          disabled={!canEdit}
-          onChange={e => setMeta('_workNotes', e.target.value)}
-          rows={2}
-          placeholder="Notes on work to be performed…"
-        />
-      </Sec>
-
-      <Sec title="Notes on Health & Safety">
-        <textarea
-          style={ta}
-          value={hsNotes}
-          disabled={!canEdit}
-          onChange={e => setMeta('_hsNotes', e.target.value)}
-          rows={2}
-          placeholder="H&S notes…"
-        />
-      </Sec>
+      </div>
     </>
   );
 }
