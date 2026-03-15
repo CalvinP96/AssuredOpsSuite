@@ -14,6 +14,7 @@ import HESIEPage from './pages/HESIEPage';
 import JobDetail from './pages/JobDetail';
 import LoginPage from './pages/LoginPage';
 import AuditLogPage from './pages/AuditLogPage';
+import UserManagementPage from './pages/UserManagementPage';
 import './App.css';
 
 const ROLES = ['Admin', 'HR', 'IT', 'Warehouse', 'Finance', 'Operations', 'Program Manager', 'Assessor', 'Scope Creator', 'Installer', 'HVAC'];
@@ -23,6 +24,7 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [currentRoles, setCurrentRoles] = useState(['Admin']);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [previewRole, setPreviewRole] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
@@ -53,33 +55,52 @@ function App() {
     full_name: session.user.user_metadata?.full_name || session.user.email,
   };
 
-  const hasRole = (...roles) => currentRoles.includes('Admin') || roles.some(r => currentRoles.includes(r));
-  const primaryRole = currentRoles.includes('Admin') ? 'Admin' : currentRoles[0];
+  const effectiveRoles = previewRole ? [previewRole] : currentRoles;
+  const hasRole = (...roles) => effectiveRoles.includes('Admin') || roles.some(r => effectiveRoles.includes(r));
+  const primaryRole = effectiveRoles.includes('Admin') ? 'Admin' : effectiveRoles[0];
 
   return (
     <Router>
       <div className="app">
         <Sidebar
           user={user}
-          currentRoles={currentRoles}
+          currentRoles={effectiveRoles}
           setCurrentRoles={setCurrentRoles}
           allRoles={ROLES}
           open={sidebarOpen}
           toggle={() => setSidebarOpen(!sidebarOpen)}
+          previewRole={previewRole}
         />
         <main className={`main-content ${sidebarOpen ? '' : 'expanded'}`}>
+          {previewRole && (
+            <div
+              onClick={() => setPreviewRole(null)}
+              style={{
+                padding: '8px 20px',
+                background: '#fef3c7',
+                color: '#92400e',
+                fontSize: 13,
+                fontWeight: 600,
+                textAlign: 'center',
+                cursor: 'pointer',
+                borderBottom: '1px solid #fbbf24',
+              }}
+            >
+              PREVIEW MODE: {previewRole} view &mdash; Click to exit preview
+            </div>
+          )}
           <header className="top-bar">
             <button className="menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
               ☰
             </button>
             <h1 className="page-title">AssuredOpsSuite</h1>
             <div className="role-badge">
-              {currentRoles.length <= 2 ? currentRoles.join(' · ') : `${currentRoles.length} Roles`}
+              {effectiveRoles.length <= 2 ? effectiveRoles.join(' · ') : `${effectiveRoles.length} Roles`}
             </div>
           </header>
           <div className="page-container">
             <Routes>
-              <Route path="/" element={<Dashboard roles={currentRoles} />} />
+              <Route path="/" element={<Dashboard roles={effectiveRoles} />} />
               {hasRole('HR') && (
                 <Route path="/hr" element={<HRPage role={primaryRole} />} />
               )}
@@ -102,6 +123,14 @@ function App() {
               <Route path="/program/:id" element={<Navigate to="/hes-ie" />} />
               <Route path="/employee/:id" element={<EmployeeDetail role={primaryRole} />} />
               <Route path="/audit" element={<AuditLogPage user={user} />} />
+              <Route path="/admin/users" element={
+                <UserManagementPage
+                  session={session}
+                  user={user}
+                  previewRole={previewRole}
+                  setPreviewRole={setPreviewRole}
+                />
+              } />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>

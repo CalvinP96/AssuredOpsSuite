@@ -12,11 +12,12 @@ const ALL_NAV_ITEMS = [
   { path: '/finance', icon: '💰', label: 'Finance', category: 'Management', roles: ['Admin', 'Finance'] },
   { path: '/billing', icon: '🧾', label: 'Termination Billing', category: 'Management', roles: ['Admin', 'Finance', 'HR'] },
   { path: '/audit', icon: '📋', label: 'Audit Log', category: 'Management', roles: ['Admin'] },
+  { path: '/admin/users', icon: '👤', label: 'User Management', category: 'Management', roles: ['Admin'] },
 ];
 
 const CATEGORY_ORDER = ['Overview', 'Programs', 'Operations', 'Management'];
 
-export default function Sidebar({ user, currentRoles, open, toggle }) {
+export default function Sidebar({ user, currentRoles, open, toggle, previewRole }) {
   const visibleItems = ALL_NAV_ITEMS.filter(item => {
     if (!item.roles) return true;
     return currentRoles.includes('Admin') || item.roles.some(r => currentRoles.includes(r));

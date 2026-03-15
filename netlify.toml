@@ -3,11 +3,14 @@
   command = "npm install && npm run build"
   publish = "build"
 
+[functions]
+  directory = "../netlify/functions"
+
 [build.environment]
   NODE_VERSION = "20"
   CI = "false"
 
-# SPA routing - send all routes to index.html
+# SPA routing - send all routes to index.html (functions take precedence)
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -916,3 +916,24 @@ export async function saveCustomerAuth(jobId, authData) {
   }).eq('id', jobId)
   return !error
 }
+
+// ========== ADMIN USER MANAGEMENT ==========
+
+async function adminFetch(action, body, session) {
+  const res = await fetch('/.netlify/functions/admin-users', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + session.access_token
+    },
+    body: JSON.stringify({ action, ...body })
+  })
+  return res.json()
+}
+
+export async function adminListUsers(session) { return adminFetch('list', {}, session) }
+export async function adminCreateUser(session, data) { return adminFetch('create', data, session) }
+export async function adminUpdateUser(session, data) { return adminFetch('update', data, session) }
+export async function adminDeactivateUser(session, userId) { return adminFetch('deactivate', { userId }, session) }
+export async function adminReactivateUser(session, userId) { return adminFetch('reactivate', { userId }, session) }
+export async function adminResetPassword(session, userId, new_password) { return adminFetch('reset_password', { userId, new_password }, session) }
