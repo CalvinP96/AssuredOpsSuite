@@ -1,4 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from '../supabaseClient';
+
+const PHOTO_SLOTS = [
+  { key: 'front_of_home', label: 'Front of Home', timing: 'PRE' },
+  { key: 'attic_insulation', label: 'Attic Insulation', timing: 'PRE', hint: 'wide angle' },
+  { key: 'furnace', label: 'Furnace / Heating System', timing: 'PRE', hint: 'venting visible' },
+  { key: 'water_heater', label: 'Water Heater', timing: 'PRE', hint: 'venting visible' },
+  { key: 'thermostat', label: 'Thermostat', timing: 'PRE' },
+  { key: 'smoke_co_detectors', label: 'Smoke / CO Detectors', timing: 'PRE' },
+];
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -107,11 +117,15 @@ function pillStyle(selected, pos) {
 export default function AssessmentTab({ job, onSave }) {
   const [form, setForm] = useState(DEFAULTS);
   const [saving, setSaving] = useState(false);
+  const [photos, setPhotos] = useState({});
+  const [uploading, setUploading] = useState({});
+  const fileInputRefs = useRef({});
 
   useEffect(() => {
     try {
       const parsed = JSON.parse(job.assessment_data || '{}');
       setForm(prev => ({ ...prev, ...parsed }));
+      if (parsed.photos) setPhotos(parsed.photos);
     } catch { /* keep defaults */ }
   }, [job.assessment_data]);
 
@@ -133,9 +147,32 @@ export default function AssessmentTab({ job, onSave }) {
       // merge with any existing assessment_data keys (e.g. old audit fields, recommendations)
       let existing = {};
       try { existing = JSON.parse(job.assessment_data || '{}'); } catch { /* ignore */ }
-      await onSave({ ...existing, ...form });
+      await onSave({ ...existing, ...form, photos });
     } catch { /* handled upstream */ }
     setSaving(false);
+  };
+
+  const handlePhotoUpload = async (slotKey, file) => {
+    const ext = file.name.split('.').pop();
+    const path = `assessment/${job.id}/${slotKey}/${Date.now()}.${ext}`;
+    setUploading(prev => ({ ...prev, [slotKey]: true }));
+    try {
+      const { error } = await supabase.storage.from('job-photos').upload(path, file);
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('job-photos').getPublicUrl(path);
+      setPhotos(prev => ({ ...prev, [slotKey]: publicUrl }));
+    } catch (err) {
+      console.error('Photo upload failed:', err);
+    }
+    setUploading(prev => ({ ...prev, [slotKey]: false }));
+  };
+
+  const handlePhotoRemove = (slotKey) => {
+    setPhotos(prev => {
+      const next = { ...prev };
+      delete next[slotKey];
+      return next;
+    });
   };
 
   /* ── helpers ── */
@@ -320,6 +357,88 @@ export default function AssessmentTab({ job, onSave }) {
           <textarea style={{ ...styles.input, height: 'auto', minHeight: 80, resize: 'vertical' }}
             value={form.additional_notes} onChange={e => set('additional_notes', e.target.value)} />
         </Field>
+      </div>
+
+      {/* ─── SECTION 3: Assessment Photos ─── */}
+      <div style={styles.sectionTitle}>Assessment Photos</div>
+      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16 }}>
+        Attach key photos from the assessment. Full photo documentation is available in the Photos tab after saving.
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 24 }}>
+        {PHOTO_SLOTS.map(slot => (
+          <div key={slot.key}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+                {slot.label}{slot.hint ? ` — ${slot.hint}` : ''}
+              </span>
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: '2px 6px',
+                borderRadius: 4, background: 'var(--color-border)', color: 'var(--color-text-muted)',
+                textTransform: 'uppercase', letterSpacing: '0.5px',
+              }}>{slot.timing}</span>
+            </div>
+
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              style={{ display: 'none' }}
+              ref={el => { fileInputRefs.current[slot.key] = el; }}
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (file) handlePhotoUpload(slot.key, file);
+                e.target.value = '';
+              }}
+            />
+
+            {uploading[slot.key] ? (
+              <div style={{
+                width: '100%', aspectRatio: '4/3', display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                border: '2px dashed var(--color-border)', borderRadius: 'var(--radius)',
+                background: 'var(--color-surface)',
+              }}>
+                <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Uploading...</div>
+              </div>
+            ) : photos[slot.key] ? (
+              <div style={{ position: 'relative' }}>
+                <img
+                  src={photos[slot.key]}
+                  alt={slot.label}
+                  style={{
+                    width: '100%', aspectRatio: '4/3', objectFit: 'cover',
+                    borderRadius: 'var(--radius)', display: 'block',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handlePhotoRemove(slot.key)}
+                  style={{
+                    position: 'absolute', top: 6, right: 6,
+                    width: 24, height: 24, borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.6)', color: '#fff',
+                    border: 'none', cursor: 'pointer', fontSize: 14,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    lineHeight: 1,
+                  }}>✕</button>
+              </div>
+            ) : (
+              <div
+                onClick={() => fileInputRefs.current[slot.key]?.click()}
+                style={{
+                  width: '100%', aspectRatio: '4/3', display: 'flex',
+                  flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  border: '2px dashed var(--color-border)', borderRadius: 'var(--radius)',
+                  background: 'var(--color-surface)', cursor: 'pointer',
+                  transition: 'border-color 0.15s',
+                }}>
+                <span style={{ fontSize: 28 }}>📷</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Tap to add photo</span>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       <button type="button" onClick={handleSave} disabled={saving}
