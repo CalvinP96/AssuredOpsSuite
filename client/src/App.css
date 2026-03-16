@@ -621,6 +621,52 @@ tr:hover { background: var(--color-surface-alt); }
   .role-badge { display: none; }
 }
 
+/* ========== Status Badge ========== */
+.status-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.status-badge--sm { font-size: 10px; padding: 2px 7px; }
+.status-badge--assessment_scheduled { background: #f1f5f9; color: #64748b; }
+.status-badge--assessment_complete { background: #dbeafe; color: #1d4ed8; }
+.status-badge--pre_approval { background: #fef9c3; color: #854d0e; }
+.status-badge--in_review { background: #ffedd5; color: #9a3412; }
+.status-badge--approved { background: #dcfce7; color: #166534; }
+.status-badge--install_scheduled { background: #ccfbf1; color: #0f766e; }
+.status-badge--install_in_progress { background: #ccfbf1; color: #0f766e; }
+.status-badge--inspection { background: #f3e8ff; color: #6b21a8; }
+.status-badge--submitted { background: #e0e7ff; color: #3730a3; }
+.status-badge--invoiced { background: #e0e7ff; color: #3730a3; }
+.status-badge--complete { background: #dcfce7; color: #166534; }
+.status-badge--deferred { background: #fee2e2; color: #991b1b; }
+
+/* ========== Stale Badge ========== */
+.stale-badge { font-size: 11px; font-weight: 600; }
+.stale-badge--ok { color: var(--color-text-muted); }
+.stale-badge--warning { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px; background: #fef3c7; color: #92400e; }
+.stale-badge--danger { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px; background: #fee2e2; color: #991b1b; }
+
+/* ========== Signature Pad ========== */
+.signature-pad-container { width: 100%; }
+.signature-pad-label { font-size: 13px; font-weight: 600; color: var(--color-text-muted); margin-bottom: 6px; }
+.signature-pad-canvas { width: 100%; height: 140px; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius); cursor: crosshair; touch-action: none; }
+.signature-pad-image { width: 100%; height: 140px; object-fit: contain; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius); }
+.signature-pad-clear { margin-top: 6px; }
+
+/* ========== Photo Slot ========== */
+.photo-slot { position: relative; }
+.photo-slot-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 20px 12px; border: 2px dashed var(--color-border); border-radius: var(--radius); background: var(--color-surface-alt); min-height: 120px; text-align: center; }
+.photo-slot-clickable { cursor: pointer; transition: border-color 0.2s; }
+.photo-slot-clickable:hover { border-color: var(--color-primary); }
+.photo-slot-icon { font-size: 28px; }
+.photo-slot-label { font-size: 12px; font-weight: 600; color: var(--color-text); }
+.photo-slot-timing { font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--color-primary); background: rgba(37,99,235,0.1); padding: 1px 6px; border-radius: 4px; }
+.photo-slot-required { font-size: 10px; font-weight: 600; color: var(--color-danger); }
+.photo-slot-note { font-size: 11px; color: var(--color-text-muted); }
+.photo-slot-preview { position: relative; border-radius: var(--radius); overflow: hidden; }
+.photo-slot-image { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; border-radius: var(--radius); }
+.photo-slot-delete { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,0.6); color: #fff; border: none; cursor: pointer; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.photo-slot-delete:hover { background: var(--color-danger); }
+.photo-slot-spinner { width: 24px; height: 24px; border: 3px solid var(--color-border); border-top-color: var(--color-primary); border-radius: 50%; animation: photo-spin 0.6s linear infinite; }
+@keyframes photo-spin { to { transform: rotate(360deg); } }
+
 /* ========== JobDetail Page ========== */
 .jd-page {
   max-width: 1200px;

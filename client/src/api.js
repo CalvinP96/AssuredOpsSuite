@@ -464,6 +464,18 @@ export async function updateMilestone(msId, data) {
 }
 
 // --- Jobs ---
+
+// Get a single job by ID (lightweight, with photos + checklist)
+export async function getJob(jobId) {
+  const { data, error } = await supabase
+    .from('program_jobs')
+    .select('*, job_photos(*), job_checklist_items(*)')
+    .eq('id', jobId)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function getJobs(programId) {
   const { data, error } = await supabase
     .from('program_jobs')
@@ -567,8 +579,14 @@ export async function createJob(programId, data) {
 
 export async function updateJob(jobId, data) {
   const { id, program_id, created_at, measures, checklist, photos, hvac_replacements, change_orders, job_measures, job_checklist_items, job_photos, ...rest } = data;
-  const { error } = await supabase.from('program_jobs').update({ ...rest, updated_at: new Date().toISOString() }).eq('id', jobId);
+  const { data: updated, error } = await supabase
+    .from('program_jobs')
+    .update({ ...rest, updated_at: new Date().toISOString() })
+    .eq('id', jobId)
+    .select()
+    .single();
   if (error) throw error;
+  return updated;
 }
 
 export async function deleteJob(jobId) {
