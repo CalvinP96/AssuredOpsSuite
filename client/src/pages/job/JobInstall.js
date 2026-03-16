@@ -1,4 +1,8 @@
 import React, { useState } from 'react';
+import { filterSections } from './photoSectionsData';
+import PhotoChecklist from './PhotoChecklist';
+
+const POST_SECTIONS = filterSections('post');
 
 function Field({ label, value, onChange, disabled, type, children }) {
   return (
@@ -198,6 +202,9 @@ export default function JobInstall({ job, canEdit, isAdmin, onUpdate, user }) {
             onChange={v => set('post_sow_signed', v)} disabled={dis} />
         </div>
       </div>
+
+      {/* ─── Post-Install Photo Checklist ─── */}
+      <PhotoChecklist sections={POST_SECTIONS} job={job} canEdit={canEdit} user={user} />
 
       {canEdit && (
         <button className="btn btn-primary" onClick={handleSave}>Save Changes</button>
