@@ -44,7 +44,6 @@ function pillStyle(selected, pos) {
 
 export default function JobAssess({ job, canEdit, onUpdate, user }) {
   const [form, setForm] = useState({ ...DEFAULTS, assessor_name: user?.full_name || '' });
-  const [saving, setSaving] = useState(false);
   const [photos, setPhotos] = useState({});
   const [uploading, setUploading] = useState({});
   const [showAuthInline, setShowAuthInline] = useState(false);
@@ -77,29 +76,30 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
     }).catch(() => {});
   }, [job.id]);
 
-  const set = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
-  const toggleArray = (field, value) => setForm(prev => {
-    const arr = Array.isArray(prev[field]) ? prev[field] : [];
-    return { ...prev, [field]: arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value] };
-  });
-
   const doSave = useCallback(async (f) => {
     let existing = {};
     try { const raw = job.assessment_data; existing = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {}); } catch {}
     await onUpdate({ assessment_data: { ...existing, ...f } });
   }, [job.assessment_data, onUpdate]);
 
-  const handleBlurSave = useCallback(() => {
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => doSave(form), 2000);
-  }, [form, doSave]);
-  useEffect(() => () => clearTimeout(saveTimer.current), []);
-
-  const handleSave = async () => {
-    clearTimeout(saveTimer.current); setSaving(true);
-    try { await doSave(form); } catch {}
-    setSaving(false);
+  const set = (field, value) => {
+    setForm(prev => {
+      const next = { ...prev, [field]: value };
+      clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => doSave(next), 800);
+      return next;
+    });
   };
+  const toggleArray = (field, value) => {
+    setForm(prev => {
+      const arr = Array.isArray(prev[field]) ? prev[field] : [];
+      const next = { ...prev, [field]: arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value] };
+      clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => doSave(next), 800);
+      return next;
+    });
+  };
+  useEffect(() => () => clearTimeout(saveTimer.current), []);
 
   const reloadPhotos = async () => {
     const rows = await api.getJobPhotos(job.id);
@@ -163,7 +163,7 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
   );
   const Inp = ({ field, type = 'text', ...rest }) => (
     <input type={type} value={form[field]} disabled={!canEdit}
-      onChange={e => set(field, e.target.value)} onBlur={handleBlurSave} {...rest} />
+      onChange={e => set(field, e.target.value)} {...rest} />
   );
   const TimingBadge = ({ t }) => (
     <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
@@ -294,7 +294,7 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
         </div>
         <F label="Additional Notes">
           <textarea value={form.additional_notes} disabled={!canEdit} rows={3}
-            onChange={e => set('additional_notes', e.target.value)} onBlur={handleBlurSave} />
+            onChange={e => set('additional_notes', e.target.value)} />
         </F>
       </div>
 
@@ -366,13 +366,6 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
           )}
         </div>
       ))}
-
-      {canEdit && (
-        <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}
-          style={{ width: '100%', padding: '12px 24px', fontSize: 15, fontWeight: 700, opacity: saving ? 0.7 : 1 }}>
-          {saving ? 'Saving...' : 'Save Assessment'}
-        </button>
-      )}
 
       {viewPhoto && (
         <div onClick={() => setViewPhoto(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',

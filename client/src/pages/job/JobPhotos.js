@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as api from '../../api';
+import { PHOTO_ZONES } from './photoZonesData';
 
 /* ══════════════════════════════════════════════════════════════
    PHOTO_SECTIONS — exact zones & items from HES tracker
@@ -30,27 +31,6 @@ const PHOTO_SECTIONS = {
 
 const PHASE_LABEL = { pre: 'Pre', post: 'Post', hvac: 'HVAC', repl: 'Replacement' };
 
-function compressFile(file) {
-  return new Promise(resolve => {
-    if (file.type === 'image/gif') { resolve(file); return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const maxW = 1600;
-        let w = img.width, h = img.height;
-        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
-        const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        c.getContext('2d').drawImage(img, 0, 0, w, h);
-        c.toBlob(blob => resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' })), 'image/jpeg', 0.7);
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
 function zoneKey(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
 }
@@ -59,6 +39,7 @@ const photoSrc = (p) => p.photo_ref || p.photo_data || '';
 
 export default function JobPhotos({ job, canEdit, user }) {
   const [photoMap, setPhotoMap] = useState({});
+  const [otherPhotos, setOtherPhotos] = useState({});
   const [preview, setPreview] = useState(null);
   const [viewMode, setViewMode] = useState('role');
   const [uploading, setUploading] = useState({});
@@ -79,8 +60,20 @@ export default function JobPhotos({ job, canEdit, user }) {
     try {
       const rows = await api.getJobPhotos(job.id);
       const grouped = {};
-      for (const p of rows) { p.photo_src = photoSrc(p); (grouped[p.description] ||= []).push(p); }
+      const otherByZone = {};
+      const knownIds = new Set(allItems.map(i => i.id));
+      for (const p of rows) {
+        p.photo_src = photoSrc(p);
+        if (knownIds.has(p.description)) {
+          (grouped[p.description] ||= []).push(p);
+        } else {
+          // Photos from other tabs (assess, install, hvac)
+          const zone = p.house_side || 'other';
+          (otherByZone[zone] ||= []).push(p);
+        }
+      }
       setPhotoMap(grouped);
+      setOtherPhotos(otherByZone);
     } catch { /* ignore */ }
   };
 
@@ -89,8 +82,7 @@ export default function JobPhotos({ job, canEdit, user }) {
   const handleUpload = async (cat, item, file) => {
     setUploading(prev => ({ ...prev, [item.id]: true }));
     try {
-      const compressed = await compressFile(file);
-      await api.uploadJobPhoto(job.id, zoneKey(cat), item.id, item.p, compressed, user?.full_name);
+      await api.uploadJobPhoto(job.id, zoneKey(cat), item.id, item.p, file, user?.full_name);
       await reloadPhotos();
     } catch (err) { console.error('Upload failed:', err); }
     setUploading(prev => ({ ...prev, [item.id]: false }));
@@ -114,18 +106,20 @@ export default function JobPhotos({ job, canEdit, user }) {
 
   /* ── Preview overlay ── */
   if (preview) {
-    const arr = getPhotos(preview.id);
-    const ph = arr[preview.idx];
-    const it = allItems.find(x => x.id === preview.id);
+    const isOther = !!preview.otherPhoto;
+    const arr = isOther ? [preview.otherPhoto] : getPhotos(preview.id);
+    const ph = isOther ? preview.otherPhoto : arr[preview.idx];
+    const it = isOther ? null : allItems.find(x => x.id === preview.id);
+    const label = isOther ? (ph?.description || '').replace(/_/g, ' ') : it?.l;
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#000', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '10px 16px', gap: 8 }}>
           <button style={{ background: 'none', border: 'none', color: '#fff', fontSize: 16, cursor: 'pointer', padding: '4px 8px' }}
             onClick={() => setPreview(null)}>{'\u2190'} Back</button>
           <div style={{ flex: 1, textAlign: 'center', fontWeight: 600, fontSize: 14, color: '#fff' }}>
-            {it?.l} {arr.length > 1 ? `(${preview.idx + 1}/${arr.length})` : ''}
+            {label} {arr.length > 1 ? `(${preview.idx + 1}/${arr.length})` : ''}
           </div>
-          {canEdit && (
+          {canEdit && !isOther && (
             <button style={{ background: 'none', border: '1px solid #ef4444', color: '#ef4444', padding: '4px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}
               onClick={() => handleDelete(preview.id, preview.idx)}>Delete</button>
           )}
@@ -252,7 +246,7 @@ export default function JobPhotos({ job, canEdit, user }) {
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       {/* ── HEADER ── */}
-      <Sec title={<>Photos <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>{totalTaken}/{allItems.length}</span></>}>
+      <Sec title={<>Photos <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>{totalTaken + Object.values(otherPhotos).reduce((n, arr) => n + arr.length, 0)} total ({totalTaken}/{allItems.length} checklist)</span></>}>
         {progBar(totalTaken, allItems.length, 'var(--color-primary)')}
         <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
           <button type="button" onClick={() => setViewMode('role')} style={tabStyle('role')}>By Role</button>
@@ -305,6 +299,40 @@ export default function JobPhotos({ job, canEdit, user }) {
           </Sec>
         );
       })}
+
+      {/* ═══ PHOTOS FROM OTHER TABS ═══ */}
+      {Object.keys(otherPhotos).length > 0 && (
+        <Sec title="Photos from Other Tabs">
+          <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 12 }}>
+            Photos uploaded from Assessment, Install, and HVAC tabs.
+          </p>
+          {Object.entries(otherPhotos).map(([zone, zonePhotos]) => {
+            const zoneInfo = PHOTO_ZONES.find(z => z.zone === zone);
+            const zoneName = zoneInfo ? zoneInfo.title : zone.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            return (
+              <div key={zone} style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-primary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  {zoneName} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>({zonePhotos.length})</span>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {zonePhotos.map(p => (
+                    <div key={p.id} style={{ position: 'relative' }}>
+                      <button style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                        onClick={() => setPreview({ otherPhoto: p })}>
+                        <img src={p.photo_src} alt={p.description}
+                          style={{ width: 64, height: 64, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--color-border)' }} />
+                      </button>
+                      <div style={{ fontSize: 9, color: 'var(--color-text-muted)', textAlign: 'center', maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {p.description.replace(/_/g, ' ')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </Sec>
+      )}
 
       {/* ═══ VIEW: SIDE-BY-SIDE ═══ */}
       {viewMode === 'compare' && (() => {
