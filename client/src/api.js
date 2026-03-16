@@ -481,17 +481,20 @@ export async function getJobs(programId) {
     .from('program_jobs')
     .select(`
       *,
-      job_measures(*, program_measures(name, category)),
-      job_checklist_items(*),
-      hvac_replacements(*),
-      change_orders(*),
-      job_photos(id, uploaded_by, role, phase, measure_name, house_side, description, photo_ref, file_name, created_at)
+      change_orders(id, status)
     `)
     .eq('program_id', programId)
     .order('created_at', { ascending: false });
   if (error) throw error;
 
-  return (data || []).map(formatJob);
+  return (data || []).map(job => ({
+    ...job,
+    change_orders: (job.change_orders || []),
+    measures: [],
+    checklist: [],
+    hvac_replacements: [],
+    photos: [],
+  }));
 }
 
 function formatJob(job) {

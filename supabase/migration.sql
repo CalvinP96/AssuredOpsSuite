@@ -381,3 +381,11 @@ BEGIN
     EXECUTE format('CREATE POLICY "Allow all delete" ON %I FOR DELETE USING (true)', t);
   END LOOP;
 END $$;
+
+-- Performance indices for foreign key lookups
+CREATE INDEX IF NOT EXISTS idx_program_jobs_program_id ON program_jobs(program_id);
+CREATE INDEX IF NOT EXISTS idx_job_measures_job_id ON job_measures(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_checklist_items_job_id ON job_checklist_items(job_id);
+CREATE INDEX IF NOT EXISTS idx_hvac_replacements_job_id ON hvac_replacements(job_id);
+CREATE INDEX IF NOT EXISTS idx_change_orders_job_id ON change_orders(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_photos_job_id ON job_photos(job_id);
