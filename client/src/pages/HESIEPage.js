@@ -7,12 +7,15 @@ export default function HESIEPage({ role }) {
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    const timeout = setTimeout(() => setError(true), 10000);
     api.getHesIeProgram()
       .then(p => {
+        clearTimeout(timeout);
         if (p && p.id) setProgramId(p.id);
         else setError(true);
       })
-      .catch(() => setError(true));
+      .catch(() => { clearTimeout(timeout); setError(true); });
+    return () => clearTimeout(timeout);
   }, []);
 
   if (error) return <div className="card"><p>HES IE program not found. Please restart the server.</p></div>;
