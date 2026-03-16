@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ScopeMeasureBuilder from '../ScopeMeasureBuilder';
 import ScopeASHRAECalc from '../ScopeASHRAECalc';
 import { generatePreWorkSOW, printSOW } from '../../utils';
@@ -119,8 +119,19 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
   const [scopeData, setScopeData] = useState(job.scope_data || {});
   const [activeSection, setActiveSection] = useState(null);
   const scrollRef = useRef(null);
+  const saveTimer = useRef(null);
+  const latestData = useRef(scopeData);
 
-  const save = d => { setScopeData(d); onUpdate({ scope_data: d }); };
+  // Debounced save: update local state immediately, persist after 800ms idle
+  const save = useCallback((d) => {
+    setScopeData(d);
+    latestData.current = d;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => onUpdate({ scope_data: latestData.current }), 800);
+  }, [onUpdate]);
+
+  useEffect(() => () => clearTimeout(saveTimer.current), []);
+
   const bd = scopeData.building || {};
   const setBd = (k, val) => save({ ...scopeData, building: { ...bd, [k]: val } });
   const measures = scopeData.measures || [];
@@ -365,7 +376,7 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
               <div style={{fontSize:13,fontWeight:700,color:'var(--color-text-muted)',marginBottom:8}}>{fl} Floor</div>
               <div className="jd-field-grid">
                 <F l="Sq Ft"><I k={`ext_wall_${fl}_sqft`} type="number"/></F>
-                <F l="Win/Door SqFt"><Computed value={winDoor || ''} suffix={fl === '1st' ? '16% est' : '14% est'} /></F>
+                <F l="Win/Door SqFt"><Computed value={winDoor || ''} /></F>
                 <F l="Pre R"><I k={`ext_wall_${fl}_pre_r`} type="number"/></F>
                 <F l="R to Add"><I k={`ext_wall_${fl}_r_add`} type="number"/></F>
                 <F l="Total R"><Computed value={totalR ? 'R-' + totalR : ''} suffix="auto" /></F>
