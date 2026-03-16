@@ -55,6 +55,8 @@ function zoneKey(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
 }
 
+const photoSrc = (p) => p.photo_ref || p.photo_data || '';
+
 export default function JobPhotos({ job, canEdit, user }) {
   const [photoMap, setPhotoMap] = useState({});
   const [preview, setPreview] = useState(null);
@@ -77,7 +79,7 @@ export default function JobPhotos({ job, canEdit, user }) {
     try {
       const rows = await api.getJobPhotos(job.id);
       const grouped = {};
-      for (const p of rows) { (grouped[p.label] ||= []).push(p); }
+      for (const p of rows) { p.photo_src = photoSrc(p); (grouped[p.description] ||= []).push(p); }
       setPhotoMap(grouped);
     } catch { /* ignore */ }
   };
@@ -99,7 +101,7 @@ export default function JobPhotos({ job, canEdit, user }) {
     const photo = arr[idx];
     if (!photo) return;
     try {
-      await api.deleteJobPhoto(photo.id, photo.photo_url);
+      await api.deleteJobPhoto(photo.id);
       setPhotoMap(prev => {
         const next = { ...prev };
         next[itemId] = (next[itemId] || []).filter(p => p.id !== photo.id);
@@ -129,7 +131,7 @@ export default function JobPhotos({ job, canEdit, user }) {
           )}
         </div>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8, position: 'relative' }}>
-          {ph?.photo_url && <img src={ph.photo_url} style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 8 }} alt="" />}
+          {ph?.photo_src && <img src={ph.photo_src} style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 8 }} alt="" />}
           {arr.length > 1 && preview.idx > 0 && (
             <button onClick={() => setPreview({ ...preview, idx: preview.idx - 1 })}
               style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,.2)', color: '#fff', border: 'none', borderRadius: '50%', width: 36, height: 36, fontSize: 18, cursor: 'pointer' }}>{'\u2039'}</button>
@@ -166,7 +168,7 @@ export default function JobPhotos({ job, canEdit, user }) {
           {arr.map((ph, idx) => (
             <button key={ph.id} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
               onClick={() => setPreview({ id: it.id, idx })}>
-              <img src={ph.photo_url} style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--color-border)' }} alt="" />
+              <img src={ph.photo_src} style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--color-border)' }} alt="" />
             </button>
           ))}
           {canEdit && (
@@ -335,7 +337,7 @@ export default function JobPhotos({ job, canEdit, user }) {
                     {pr.preArr.length > 0 ? pr.preArr.map((ph, idx) => (
                       <button key={ph.id} onClick={() => setPreview({ id: pr.preIt.id, idx })}
                         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', width: '100%' }}>
-                        <img src={ph.photo_url} style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 4 }} alt="" />
+                        <img src={ph.photo_src} style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 4 }} alt="" />
                       </button>
                     )) : <div style={{ color: 'var(--color-text-muted)', fontSize: 11, padding: 20 }}>No pre photo</div>}
                   </div>
@@ -343,7 +345,7 @@ export default function JobPhotos({ job, canEdit, user }) {
                     {pr.postArr.length > 0 ? pr.postArr.map((ph, idx) => (
                       <button key={ph.id} onClick={() => setPreview({ id: pr.postIt.id, idx })}
                         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', width: '100%' }}>
-                        <img src={ph.photo_url} style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 4 }} alt="" />
+                        <img src={ph.photo_src} style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 4 }} alt="" />
                       </button>
                     )) : <div style={{ color: 'var(--color-text-muted)', fontSize: 11, padding: 20 }}>No post photo</div>}
                   </div>

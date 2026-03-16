@@ -809,17 +809,25 @@ export async function uploadPhoto(jobId, data) {
 }
 
 export async function uploadJobPhoto(jobId, zone, label, timing, file, uploadedBy) {
-  const ext = file.name.split('.').pop().toLowerCase();
-  const path = `${jobId}/${zone}/${label.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.${ext}`;
-  const { error: uploadErr } = await supabase.storage.from('job-photos').upload(path, file, { upsert: true });
-  if (uploadErr) throw uploadErr;
-  const { data: { publicUrl } } = supabase.storage.from('job-photos').getPublicUrl(path);
+  // Convert file to base64 data URL for direct DB storage
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
   const { error } = await supabase.from('job_photos').insert([{
-    job_id: jobId, phase: timing, house_side: zone, photo_url: publicUrl, label,
-    uploaded_by: uploadedBy || null,
+    job_id: jobId,
+    phase: timing,
+    house_side: zone,
+    description: label,
+    photo_data: base64,
+    file_name: file.name,
+    uploaded_by: uploadedBy || 'Unknown',
+    role: timing || 'field',
   }]);
   if (error) throw error;
-  return publicUrl;
+  return base64;
 }
 
 export async function getJobPhotos(jobId) {
@@ -838,10 +846,7 @@ export async function deletePhoto(photoId) {
   if (error) throw error;
 }
 
-export async function deleteJobPhoto(photoId, storagePath) {
-  if (storagePath) {
-    await supabase.storage.from('job-photos').remove([storagePath]);
-  }
+export async function deleteJobPhoto(photoId) {
   const { error } = await supabase.from('job_photos').delete().eq('id', photoId);
   if (error) throw error;
 }
