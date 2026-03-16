@@ -44,6 +44,12 @@ export default function JobPhotos({ job, canEdit, user }) {
 
   useEffect(() => { reloadPhotos(); }, [job.id]); // eslint-disable-line
 
+  // Poll photos every 10s for cross-device sync
+  useEffect(() => {
+    const iv = setInterval(reloadPhotos, 10000);
+    return () => clearInterval(iv);
+  }, [job.id]); // eslint-disable-line
+
   const handleUpload = async (cat, item, file) => {
     setUploading(prev => ({ ...prev, [item.id]: true }));
     try {

@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import * as api from '../api';
+
+const POLL_INTERVAL = 10000; // 10 seconds
 
 export function useJob(jobId) {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const pollRef = useRef(null);
 
   const load = useCallback(async () => {
     if (!jobId) return;
@@ -19,7 +22,22 @@ export function useJob(jobId) {
     }
   }, [jobId]);
 
+  // Silent poll — doesn't set loading state so UI doesn't flash
+  const poll = useCallback(async () => {
+    if (!jobId) return;
+    try {
+      const data = await api.getJob(jobId);
+      setJob(data);
+    } catch { /* ignore poll errors */ }
+  }, [jobId]);
+
   useEffect(() => { load(); }, [load]);
+
+  // Poll every 10s for cross-device sync
+  useEffect(() => {
+    pollRef.current = setInterval(poll, POLL_INTERVAL);
+    return () => clearInterval(pollRef.current);
+  }, [poll]);
 
   const update = useCallback(async (fields) => {
     try {

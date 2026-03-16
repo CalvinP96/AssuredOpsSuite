@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SignaturePad } from '../../components/ui';
 
 const CHECKLIST_ITEMS = [
@@ -48,11 +48,19 @@ export default function JobInspection({ job, canEdit, isAdmin, onUpdate, user })
     };
   });
 
+  const saveTimer = useRef(null);
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => onUpdate({ inspection_data: form }), 800);
+    return () => clearTimeout(saveTimer.current);
+  }, [form]); // eslint-disable-line
+
   const set = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
   const setCheck = (item, field, value) =>
     setForm(prev => ({ ...prev, checklist: { ...prev.checklist, [item]: { ...(prev.checklist[item] || {}), [field]: value } } }));
-
-  const handleSave = () => onUpdate({ inspection_data: form });
 
   const dis = !canEdit;
 
@@ -167,9 +175,6 @@ export default function JobInspection({ job, canEdit, isAdmin, onUpdate, user })
         </div>
       </div>
 
-      {canEdit && (
-        <button className="btn btn-primary" onClick={handleSave}>Save Changes</button>
-      )}
     </div>
   );
 }

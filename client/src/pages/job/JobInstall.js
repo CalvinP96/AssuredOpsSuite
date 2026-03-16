@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { filterSections } from './photoSectionsData';
 import PhotoChecklist from './PhotoChecklist';
 
@@ -44,10 +44,17 @@ export default function JobInstall({ job, canEdit, isAdmin, onUpdate, user }) {
     };
   });
   const [coDesc, setCoDesc] = useState('');
+  const saveTimer = useRef(null);
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => onUpdate({ install_data: form }), 800);
+    return () => clearTimeout(saveTimer.current);
+  }, [form]); // eslint-disable-line
 
   const set = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
-
-  const handleSave = () => onUpdate({ install_data: form });
 
   // Sync measures from scope
   const scopeMeasures = job.scope_data?.measures || [];
@@ -206,9 +213,6 @@ export default function JobInstall({ job, canEdit, isAdmin, onUpdate, user }) {
       {/* ─── Post-Install Photo Checklist ─── */}
       <PhotoChecklist sections={POST_SECTIONS} job={job} canEdit={canEdit} user={user} />
 
-      {canEdit && (
-        <button className="btn btn-primary" onClick={handleSave}>Save Changes</button>
-      )}
     </div>
   );
 }

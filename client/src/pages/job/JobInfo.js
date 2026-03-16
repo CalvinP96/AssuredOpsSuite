@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UTILITIES } from '../../constants';
 
 export default function JobInfo({ job, canEdit, isAdmin, onUpdate, onDelete }) {
@@ -18,12 +18,17 @@ export default function JobInfo({ job, canEdit, isAdmin, onUpdate, onDelete }) {
     notes: job.notes || '',
   });
   const [confirmDel, setConfirmDel] = useState(false);
+  const saveTimer = useRef(null);
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => onUpdate(form), 800);
+    return () => clearTimeout(saveTimer.current);
+  }, [form]); // eslint-disable-line
 
   const set = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
-
-  const handleSave = () => {
-    onUpdate(form);
-  };
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -135,10 +140,6 @@ export default function JobInfo({ job, canEdit, isAdmin, onUpdate, onDelete }) {
         </div>
       )}
 
-      {/* SAVE */}
-      {canEdit && (
-        <button className="btn btn-primary" onClick={handleSave}>Save Changes</button>
-      )}
     </div>
   );
 }
