@@ -7,6 +7,7 @@ import * as api from '../api';
 import JobInfo from './job/JobInfo';
 import JobSchedule from './job/JobSchedule';
 import JobAssess from './job/JobAssess';
+import JobPhotos from './job/JobPhotos';
 import JobScope from './job/JobScope';
 import JobHVAC from './job/JobHVAC';
 import JobInstall from './job/JobInstall';
@@ -18,6 +19,7 @@ const TABS = [
   { key: 'info', label: 'Info' },
   { key: 'schedule', label: 'Schedule' },
   { key: 'assess', label: 'Assess' },
+  { key: 'photos', label: 'Photos' },
   { key: 'scope', label: 'Scope' },
   { key: 'review', label: 'Review' },
   { key: 'hvac', label: 'HVAC' },
@@ -161,6 +163,7 @@ export default function JobDetail({ role, user }) {
       case 'info': return <JobInfo {...tabProps} onDelete={handleDelete} />;
       case 'schedule': return <JobSchedule {...tabProps} />;
       case 'assess': return <JobAssess {...tabProps} />;
+      case 'photos': return <JobPhotos {...tabProps} />;
       case 'scope': return <JobScope {...tabProps} />;
       case 'review': return <ReviewTab job={job} isAdmin={isAdmin} onUpdate={handleUpdate} />;
       case 'hvac': return <JobHVAC {...tabProps} />;
