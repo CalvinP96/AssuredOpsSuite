@@ -12,8 +12,8 @@ const ScopeOfWorkTab = lazy(() => import('./ScopeOfWorkTab'));
 const InstallationTab = lazy(() => import('./InstallationTab'));
 const HVACTab = lazy(() => import('./HVACTab'));
 const InspectionTab = lazy(() => import('./InspectionTab'));
-const ExportTab = lazy(() => import('./ExportTab'));
-const LogTab = lazy(() => import('./LogTab'));
+const JobExport = lazy(() => import('./job/JobExport'));
+const JobLog = lazy(() => import('./job/JobLog'));
 
 const TABS = [
   { key: 'info', label: 'Info' },
@@ -133,9 +133,9 @@ export default function JobDetail({ role, user }) {
       case 'inspection':
         return <InspectionTab {...tabProps} />;
       case 'export':
-        return <ExportTab {...tabProps} />;
+        return <JobExport {...tabProps} />;
       case 'log':
-        return <LogTab job={job} user={user} />;
+        return <JobLog job={job} user={user} />;
       default:
         return <ComingSoon label={TABS.find(t => t.key === tab)?.label || tab} />;
     }
