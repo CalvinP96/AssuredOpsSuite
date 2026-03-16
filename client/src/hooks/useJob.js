@@ -41,20 +41,20 @@ export function useJob(jobId) {
 
   const update = useCallback(async (fields) => {
     try {
-      // If fields is empty or just a reload signal, do a full reload
+      // If fields is empty or just a reload signal, do a silent reload
       const keys = Object.keys(fields || {});
       if (keys.length === 0 || (keys.length === 1 && keys[0] === '_reload')) {
-        await load();
+        await poll();
         return;
       }
       await api.updateJob(jobId, fields);
-      // Full reload to get formatted job with relations
-      await load();
+      // Silent reload — doesn't set loading so UI stays intact
+      await poll();
     } catch (err) {
       setError(err.message);
       throw err;
     }
-  }, [jobId, load]);
+  }, [jobId, poll]);
 
   const updateNestedData = useCallback(async (key, data) => {
     return update({ [key]: data });
