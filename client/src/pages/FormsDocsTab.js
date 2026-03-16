@@ -96,13 +96,17 @@ export default function FormsDocsTab({ job, canEdit, onUpdate, role, user }) {
   };
 
   const FORMS = [
-    { name: 'Customer Authorization Form', desc: 'Customer signs to authorize work', key: 'auth_form', hasInline: true, inlineType: 'auth' },
+    { name: 'Customer Authorization Form', desc: 'Customer signs to authorize work', key: 'auth_form', hasInline: true, inlineType: 'auth', pdf: '/forms/customer-authorization.pdf' },
     { name: 'Customer-Signed Final Scope of Work', desc: 'Customer approves the final scope before install', key: 'signed_scope' },
-    { name: 'Assessment Report', desc: 'MS Forms assessment survey completed', key: 'assessment_report' },
-    { name: 'Hazardous Conditions Form', desc: 'Document any H&S hazards found', key: 'hazardous_form', hasInline: true, inlineType: 'hs' },
+    { name: 'Assessment Report (MS Form)', desc: 'MS Forms assessment survey completed', key: 'assessment_report', pdf: '/forms/ms-form.pdf' },
+    { name: 'H&S Consent & Release Form', desc: 'Document any H&S hazards found', key: 'hazardous_form', hasInline: true, inlineType: 'hs', pdf: '/forms/hs-consent-release.pdf' },
+    { name: 'HEA IE Retrofit Form', desc: '2026 HEA IE Retrofit fillable form', key: 'hea_retrofit', pdf: '/forms/hea-ie-retrofit.pdf' },
+    { name: 'Safety Plan', desc: 'Safety plan documentation', key: 'safety_plan', pdf: '/forms/safety-plan.pdf' },
+    { name: 'Photo & Documentation Checklist', desc: 'Required photos and documentation per HES', key: 'photo_checklist', pdf: '/forms/photo-checklist.pdf' },
     { name: 'Sub-Contractor Estimates', desc: 'If applicable, for work outside scope', key: 'sub_estimates' },
     { name: 'Final Inspection Form', desc: 'QA inspector completes after install', key: 'final_inspection' },
     { name: 'Final Invoice', desc: 'Invoice for completed work', key: 'final_invoice' },
+    { name: 'CSAT Leave Behind', desc: 'Customer satisfaction survey leave behind', key: 'csat', pdf: '/forms/csat-leave-behind.pdf' },
   ];
 
   const statusColors = {
@@ -157,7 +161,18 @@ export default function FormsDocsTab({ job, canEdit, onUpdate, role, user }) {
                       </div>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {/* View PDF button */}
+                    {form.pdf && (
+                      <a href={form.pdf} target="_blank" rel="noopener noreferrer"
+                        style={{
+                          padding: '4px 10px', fontSize: 11, fontWeight: 600, borderRadius: 4,
+                          background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1',
+                          textDecoration: 'none', whiteSpace: 'nowrap', display: 'inline-block',
+                        }}>
+                        View PDF
+                      </a>
+                    )}
                     {/* Inline sign button for auth/hs forms */}
                     {form.hasInline && canEdit && !isAutoSigned && (
                       <button type="button"
