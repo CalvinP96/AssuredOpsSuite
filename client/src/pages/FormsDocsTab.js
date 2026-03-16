@@ -78,8 +78,7 @@ export default function FormsDocsTab({ job, canEdit, onUpdate, role, user }) {
   const FORMS = [
     { name: 'Customer Authorization Form', desc: 'Customer signs via Adobe Sign', key: 'auth_form', hasInline: true, inlineType: 'auth' },
     { name: 'Customer-Signed Final Scope of Work', desc: 'Customer approves the final scope before install', key: 'signed_scope' },
-    { name: 'Assessment Report (MS Form)', desc: 'MS Forms assessment survey completed', key: 'assessment_report', pdf: '/forms/ms-form.pdf' },
-    { name: 'H&S Consent & Release Form', desc: 'Required when health & safety conditions are present', key: 'hazardous_form', hasInline: true, inlineType: 'hs' },
+{ name: 'H&S Consent & Release Form', desc: 'Required when health & safety conditions are present', key: 'hazardous_form', hasInline: true, inlineType: 'hs' },
     { name: 'HEA IE Retrofit Form', desc: '2026 HEA IE Retrofit fillable form', key: 'hea_retrofit', pdf: '/forms/hea-ie-retrofit.pdf' },
     { name: 'Safety Plan', desc: 'Safety plan documentation', key: 'safety_plan', pdf: '/forms/safety-plan.pdf' },
     { name: 'Photo & Documentation Checklist', desc: 'Required photos and documentation per HES', key: 'photo_checklist', pdf: '/forms/photo-checklist.pdf' },

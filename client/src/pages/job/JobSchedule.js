@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 
 const INSTALL_STATUSES = [
   'approved', 'install_scheduled', 'install_in_progress',
@@ -6,15 +6,30 @@ const INSTALL_STATUSES = [
 ];
 
 export default function JobSchedule({ job, canEdit, onUpdate }) {
+  // Determine which install types are applicable based on job measures
+  const { hasHvacTuneClean, hasReplacement, hasWallInjection } = useMemo(() => {
+    const ms = job.job_measures || [];
+    return {
+      hasHvacTuneClean: ms.some(m => m.program_measures?.name?.includes('Tune-Up')),
+      hasReplacement: ms.some(m => m.program_measures?.name?.includes('Replacement')),
+      hasWallInjection: ms.some(m => m.program_measures?.name === 'Wall Insulation'),
+    };
+  }, [job.job_measures]);
+
+  // Check if HVAC replacement is recommended from hvac_data
+  const replacementRecommended = hasReplacement || !!job.hvac_data?.replacement?.recommended;
+
   const [form, setForm] = useState({
     assessment_date: job.assessment_date || '',
     schedule_notes: job.schedule_notes || '',
     assessor_name: job.assessor_name || '',
-    install_date: job.install_date || '',
     install_notes: job.install_notes || '',
     insulation_crew: job.insulation_crew || '',
-    hvac_scheduled: !!job.hvac_scheduled,
-    hvac_date: job.hvac_date || '',
+    hvac_tune_clean_date: job.hvac_tune_clean_date || '',
+    hvac_replacement_date: job.hvac_replacement_date || '',
+    abc_install_date: job.abc_install_date || '',
+    wall_injection_date: job.wall_injection_date || '',
+    patch_date: job.patch_date || '',
   });
 
   const saveTimer = useRef(null);
@@ -32,7 +47,7 @@ export default function JobSchedule({ job, canEdit, onUpdate }) {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      {/* ASSESSMENT SCHEDULING */}
+      {/* 1. ASSESSMENT SCHEDULING */}
       <div className="jd-card">
         <div className="jd-card-title">Assessment Scheduling</div>
         <div className="jd-field-grid">
@@ -56,16 +71,52 @@ export default function JobSchedule({ job, canEdit, onUpdate }) {
         </div>
       </div>
 
-      {/* INSTALL SCHEDULING */}
-      {showInstall ? (
+      {/* 2. HVAC TUNE & CLEAN (if applicable) */}
+      {showInstall && hasHvacTuneClean && (
         <div className="jd-card">
-          <div className="jd-card-title">Install Scheduling</div>
+          <div className="jd-card-title">HVAC Tune & Clean</div>
           <div className="jd-field-grid">
             <div className="jd-field">
-              <label className="jd-field-label">Install Date</label>
+              <label className="jd-field-label">Tune & Clean Date</label>
               <input type="date" className="jd-date-input"
-                value={form.install_date} disabled={!canEdit}
-                onChange={e => set('install_date', e.target.value)} />
+                value={form.hvac_tune_clean_date} disabled={!canEdit}
+                onChange={e => set('hvac_tune_clean_date', e.target.value)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. HVAC REPLACEMENT INSTALL (if replacement recommended) */}
+      {showInstall && replacementRecommended && (
+        <div className="jd-card">
+          <div className="jd-card-title">HVAC Replacement Install</div>
+          <p style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+            Final date of replacement install
+          </p>
+          <div className="jd-field-grid">
+            <div className="jd-field">
+              <label className="jd-field-label">Replacement Install Date</label>
+              <input type="date" className="jd-date-input"
+                value={form.hvac_replacement_date} disabled={!canEdit}
+                onChange={e => set('hvac_replacement_date', e.target.value)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. ABC INSTALL */}
+      {showInstall ? (
+        <div className="jd-card">
+          <div className="jd-card-title">ABC Install</div>
+          <p style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+            Air Sealing / Basement / Crawlspace
+          </p>
+          <div className="jd-field-grid">
+            <div className="jd-field">
+              <label className="jd-field-label">ABC Install Date</label>
+              <input type="date" className="jd-date-input"
+                value={form.abc_install_date} disabled={!canEdit}
+                onChange={e => set('abc_install_date', e.target.value)} />
             </div>
             <div className="jd-field">
               <label className="jd-field-label">Insulation Crew</label>
@@ -79,22 +130,6 @@ export default function JobSchedule({ job, canEdit, onUpdate }) {
               onChange={e => set('install_notes', e.target.value)} rows={2}
               placeholder="Crew details, material staging..." />
           </div>
-          <div style={{ marginTop: 12 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: canEdit ? 'pointer' : 'default' }}>
-              <input type="checkbox" checked={form.hvac_scheduled} disabled={!canEdit}
-                onChange={e => set('hvac_scheduled', e.target.checked)}
-                style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }} />
-              <span>HVAC Scheduled</span>
-            </label>
-            {form.hvac_scheduled && (
-              <div className="jd-field" style={{ marginTop: 8 }}>
-                <label className="jd-field-label">HVAC Date</label>
-                <input type="date" className="jd-date-input"
-                  value={form.hvac_date} disabled={!canEdit}
-                  onChange={e => set('hvac_date', e.target.value)} />
-              </div>
-            )}
-          </div>
         </div>
       ) : (
         <div className="jd-card">
@@ -102,6 +137,39 @@ export default function JobSchedule({ job, canEdit, onUpdate }) {
           <p style={{ fontSize: 12, color: '#64748b' }}>
             Install scheduling opens after scope is approved.
           </p>
+        </div>
+      )}
+
+      {/* 5. WALL INJECTION INSTALL (if applicable) */}
+      {showInstall && hasWallInjection && (
+        <div className="jd-card">
+          <div className="jd-card-title">Wall Injection Install</div>
+          <div className="jd-field-grid">
+            <div className="jd-field">
+              <label className="jd-field-label">Wall Injection Date</label>
+              <input type="date" className="jd-date-input"
+                value={form.wall_injection_date} disabled={!canEdit}
+                onChange={e => set('wall_injection_date', e.target.value)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. PATCH DATE (if applicable - only if walls are done) */}
+      {showInstall && hasWallInjection && form.wall_injection_date && (
+        <div className="jd-card">
+          <div className="jd-card-title">Patch</div>
+          <p style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+            Patch after wall injection
+          </p>
+          <div className="jd-field-grid">
+            <div className="jd-field">
+              <label className="jd-field-label">Patch Date</label>
+              <input type="date" className="jd-date-input"
+                value={form.patch_date} disabled={!canEdit}
+                onChange={e => set('patch_date', e.target.value)} />
+            </div>
+          </div>
         </div>
       )}
 
