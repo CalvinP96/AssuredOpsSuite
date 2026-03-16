@@ -86,16 +86,16 @@ function Section({ id, title, children }) {
 
 /* ── Jump-to nav ── */
 const SECTIONS = [
-  { id: 'scope-a', label: 'A - Property' },
-  { id: 'scope-b', label: 'B - Heating' },
-  { id: 'scope-c', label: 'C - Cooling' },
-  { id: 'scope-d', label: 'D - DHW' },
-  { id: 'scope-e', label: 'E - Interior' },
-  { id: 'scope-f', label: 'F - Doors' },
-  { id: 'scope-g', label: 'G - Attic' },
-  { id: 'scope-h', label: 'H - Knee Walls' },
-  { id: 'scope-i', label: 'I - Ext Walls' },
-  { id: 'scope-j', label: 'J - Foundation' },
+  { id: 'scope-a', label: 'Property' },
+  { id: 'scope-b', label: 'Heating' },
+  { id: 'scope-c', label: 'Cooling' },
+  { id: 'scope-d', label: 'DHW' },
+  { id: 'scope-e', label: 'Interior' },
+  { id: 'scope-f', label: 'Doors & Exhaust' },
+  { id: 'scope-g', label: 'Attic' },
+  { id: 'scope-h', label: 'Knee Walls' },
+  { id: 'scope-i', label: 'Ext Walls' },
+  { id: 'scope-j', label: 'Foundation' },
   { id: 'scope-ashrae', label: 'ASHRAE' },
   { id: 'scope-summary', label: 'Summary' },
   { id: 'scope-measures', label: 'Measures' },
@@ -161,10 +161,8 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
         ))}
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* A - BUILDING PROPERTY TYPE                                     */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      <Section id="scope-a" title="A - Building Property Type">
+      {/* ── BUILDING PROPERTY TYPE ── */}
+      <Section id="scope-a" title="Building Property Type">
         <div className="jd-field-grid">
           <F l="Style"><I k="style"/></F>
           <F l="Year Built"><I k="year_built" type="number"/></F>
@@ -191,10 +189,8 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
         <Notes value={v('notes_a')} onChange={val=>setBd('notes_a',val)} dis={dis} placeholder="Section A notes..." />
       </Section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* B - HEATING SYSTEM                                             */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      <Section id="scope-b" title="B - Heating System">
+      {/* ── HEATING SYSTEM ── */}
+      <Section id="scope-b" title="Heating System">
         <div className="jd-field-grid">
           <F l="Thermostat"><Pills v={v('thermostat')} opts={['Manual','Programmable','Smart']} set={x=>setBd('thermostat',x)} dis={dis}/></F>
           <F l="Fuel"><Pills v={v('heat_fuel')} opts={['Natural Gas','Electric','Propane','Oil']} set={x=>setBd('heat_fuel',x)} dis={dis}/></F>
@@ -227,10 +223,8 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
         <Notes value={v('notes_b')} onChange={val=>setBd('notes_b',val)} dis={dis} placeholder="Heating system notes..." />
       </Section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* C - COOLING SYSTEM                                             */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      <Section id="scope-c" title="C - Cooling System">
+      {/* ── COOLING SYSTEM ── */}
+      <Section id="scope-c" title="Cooling System">
         <div className="jd-field-grid">
           <F l="Type"><Pills v={v('cool_type')} opts={['Central','Window','Mini-Split','Heat Pump','None']} set={x=>setBd('cool_type',x)} dis={dis}/></F>
           <F l="Manufacturer"><I k="cool_mfr"/></F>
@@ -244,10 +238,8 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
         <Notes value={v('notes_c')} onChange={val=>setBd('notes_c',val)} dis={dis} placeholder="Cooling system notes..." />
       </Section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* D - DOMESTIC HOT WATER                                         */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      <Section id="scope-d" title="D - Domestic Hot Water">
+      {/* ── DOMESTIC HOT WATER ── */}
+      <Section id="scope-d" title="Domestic Hot Water">
         <div className="jd-field-grid">
           <F l="Fuel"><Pills v={v('dhw_fuel')} opts={['Natural Gas','Electric','Propane']} set={x=>setBd('dhw_fuel',x)} dis={dis}/></F>
           <F l="System"><Pills v={v('dhw_system')} opts={['On Demand','Storage Tank','Indirect','Heat Pump']} set={x=>setBd('dhw_system',x)} dis={dis}/></F>
@@ -272,10 +264,8 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
         <Notes value={v('notes_d')} onChange={val=>setBd('notes_d',val)} dis={dis} placeholder="Domestic hot water notes..." />
       </Section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* E - INTERIOR INSPECTION                                        */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      <Section id="scope-e" title="E - Interior Inspection">
+      {/* ── INTERIOR INSPECTION ── */}
+      <Section id="scope-e" title="Interior Inspection">
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px 16px'}}>
           {INT_ITEMS.map(x=>{const k='int_'+x.toLowerCase().replace(/[^a-z]/g,'_');
             return <Chk key={k} l={x} c={bd[k]} set={val=>setBd(k,val)} dis={dis}/>;})}
@@ -290,10 +280,8 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
         <Notes value={v('notes_e')} onChange={val=>setBd('notes_e',val)} dis={dis} placeholder="Interior inspection notes..." />
       </Section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* F - DOORS & EXHAUST                                            */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      <Section id="scope-f" title="F - Doors & Exhaust">
+      {/* ── DOORS & EXHAUST ── */}
+      <Section id="scope-f" title="Doors & Exhaust">
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px 16px'}}>
           {['Front','Back','Basement','Attic'].map(d=>
             <Chk key={d} l={`${d} - existing weather strips`} c={bd['door_'+d.toLowerCase()]} set={val=>setBd('door_'+d.toLowerCase(),val)} dis={dis}/>)}
@@ -322,10 +310,8 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
         <Notes value={v('notes_f')} onChange={val=>setBd('notes_f',val)} dis={dis} placeholder="Doors & exhaust notes..." />
       </Section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* G - ATTIC                                                      */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      <Section id="scope-g" title="G - Attic">
+      {/* ── ATTIC ── */}
+      <Section id="scope-g" title="Attic">
         <div className="jd-field-grid">
           <F l="Type"><Pills v={v('attic_type')} opts={['Finished','Unfinished','Flat']} set={x=>setBd('attic_type',x)} dis={dis}/></F>
           <F l="Sq Ft"><I k="attic_sqft" type="number"/></F>
@@ -351,10 +337,8 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
         <Notes value={v('notes_g')} onChange={val=>setBd('notes_g',val)} dis={dis} placeholder="Attic notes..." />
       </Section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* H - KNEE WALLS                                                 */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      <Section id="scope-h" title="H - Knee Walls">
+      {/* ── KNEE WALLS ── */}
+      <Section id="scope-h" title="Knee Walls">
         <div className="jd-field-grid">
           <F l="Sq Ft"><I k="knee_sqft" type="number"/></F>
           <F l="Pre R"><I k="knee_pre_r" type="number"/></F>
@@ -371,10 +355,8 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
         <Notes value={v('notes_h')} onChange={val=>setBd('notes_h',val)} dis={dis} placeholder="Knee wall notes..." />
       </Section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* I - EXTERIOR WALLS                                             */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      <Section id="scope-i" title="I - Exterior Walls">
+      {/* ── EXTERIOR WALLS ── */}
+      <Section id="scope-i" title="Exterior Walls">
         {['1st','2nd'].map(fl => {
           const totalR = fl === '1st' ? extWall1stTotalR : extWall2ndTotalR;
           const winDoor = fl === '1st' ? extWall1stWinDoor : extWall2ndWinDoor;
@@ -405,10 +387,8 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
         <Notes value={v('notes_i')} onChange={val=>setBd('notes_i',val)} dis={dis} placeholder="Exterior wall notes..." />
       </Section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* J - FOUNDATION                                                 */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      <Section id="scope-j" title="J - Foundation">
+      {/* ── FOUNDATION ── */}
+      <Section id="scope-j" title="Foundation">
         <div className="jd-field-grid">
           <F l="Type"><Pills v={v('fnd_type')} opts={['None','Basement','Crawlspace']} set={x=>setBd('fnd_type',x)} dis={dis}/></F>
           <F l="Sq Ft Above Grade"><I k="fnd_sqft_above" type="number"/></F>
@@ -454,17 +434,13 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
         <Notes value={v('notes_j')} onChange={val=>setBd('notes_j',val)} dis={dis} placeholder="Foundation notes..." />
       </Section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* ASHRAE 62.2                                                    */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ── ASHRAE 62.2 ── */}
       <div id="scope-ashrae" style={{ scrollMarginTop: 80 }}>
         <ScopeASHRAECalc job={job} scopeData={scopeData}
           onChange={d => save({ ...scopeData, ...d })} canEdit={canEdit} />
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* SUMMARY                                                        */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ── SUMMARY ── */}
       <Section id="scope-summary" title="Scope Summary">
         <div className="jd-field-grid">
           <div className="jd-field"><label className="jd-field-label">Selected Measures</label>
@@ -488,9 +464,7 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
         </div>
       </Section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* MEASURES (last)                                                */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ── MEASURES ── */}
       <div id="scope-measures" style={{ scrollMarginTop: 80 }}>
         <ScopeMeasureBuilder job={job} measures={measures}
           onChange={m => save({ ...scopeData, measures: m })}
