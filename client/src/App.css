@@ -916,6 +916,10 @@ tr:hover { background: var(--color-surface-alt); }
   flex-shrink: 0;
 }
 
+/* ========== Assessment Tab ========== */
+.assess-photo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.assess-check-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 16px; }
+
 @media (max-width: 768px) {
   .jd-page { padding: 16px; }
   .jd-header { flex-direction: column; gap: 12px; }
@@ -928,4 +932,6 @@ tr:hover { background: var(--color-surface-alt); }
   .jd-field-grid { grid-template-columns: 1fr; }
   .jd-schedule-grid { grid-template-columns: 1fr; }
   .jd-permit-fields { grid-template-columns: 1fr; }
+  .assess-photo-grid { grid-template-columns: 1fr !important; }
+  .assess-check-grid { grid-template-columns: 1fr !important; }
 }
