@@ -118,7 +118,7 @@ function App() {
                 <Route path="/billing" element={<BillingPage role={primaryRole} />} />
               )}
               <Route path="/hes-ie" element={<HESIEPage role={primaryRole} />} />
-              <Route path="/job/:jobId" element={<JobDetail role={primaryRole} />} />
+              <Route path="/job/:jobId" element={<JobDetail role={primaryRole} user={user} />} />
               <Route path="/programs" element={<Navigate to="/hes-ie" />} />
               <Route path="/program/:id" element={<Navigate to="/hes-ie" />} />
               <Route path="/employee/:id" element={<EmployeeDetail role={primaryRole} />} />

@@ -469,11 +469,11 @@ export async function updateMilestone(msId, data) {
 export async function getJob(jobId) {
   const { data, error } = await supabase
     .from('program_jobs')
-    .select('*, job_photos(*), job_checklist_items(*)')
+    .select('*, job_photos(*), job_checklist_items(*), job_measures(*, program_measures(name, category)), hvac_replacements(*), change_orders(*)')
     .eq('id', jobId)
     .single();
   if (error) throw error;
-  return data;
+  return formatJob(data);
 }
 
 export async function getJobs(programId) {

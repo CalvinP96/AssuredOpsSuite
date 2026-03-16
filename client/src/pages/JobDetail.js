@@ -118,8 +118,8 @@ export default function JobDetail({ role, user }) {
   const [tab, setTab] = useState('info');
   const [toast, setToast] = useState(null);
 
-  const isAdmin = user?.role === 'admin';
-  const canEdit = isAdmin || user?.role === 'operations';
+  const isAdmin = role === 'Admin';
+  const canEdit = isAdmin || ['Operations', 'Program Manager', 'Assessor', 'Scope Creator', 'Installer', 'HVAC'].includes(role);
 
   const handleUpdate = async (fields) => {
     try {
