@@ -3,27 +3,6 @@ import * as api from '../api';
 import CustomerAuthForm from './CustomerAuthForm';
 import HSConsentForm from './HSConsentForm';
 
-function compressFile(file) {
-  return new Promise(resolve => {
-    if (file.type === 'image/gif') { resolve(file); return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const maxW = 1600;
-        let w = img.width, h = img.height;
-        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
-        const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        c.getContext('2d').drawImage(img, 0, 0, w, h);
-        c.toBlob(blob => resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' })), 'image/jpeg', 0.7);
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
 export default function FormsDocsTab({ job, canEdit, onUpdate, role, user }) {
   const [localScope, setLocalScope] = useState({});
   const [showAuthInline, setShowAuthInline] = useState(false);
@@ -69,8 +48,7 @@ export default function FormsDocsTab({ job, canEdit, onUpdate, role, user }) {
   const handlePhotoUpload = async (formKey, file) => {
     setUploading(prev => ({ ...prev, [formKey]: true }));
     try {
-      const compressed = await compressFile(file);
-      await api.uploadJobPhoto(job.id, 'forms', formKey, 'docs', compressed, user?.full_name);
+      await api.uploadJobPhoto(job.id, 'forms', formKey, 'docs', file, user?.full_name);
       // Reload photos
       const rows = await api.getJobPhotos(job.id);
       const grouped = {};
