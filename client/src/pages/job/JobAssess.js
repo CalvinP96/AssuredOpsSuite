@@ -68,7 +68,11 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
   useEffect(() => {
     api.getJobPhotos(job.id).then(rows => {
       const grouped = {};
-      for (const p of rows) { const k = `${p.zone}/${p.label}`; (grouped[k] ||= []).push(p); }
+      for (const p of rows) {
+        p.photo_src = p.photo_ref || p.photo_data || '';
+        const k = `${p.house_side}/${p.description}`;
+        (grouped[k] ||= []).push(p);
+      }
       setPhotos(grouped);
     }).catch(() => {});
   }, [job.id]);
@@ -100,7 +104,11 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
   const reloadPhotos = async () => {
     const rows = await api.getJobPhotos(job.id);
     const grouped = {};
-    for (const p of rows) { const k = `${p.zone}/${p.label}`; (grouped[k] ||= []).push(p); }
+    for (const p of rows) {
+      p.photo_src = p.photo_ref || p.photo_data || '';
+      const k = `${p.house_side}/${p.description}`;
+      (grouped[k] ||= []).push(p);
+    }
     setPhotos(grouped);
   };
 
@@ -116,7 +124,7 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
 
   const handlePhotoDelete = async (photo) => {
     try {
-      await api.deleteJobPhoto(photo.id, photo.storage_path || photo.photo_url);
+      await api.deleteJobPhoto(photo.id);
       setPhotos(prev => {
         const next = {};
         for (const k of Object.keys(prev)) { next[k] = prev[k].filter(p => p.id !== photo.id); if (!next[k].length) delete next[k]; }
@@ -316,7 +324,7 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       {itemPhotos.map(p => (
                         <div key={p.id} style={{ position: 'relative', width: 80, height: 60, borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
-                          <img src={p.photo_url} alt={item.label} onClick={() => setViewPhoto(p.photo_url)}
+                          <img src={p.photo_src} alt={item.label} onClick={() => setViewPhoto(p.photo_src)}
                             style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} />
                           {canEdit && (
                             <button type="button" onClick={() => handlePhotoDelete(p)} style={{

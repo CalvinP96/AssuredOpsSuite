@@ -45,7 +45,8 @@ export default function FormsDocsTab({ job, canEdit, onUpdate, role, user }) {
       const grouped = {};
       for (const p of rows) {
         if (p.house_side === 'forms') {
-          (grouped[p.label] ||= []).push(p);
+          p.photo_src = p.photo_ref || p.photo_data || '';
+          (grouped[p.description] ||= []).push(p);
         }
       }
       setFormPhotos(grouped);
@@ -75,7 +76,8 @@ export default function FormsDocsTab({ job, canEdit, onUpdate, role, user }) {
       const grouped = {};
       for (const p of rows) {
         if (p.house_side === 'forms') {
-          (grouped[p.label] ||= []).push(p);
+          p.photo_src = p.photo_ref || p.photo_data || '';
+          (grouped[p.description] ||= []).push(p);
         }
       }
       setFormPhotos(grouped);
@@ -85,7 +87,7 @@ export default function FormsDocsTab({ job, canEdit, onUpdate, role, user }) {
 
   const handlePhotoDelete = async (formKey, photo) => {
     try {
-      await api.deleteJobPhoto(photo.id, photo.photo_url);
+      await api.deleteJobPhoto(photo.id);
       setFormPhotos(prev => {
         const next = { ...prev };
         next[formKey] = (next[formKey] || []).filter(p => p.id !== photo.id);
@@ -201,8 +203,8 @@ export default function FormsDocsTab({ job, canEdit, onUpdate, role, user }) {
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                     {photos.map(p => (
                       <div key={p.id} style={{ position: 'relative', width: 56, height: 56, borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
-                        <img src={p.photo_url} alt={form.name}
-                          onClick={() => setViewPhoto(p.photo_url)}
+                        <img src={p.photo_src} alt={form.name}
+                          onClick={() => setViewPhoto(p.photo_src)}
                           style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', border: '1px solid var(--color-border)', borderRadius: 6 }} />
                         {canEdit && (
                           <button type="button" onClick={() => handlePhotoDelete(form.key, p)} style={{
