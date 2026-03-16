@@ -96,7 +96,7 @@ export default function ScopeMeasureBuilder({ job = {}, measures = [], onChange,
       if (changed) emit(next);
       return changed ? next : prev;
     });
-  }, [recs.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [recs.join(',')]); // eslint-disable-next-line
 
   const toggle = (name) => {
     if (!canEdit) return;
