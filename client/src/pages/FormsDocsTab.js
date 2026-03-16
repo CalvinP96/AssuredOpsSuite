@@ -96,7 +96,7 @@ export default function FormsDocsTab({ job, canEdit, onUpdate, role, user }) {
   };
 
   const FORMS = [
-    { name: 'Customer Authorization Form', desc: 'Customer signs to authorize work', key: 'auth_form', hasInline: true, inlineType: 'auth', pdf: '/forms/customer-authorization.pdf' },
+    { name: 'Customer Authorization Form', desc: 'Customer signs via Adobe Sign', key: 'auth_form', hasInline: true, inlineType: 'auth' },
     { name: 'Customer-Signed Final Scope of Work', desc: 'Customer approves the final scope before install', key: 'signed_scope' },
     { name: 'Assessment Report (MS Form)', desc: 'MS Forms assessment survey completed', key: 'assessment_report', pdf: '/forms/ms-form.pdf' },
     { name: 'H&S Consent & Release Form', desc: 'Document any H&S hazards found', key: 'hazardous_form', hasInline: true, inlineType: 'hs', pdf: '/forms/hs-consent-release.pdf' },
