@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const INSTALL_STATUSES = [
   'approved', 'install_scheduled', 'install_in_progress',
@@ -17,12 +17,18 @@ export default function JobSchedule({ job, canEdit, onUpdate }) {
     hvac_date: job.hvac_date || '',
   });
 
+  const saveTimer = useRef(null);
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => onUpdate(form), 800);
+    return () => clearTimeout(saveTimer.current);
+  }, [form]); // eslint-disable-line
+
   const set = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
   const showInstall = INSTALL_STATUSES.includes(job.status);
-
-  const handleSave = () => {
-    onUpdate(form);
-  };
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -99,10 +105,6 @@ export default function JobSchedule({ job, canEdit, onUpdate }) {
         </div>
       )}
 
-      {/* SAVE */}
-      {canEdit && (
-        <button className="btn btn-primary" onClick={handleSave}>Save Changes</button>
-      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useJob } from '../hooks/useJob';
 import { JOB_PHASES, getPhaseForStatus } from '../constants';
 import { StatusBadge } from '../components/ui';
@@ -114,9 +114,43 @@ function ReviewTab({ job, isAdmin, onUpdate }) {
 export default function JobDetail({ role, user }) {
   const { jobId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { job, loading, error, reload, update } = useJob(jobId);
-  const [tab, setTab] = useState('info');
+  const scrollKey = `job_scroll_${jobId}`;
+
+  // Restore tab from URL hash or sessionStorage
+  const getInitialTab = () => {
+    const hash = location.hash.replace('#', '');
+    if (hash && TABS.some(t => t.key === hash)) return hash;
+    const saved = sessionStorage.getItem(`job_tab_${jobId}`);
+    if (saved && TABS.some(t => t.key === saved)) return saved;
+    return 'info';
+  };
+  const [tab, setTabRaw] = useState(getInitialTab);
   const [toast, setToast] = useState(null);
+
+  // Persist tab to URL hash and sessionStorage
+  const setTab = (t) => {
+    setTabRaw(t);
+    sessionStorage.setItem(`job_tab_${jobId}`, t);
+    window.history.replaceState(null, '', `#${t}`);
+  };
+
+  // Restore scroll position on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem(scrollKey);
+    if (saved) {
+      requestAnimationFrame(() => window.scrollTo(0, parseInt(saved, 10)));
+    }
+  }, [loading]); // eslint-disable-line
+
+  // Save scroll position periodically
+  useEffect(() => {
+    const save = () => sessionStorage.setItem(scrollKey, String(window.scrollY));
+    window.addEventListener('scroll', save, { passive: true });
+    window.addEventListener('beforeunload', save);
+    return () => { save(); window.removeEventListener('scroll', save); window.removeEventListener('beforeunload', save); };
+  }, [scrollKey]);
 
   const isAdmin = role === 'Admin';
   const canEdit = isAdmin || ['Operations', 'Program Manager', 'Assessor', 'Scope Creator', 'Installer', 'HVAC'].includes(role);

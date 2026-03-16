@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { filterSections } from './photoSectionsData';
 import PhotoChecklist from './PhotoChecklist';
 
@@ -60,10 +60,18 @@ export default function JobHVAC({ job, canEdit, isAdmin, onUpdate, user }) {
     };
   });
 
+  const saveTimer = useRef(null);
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => onUpdate({ hvac_data: form }), 800);
+    return () => clearTimeout(saveTimer.current);
+  }, [form]); // eslint-disable-line
+
   const set = (section, field, value) =>
     setForm(prev => ({ ...prev, [section]: { ...prev[section], [field]: value } }));
-
-  const handleSave = () => onUpdate({ hvac_data: form });
 
   const dis = !canEdit;
   const h = form.heating;
@@ -200,9 +208,6 @@ export default function JobHVAC({ job, canEdit, isAdmin, onUpdate, user }) {
       {/* ─── HVAC Photo Checklist ─── */}
       <PhotoChecklist sections={HVAC_SECTIONS} job={job} canEdit={canEdit} user={user} />
 
-      {canEdit && (
-        <button className="btn btn-primary" onClick={handleSave}>Save Changes</button>
-      )}
     </div>
   );
 }
