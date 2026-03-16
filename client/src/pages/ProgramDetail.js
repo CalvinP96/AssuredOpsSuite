@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import * as api from '../api';
-import ProgramOverviewTab from './program/ProgramOverviewTab';
-import ProgramRulesTab from './program/ProgramRulesTab';
-import ProgramProcessTab from './program/ProgramProcessTab';
+import ProgramDashboardTab from './program/ProgramDashboardTab';
 import ProgramJobsTab from './program/ProgramJobsTab';
 import ProgramPipelineTab from './program/ProgramPipelineTab';
-import ProgramDocumentsTab from './program/ProgramDocumentsTab';
-import ProgramTasksTab from './program/ProgramTasksTab';
-import ProgramMilestonesTab from './program/ProgramMilestonesTab';
+import ProgramRulesTab from './program/ProgramRulesTab';
+import ProgramDocsTasksTab from './program/ProgramDocsTasksTab';
 
 const UTILITIES = ['ComEd', 'Nicor Gas', 'Peoples Gas', 'North Shore Gas'];
 
@@ -16,7 +13,7 @@ export default function ProgramDetail({ role, fixedProgramId }) {
   const params = useParams();
   const id = fixedProgramId || params.id;
   const [program, setProgram] = useState(null);
-  const [tab, setTab] = useState('jobs');
+  const [tab, setTab] = useState('dashboard');
   const [jobs, setJobs] = useState([]);
   const [showJobModal, setShowJobModal] = useState(false);
   const [jobForm, setJobForm] = useState({ job_number: '', customer_name: '', phone: '', email: '', address: '', city: '', zip: '', utility: 'ComEd', notes: '' });
@@ -30,7 +27,6 @@ export default function ProgramDetail({ role, fixedProgramId }) {
   }, [id]);
 
   useEffect(() => { load(); loadJobs(); }, [load, loadJobs]);
-  useEffect(() => { if (tab === 'jobs') loadJobs(); }, [tab, loadJobs]);
 
   const submitJob = async (e) => {
     e.preventDefault();
@@ -45,36 +41,36 @@ export default function ProgramDetail({ role, fixedProgramId }) {
   if (!program) return <div className="card"><p>Loading...</p></div>;
 
   const canEdit = role === 'Admin' || role === 'Operations';
-  const tabs = ['overview', 'rules', 'process', 'jobs', 'pipeline', 'documents', 'tasks', 'milestones'];
+  const tabs = [
+    { key: 'dashboard', label: 'Dashboard' },
+    { key: 'jobs', label: 'Jobs' },
+    { key: 'pipeline', label: 'Pipeline' },
+    { key: 'rules', label: 'Rules' },
+    { key: 'docs', label: 'Docs & Tasks' },
+  ];
 
   return (
     <div>
       <div className="section-header">
         <div>
           <h2>{program.name} <span className="badge active">{program.code}</span></h2>
-          {program.manager_name && <p style={{ color: '#888', marginTop: 4 }}>Manager: {program.manager_name} {program.manager_title ? `(${program.manager_title})` : ''}</p>}
+          {program.manager_name && <p style={{ color: 'var(--color-text-muted)', marginTop: 4, fontSize: 13 }}>Manager: {program.manager_name}{program.manager_title ? ` (${program.manager_title})` : ''}</p>}
         </div>
       </div>
 
-      {program.description && <div className="card"><p>{program.description}</p></div>}
-
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
         {tabs.map(t => (
-          <button key={t} className={`btn btn-sm ${tab === t ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setTab(t)}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>
+          <button key={t.key} className={`btn btn-sm ${tab === t.key ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setTab(t.key)}>{t.label}</button>
         ))}
       </div>
 
-      {tab === 'overview' && <ProgramOverviewTab program={program} jobs={jobs} />}
-      {tab === 'rules' && <ProgramRulesTab program={program} />}
-      {tab === 'process' && <ProgramProcessTab program={program} />}
+      {tab === 'dashboard' && <ProgramDashboardTab program={program} jobs={jobs} onSwitchTab={setTab} />}
       {tab === 'jobs' && <ProgramJobsTab jobs={jobs} canEdit={canEdit} onRefresh={loadJobs} onNewJob={() => setShowJobModal(true)} />}
-      {tab === 'pipeline' && <ProgramPipelineTab program={program} />}
-      {tab === 'documents' && <ProgramDocumentsTab program={program} canEdit={canEdit} onRefresh={load} />}
-      {tab === 'tasks' && <ProgramTasksTab program={program} canEdit={canEdit} onRefresh={load} />}
-      {tab === 'milestones' && <ProgramMilestonesTab program={program} canEdit={canEdit} onRefresh={load} />}
+      {tab === 'pipeline' && <ProgramPipelineTab jobs={jobs} />}
+      {tab === 'rules' && <ProgramRulesTab program={program} />}
+      {tab === 'docs' && <ProgramDocsTasksTab program={program} canEdit={canEdit} onRefresh={load} />}
 
-      {/* Job Modal */}
       {showJobModal && (
         <div className="modal-overlay" onClick={() => setShowJobModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
