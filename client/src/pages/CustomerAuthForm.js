@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as api from '../api';
 
-export default function CustomerAuthForm({ job, onClose, onSigned, user }) {
+export default function CustomerAuthForm({ job, onClose, onSigned, user, inline }) {
   const canvasRef = useRef(null);
   const isDirty = useRef(false);
   const isDrawing = useRef(false);
@@ -89,10 +89,9 @@ export default function CustomerAuthForm({ job, onClose, onSigned, user }) {
 
   const canSubmit = isDirty.current && printedName.trim().length > 0;
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#fff', borderRadius: 12, padding: 28, width: '90%', maxWidth: 800, maxHeight: '90vh', overflowY: 'scroll', position: 'relative' }}>
-        <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 16, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer' }}>&times;</button>
+  const content = (
+      <div style={inline ? {} : { background: '#fff', borderRadius: 12, padding: 28, width: '90%', maxWidth: 800, maxHeight: '90vh', overflowY: 'scroll', position: 'relative' }}>
+        {!inline && <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 16, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer' }}>&times;</button>}
 
         <h2>Home Energy Savings Program</h2>
         <h3>Customer Authorization Form</h3>
@@ -210,6 +209,12 @@ export default function CustomerAuthForm({ job, onClose, onSigned, user }) {
 
         {/* TODO: Additional T&C sections to be added */}
       </div>
+  );
+
+  if (inline) return content;
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {content}
     </div>
   );
 }

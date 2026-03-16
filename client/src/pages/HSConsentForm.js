@@ -176,7 +176,7 @@ const S = {
 };
 
 /* ── Component ── */
-export default function HSConsentForm({ job, onClose, onSigned, user, hsConditions }) {
+export default function HSConsentForm({ job, onClose, onSigned, user, hsConditions, inline }) {
   const [staffName, setStaffName] = useState(user?.full_name || '');
   const [description, setDescription] = useState((hsConditions || []).join('\n'));
   const [nextStep1, setNextStep1] = useState(false);
@@ -211,18 +211,16 @@ export default function HSConsentForm({ job, onClose, onSigned, user, hsConditio
     setSubmitting(false);
   };
 
-  // Lock body scroll while open
+  // Lock body scroll while open (skip for inline mode)
   useEffect(() => {
+    if (inline) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
-  }, []);
+  }, [inline]);
 
-  return (
-    <div style={S.overlay}>
-      <button type="button" onClick={onClose} style={S.closeBtn} title="Close">&#10005;</button>
-
-      <div style={S.page}>
+  const formContent = (
+      <div style={inline ? {} : S.page}>
         {/* ── HEADER ── */}
         <div style={S.logoRow}>
           ComEd &nbsp;|&nbsp; Nicor Gas &nbsp;|&nbsp; Peoples Gas &nbsp;|&nbsp; North Shore Gas
@@ -372,6 +370,13 @@ export default function HSConsentForm({ job, onClose, onSigned, user, hsConditio
           {submitting ? 'Submitting...' : 'Submit Signed Consent'}
         </button>
       </div>
+  );
+
+  if (inline) return formContent;
+  return (
+    <div style={S.overlay}>
+      <button type="button" onClick={onClose} style={S.closeBtn} title="Close">&#10005;</button>
+      {formContent}
     </div>
   );
 }
