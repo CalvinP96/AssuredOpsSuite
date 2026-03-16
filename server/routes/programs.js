@@ -155,15 +155,11 @@ router.get('/:id/jobs', (req, res) => {
   const db = getDb();
   const jobs = db.prepare('SELECT * FROM program_jobs WHERE program_id = ? ORDER BY created_at DESC').all(req.params.id);
   jobs.forEach(j => {
-    j.measures = db.prepare(`
-      SELECT jm.*, pm.name as measure_name, pm.category as measure_category
-      FROM job_measures jm JOIN program_measures pm ON jm.measure_id = pm.id
-      WHERE jm.job_id = ?
-    `).all(j.id);
-    j.checklist = db.prepare('SELECT * FROM job_checklist_items WHERE job_id = ? ORDER BY item_type, id').all(j.id);
-    j.hvac_replacements = db.prepare('SELECT * FROM hvac_replacements WHERE job_id = ? ORDER BY created_at DESC').all(j.id);
-    j.change_orders = db.prepare('SELECT * FROM change_orders WHERE job_id = ? ORDER BY created_at DESC').all(j.id);
-    j.photos = db.prepare('SELECT * FROM job_photos WHERE job_id = ? ORDER BY created_at DESC').all(j.id);
+    j.change_orders = db.prepare('SELECT id, status FROM change_orders WHERE job_id = ? ORDER BY created_at DESC').all(j.id);
+    j.measures = [];
+    j.checklist = [];
+    j.hvac_replacements = [];
+    j.photos = [];
   });
   res.json(jobs);
 });
