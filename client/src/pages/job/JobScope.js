@@ -154,6 +154,9 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
   const extWall2ndTotalR = (num('ext_wall_2nd_pre_r') || num('ext_wall_2nd_r_add')) ? num('ext_wall_2nd_pre_r') + num('ext_wall_2nd_r_add') : '';
   const extWall1stWinDoor = num('ext_wall_1st_sqft') ? Math.round(num('ext_wall_1st_sqft') * 0.16) : '';
   const extWall2ndWinDoor = num('ext_wall_2nd_sqft') ? Math.round(num('ext_wall_2nd_sqft') * 0.14) : '';
+  const extWall1stNet = num('ext_wall_1st_sqft') ? num('ext_wall_1st_sqft') - Math.round(num('ext_wall_1st_sqft') * 0.16) : '';
+  const extWall2ndNet = num('ext_wall_2nd_sqft') ? num('ext_wall_2nd_sqft') - Math.round(num('ext_wall_2nd_sqft') * 0.14) : '';
+  const extWallTotalNet = (extWall1stNet || extWall2ndNet) ? (extWall1stNet || 0) + (extWall2ndNet || 0) : '';
   const bdPostGoal = num('bd_in') ? (num('bd_in') * 1.1).toFixed(0) : '';
   const cleanTuneAuto = heatAge > 3 && v('heat_fuel') === 'Natural Gas' && v('heat_replace_rec_') !== 'Yes';
 
@@ -371,12 +374,14 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
         {['1st','2nd'].map(fl => {
           const totalR = fl === '1st' ? extWall1stTotalR : extWall2ndTotalR;
           const winDoor = fl === '1st' ? extWall1stWinDoor : extWall2ndWinDoor;
+          const netSqft = fl === '1st' ? extWall1stNet : extWall2ndNet;
           return (
             <div key={fl} style={{marginBottom: fl === '1st' ? 20 : 0}}>
               <div style={{fontSize:13,fontWeight:700,color:'var(--color-text-muted)',marginBottom:8}}>{fl} Floor</div>
               <div className="jd-field-grid">
                 <F l="Sq Ft">{inp(`ext_wall_${fl}_sqft`, 'number')}</F>
                 <F l="Win/Door SqFt"><Computed value={winDoor || ''} /></F>
+                <F l="Total Wall SqFt"><Computed value={netSqft || ''} suffix="net" /></F>
                 <F l="Pre R">{inp(`ext_wall_${fl}_pre_r`, 'number')}</F>
                 <F l="R to Add">{inp(`ext_wall_${fl}_r_add`, 'number')}</F>
                 <F l="Total R"><Computed value={totalR ? 'R-' + totalR : ''} suffix="auto" /></F>
@@ -395,6 +400,11 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
             </div>
           );
         })}
+        {extWallTotalNet && <div style={{marginTop:14,padding:'10px 14px',background:'var(--color-surface-alt)',border:'1px solid var(--color-border)',borderRadius:'var(--radius)',display:'flex',alignItems:'center',gap:12}}>
+          <span style={{fontSize:13,fontWeight:700,color:'var(--color-text-muted)'}}>Combined Total Wall SqFt</span>
+          <span style={{fontSize:18,fontWeight:700,color:'var(--color-primary)'}}>{extWallTotalNet}</span>
+          <span style={{fontSize:10,color:'var(--color-text-muted)'}}>net (minus win/door)</span>
+        </div>}
         <Notes value={v('notes_i')} onChange={val=>setBd('notes_i',val)} dis={dis} placeholder="Exterior wall notes..." />
       </Section>
 
