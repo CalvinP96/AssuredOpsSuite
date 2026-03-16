@@ -49,7 +49,11 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
   const [uploading, setUploading] = useState({});
   const [showAuthInline, setShowAuthInline] = useState(false);
   const [showHSInline, setShowHSInline] = useState(false);
-  const [expandedZones, setExpandedZones] = useState({});
+  const [expandedZones, setExpandedZones] = useState(() => {
+    const init = {};
+    PHOTO_ZONES.forEach(z => { init[z.zone] = true; });
+    return init;
+  });
   const [viewPhoto, setViewPhoto] = useState(null);
   const saveTimer = useRef(null);
 
@@ -323,13 +327,28 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
                         </div>
                       ))}
                       {canEdit && itemPhotos.length < 10 && (
-                        <label style={{ width: 80, height: 60, borderRadius: 6, border: '2px dashed var(--color-border)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                          background: 'var(--color-surface-alt)', fontSize: 20, color: 'var(--color-text-muted)', flexShrink: 0 }}>
-                          {uploading[pk] ? <div className="photo-slot-spinner" /> : '+'}
-                          <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
-                            onChange={e => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(zone, item, f); e.target.value = ''; }} />
-                        </label>
+                        <>
+                          <label style={{ minWidth: 80, height: 60, borderRadius: 6, border: '2px dashed var(--color-primary)',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                            background: 'rgba(37,99,235,0.06)', padding: '4px 12px', gap: 2, flexShrink: 0 }}>
+                            {uploading[pk] ? <div className="photo-slot-spinner" /> : (
+                              <>
+                                <span style={{ fontSize: 20 }}>{'\uD83D\uDCF7'}</span>
+                                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-primary)' }}>Camera</span>
+                              </>
+                            )}
+                            <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+                              onChange={e => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(zone, item, f); e.target.value = ''; }} />
+                          </label>
+                          <label style={{ minWidth: 80, height: 60, borderRadius: 6, border: '1px solid var(--color-border)',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                            background: 'var(--color-surface-alt)', padding: '4px 12px', gap: 2, flexShrink: 0 }}>
+                            <span style={{ fontSize: 20 }}>{'\uD83D\uDCC1'}</span>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-muted)' }}>Upload</span>
+                            <input type="file" accept="image/*" style={{ display: 'none' }}
+                              onChange={e => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(zone, item, f); e.target.value = ''; }} />
+                          </label>
+                        </>
                       )}
                     </div>
                   </div>

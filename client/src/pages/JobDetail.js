@@ -14,6 +14,7 @@ import JobInstall from './job/JobInstall';
 import JobInspection from './job/JobInspection';
 import JobExport from './job/JobExport';
 import JobLog from './job/JobLog';
+import FormsDocsTab from './FormsDocsTab';
 
 const TABS = [
   { key: 'info', label: 'Info' },
@@ -21,6 +22,7 @@ const TABS = [
   { key: 'assess', label: 'Assess' },
   { key: 'photos', label: 'Photos' },
   { key: 'scope', label: 'Scope' },
+  { key: 'forms', label: 'Forms' },
   { key: 'review', label: 'Review' },
   { key: 'hvac', label: 'HVAC' },
   { key: 'install', label: 'Install' },
@@ -116,8 +118,8 @@ export default function JobDetail({ role, user }) {
   const [tab, setTab] = useState('info');
   const [toast, setToast] = useState(null);
 
-  const isAdmin = user?.role === 'admin';
-  const canEdit = isAdmin || user?.role === 'operations';
+  const isAdmin = role === 'Admin';
+  const canEdit = isAdmin || ['Operations', 'Program Manager', 'Assessor', 'Scope Creator', 'Installer', 'HVAC'].includes(role);
 
   const handleUpdate = async (fields) => {
     try {
@@ -165,6 +167,7 @@ export default function JobDetail({ role, user }) {
       case 'assess': return <JobAssess {...tabProps} />;
       case 'photos': return <JobPhotos {...tabProps} />;
       case 'scope': return <JobScope {...tabProps} />;
+      case 'forms': return <FormsDocsTab {...tabProps} role={role} />;
       case 'review': return <ReviewTab job={job} isAdmin={isAdmin} onUpdate={handleUpdate} />;
       case 'hvac': return <JobHVAC {...tabProps} />;
       case 'install': return <JobInstall {...tabProps} />;

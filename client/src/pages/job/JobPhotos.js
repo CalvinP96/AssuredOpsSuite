@@ -170,21 +170,23 @@ export default function JobPhotos({ job, canEdit, user }) {
             </button>
           ))}
           {canEdit && (
-            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36,
-              borderRadius: 6, border: '2px dashed var(--color-border)', background: 'var(--color-surface-alt)',
-              cursor: 'pointer', fontSize: has ? 16 : 14, color: 'var(--color-text-muted)' }}
+            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              width: 44, height: 44, borderRadius: 6, border: '2px dashed var(--color-primary)',
+              background: 'rgba(37,99,235,0.06)', cursor: 'pointer', color: 'var(--color-primary)', gap: 1 }}
               title={has ? 'Add another' : 'Take photo'}>
-              {busy ? <span className="photo-slot-spinner" style={{ width: 18, height: 18 }} /> : has ? '+' : '\uD83D\uDCF7'}
+              {busy ? <span className="photo-slot-spinner" style={{ width: 18, height: 18 }} /> : (
+                <><span style={{ fontSize: 16 }}>{'\uD83D\uDCF7'}</span><span style={{ fontSize: 8, fontWeight: 700 }}>Camera</span></>
+              )}
               <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(cat, it, f); e.target.value = ''; }} />
             </label>
           )}
           {canEdit && (
-            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36,
-              borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)',
-              cursor: 'pointer', fontSize: 14 }}
+            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              width: 44, height: 44, borderRadius: 6, border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)', cursor: 'pointer', color: 'var(--color-text-muted)', gap: 1 }}
               title="Upload from gallery">
-              {'\uD83D\uDCC1'}
+              <span style={{ fontSize: 16 }}>{'\uD83D\uDCC1'}</span><span style={{ fontSize: 8, fontWeight: 700 }}>Upload</span>
               <input type="file" accept="image/*" style={{ display: 'none' }}
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(cat, it, f); e.target.value = ''; }} />
             </label>

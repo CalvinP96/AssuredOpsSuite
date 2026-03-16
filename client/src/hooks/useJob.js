@@ -23,14 +23,20 @@ export function useJob(jobId) {
 
   const update = useCallback(async (fields) => {
     try {
-      const updated = await api.updateJob(jobId, fields);
-      setJob(prev => ({ ...prev, ...updated }));
-      return updated;
+      // If fields is empty or just a reload signal, do a full reload
+      const keys = Object.keys(fields || {});
+      if (keys.length === 0 || (keys.length === 1 && keys[0] === '_reload')) {
+        await load();
+        return;
+      }
+      await api.updateJob(jobId, fields);
+      // Full reload to get formatted job with relations
+      await load();
     } catch (err) {
       setError(err.message);
       throw err;
     }
-  }, [jobId]);
+  }, [jobId, load]);
 
   const updateNestedData = useCallback(async (key, data) => {
     return update({ [key]: data });
