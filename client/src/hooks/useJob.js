@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as api from '../api';
 
-const POLL_INTERVAL = 10000; // 10 seconds
+const POLL_INTERVAL = 15000; // 15 seconds
 
 export function useJob(jobId) {
   const [job, setJob] = useState(null);

@@ -469,7 +469,7 @@ export async function updateMilestone(msId, data) {
 export async function getJob(jobId) {
   const { data, error } = await supabase
     .from('program_jobs')
-    .select('*, job_photos(*), job_checklist_items(*), job_measures(*, program_measures(name, category)), hvac_replacements(*), change_orders(*)')
+    .select('*, job_photos(id, uploaded_by, role, phase, measure_name, house_side, description, photo_ref, file_name, created_at), job_checklist_items(*), job_measures(*, program_measures(name, category)), hvac_replacements(*), change_orders(*)')
     .eq('id', jobId)
     .single();
   if (error) throw error;
@@ -577,11 +577,34 @@ export async function createJob(programId, data) {
   return job;
 }
 
+// Valid columns on program_jobs — unknown fields are silently skipped
+const JOB_COLUMNS = new Set([
+  'job_number', 'customer_name', 'address', 'city', 'state', 'zip', 'utility', 'status',
+  'phone', 'email', 'rise_id', 'st_id', 'flagged', 'flag_reason',
+  'assessment_date', 'assessment_data', 'scope_data',
+  'schedule_notes', 'assessor_name', 'install_notes', 'insulation_crew',
+  'hvac_scheduled', 'hvac_date', 'install_data', 'hvac_data', 'inspection_data',
+  'authorization_signed_at', 'authorization_signed_by', 'hs_consent_signed_at',
+  'submission_date', 'estimate_amount', 'abc_install_date', 'wall_injection_date',
+  'patch_date', 'hvac_tune_clean_date', 'hvac_replacement_date', 'install_date',
+  'inspection_date', 'needs_permit', 'permit_status', 'permit_applied_date',
+  'permit_received_date', 'permit_number', 'permit_jurisdiction', 'permit_notes',
+  'notes',
+]);
+
 export async function updateJob(jobId, data) {
   const { id, program_id, created_at, measures, checklist, photos, hvac_replacements, change_orders, job_measures, job_checklist_items, job_photos, ...rest } = data;
+  // Only send columns that exist in the DB; stringify objects for text columns
+  const JSON_COLS = new Set(['assessment_data', 'scope_data', 'install_data', 'hvac_data', 'inspection_data']);
+  const filtered = {};
+  for (const [k, v] of Object.entries(rest)) {
+    if (!JOB_COLUMNS.has(k)) continue;
+    filtered[k] = (JSON_COLS.has(k) && typeof v === 'object') ? JSON.stringify(v) : v;
+  }
+  if (Object.keys(filtered).length === 0) return;
   const { data: updated, error } = await supabase
     .from('program_jobs')
-    .update({ ...rest, updated_at: new Date().toISOString() })
+    .update({ ...filtered, updated_at: new Date().toISOString() })
     .eq('id', jobId)
     .select()
     .single();
