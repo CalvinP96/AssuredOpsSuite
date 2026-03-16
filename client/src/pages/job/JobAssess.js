@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import * as api from '../../api';
 import CustomerAuthForm from '../CustomerAuthForm';
 import HSConsentForm from '../HSConsentForm';
-import { PHOTO_ZONES, TIMING_COLORS } from './photoZonesData';
+import { filterSections } from './photoSectionsData';
+import PhotoChecklist from './PhotoChecklist';
+
+const PRE_SECTIONS = filterSections('pre');
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -44,16 +46,8 @@ function pillStyle(selected, pos) {
 
 export default function JobAssess({ job, canEdit, onUpdate, user }) {
   const [form, setForm] = useState({ ...DEFAULTS, assessor_name: user?.full_name || '' });
-  const [photos, setPhotos] = useState({});
-  const [uploading, setUploading] = useState({});
   const [showAuthInline, setShowAuthInline] = useState(false);
   const [showHSInline, setShowHSInline] = useState(false);
-  const [expandedZones, setExpandedZones] = useState(() => {
-    const init = {};
-    PHOTO_ZONES.forEach(z => { init[z.zone] = true; });
-    return init;
-  });
-  const [viewPhoto, setViewPhoto] = useState(null);
   const saveTimer = useRef(null);
 
   useEffect(() => {
@@ -63,18 +57,6 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
       setForm(prev => ({ ...prev, ...parsed }));
     } catch { /* keep defaults */ }
   }, [job.assessment_data]);
-
-  useEffect(() => {
-    api.getJobPhotos(job.id).then(rows => {
-      const grouped = {};
-      for (const p of rows) {
-        p.photo_src = p.photo_ref || p.photo_data || '';
-        const k = `${p.house_side}/${p.description}`;
-        (grouped[k] ||= []).push(p);
-      }
-      setPhotos(grouped);
-    }).catch(() => {});
-  }, [job.id]);
 
   const doSave = useCallback(async (f) => {
     let existing = {};
@@ -100,40 +82,6 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
     });
   };
   useEffect(() => () => clearTimeout(saveTimer.current), []);
-
-  const reloadPhotos = async () => {
-    const rows = await api.getJobPhotos(job.id);
-    const grouped = {};
-    for (const p of rows) {
-      p.photo_src = p.photo_ref || p.photo_data || '';
-      const k = `${p.house_side}/${p.description}`;
-      (grouped[k] ||= []).push(p);
-    }
-    setPhotos(grouped);
-  };
-
-  const handlePhotoUpload = async (zone, item, file) => {
-    const pk = `${zone}/${item.key}`;
-    setUploading(prev => ({ ...prev, [pk]: true }));
-    try {
-      await api.uploadJobPhoto(job.id, zone, item.key, item.timing.toLowerCase(), file, user?.full_name);
-      await reloadPhotos();
-    } catch (err) { console.error('Photo upload failed:', err); }
-    setUploading(prev => ({ ...prev, [pk]: false }));
-  };
-
-  const handlePhotoDelete = async (photo) => {
-    try {
-      await api.deleteJobPhoto(photo.id);
-      setPhotos(prev => {
-        const next = {};
-        for (const k of Object.keys(prev)) { next[k] = prev[k].filter(p => p.id !== photo.id); if (!next[k].length) delete next[k]; }
-        return next;
-      });
-    } catch (err) { console.error('Photo delete failed:', err); }
-  };
-
-  const toggleZone = (zone) => setExpandedZones(prev => ({ ...prev, [zone]: !prev[zone] }));
 
   const PillRadio = ({ field, options }) => (
     <div style={{ display: 'inline-flex', flexWrap: 'wrap' }}>
@@ -165,12 +113,6 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
     <input type={type} value={form[field]} disabled={!canEdit}
       onChange={e => set(field, e.target.value)} {...rest} />
   );
-  const TimingBadge = ({ t }) => (
-    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-      background: `${TIMING_COLORS[t]}18`, color: TIMING_COLORS[t] }}>{t}</span>
-  );
-  const photoCount = (zone, key) => (photos[`${zone}/${key}`] || []).length;
-
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       {/* ─── STEP 1: Customer Authorization ─── */}
@@ -298,81 +240,8 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
         </F>
       </div>
 
-      {/* ─── Photo Checklist by Zone ─── */}
-      {PHOTO_ZONES.map(({ zone, title, items }) => (
-        <div key={zone} className="jd-card" style={{ padding: 0, overflow: 'hidden' }}>
-          <button type="button" onClick={() => toggleZone(zone)} style={{
-            width: '100%', padding: '14px 20px', display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between', background: 'none', border: 'none', cursor: 'pointer' }}>
-            <span style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)' }}>{title}</span>
-            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-              {items.reduce((n, it) => n + photoCount(zone, it.key), 0)} photos {expandedZones[zone] ? '\u25B2' : '\u25BC'}
-            </span>
-          </button>
-          {expandedZones[zone] && (
-            <div style={{ padding: '12px 20px', display: 'grid', gap: 16, borderTop: '1px solid var(--color-border)' }}>
-              {items.map(item => {
-                const pk = `${zone}/${item.key}`;
-                const itemPhotos = photos[pk] || [];
-                return (
-                  <div key={item.key} style={{ padding: '12px 0', borderBottom: '1px solid var(--color-border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 600, fontSize: 13 }}>{item.label}</span>
-                      <TimingBadge t={item.timing} />
-                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{item.note}</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                      {itemPhotos.map(p => (
-                        <div key={p.id} style={{ position: 'relative', width: 80, height: 60, borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
-                          <img src={p.photo_src} alt={item.label} onClick={() => setViewPhoto(p.photo_src)}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} />
-                          {canEdit && (
-                            <button type="button" onClick={() => handlePhotoDelete(p)} style={{
-                              position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%',
-                              background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', cursor: 'pointer',
-                              fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>&times;</button>
-                          )}
-                        </div>
-                      ))}
-                      {canEdit && itemPhotos.length < 10 && (
-                        <>
-                          <label style={{ minWidth: 80, height: 60, borderRadius: 6, border: '2px dashed var(--color-primary)',
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                            background: 'rgba(37,99,235,0.06)', padding: '4px 12px', gap: 2, flexShrink: 0 }}>
-                            {uploading[pk] ? <div className="photo-slot-spinner" /> : (
-                              <>
-                                <span style={{ fontSize: 20 }}>{'\uD83D\uDCF7'}</span>
-                                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-primary)' }}>Camera</span>
-                              </>
-                            )}
-                            <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
-                              onChange={e => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(zone, item, f); e.target.value = ''; }} />
-                          </label>
-                          <label style={{ minWidth: 80, height: 60, borderRadius: 6, border: '1px solid var(--color-border)',
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                            background: 'var(--color-surface-alt)', padding: '4px 12px', gap: 2, flexShrink: 0 }}>
-                            <span style={{ fontSize: 20 }}>{'\uD83D\uDCC1'}</span>
-                            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-muted)' }}>Upload</span>
-                            <input type="file" accept="image/*" style={{ display: 'none' }}
-                              onChange={e => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(zone, item, f); e.target.value = ''; }} />
-                          </label>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ))}
-
-      {viewPhoto && (
-        <div onClick={() => setViewPhoto(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
-          zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-          <img src={viewPhoto} alt="Full size" style={{ maxWidth: '90%', maxHeight: '90%', borderRadius: 8 }} />
-        </div>
-      )}
+      {/* ─── Pre-Install Photo Checklist ─── */}
+      <PhotoChecklist sections={PRE_SECTIONS} job={job} canEdit={canEdit} user={user} />
     </div>
   );
 }

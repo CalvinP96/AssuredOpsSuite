@@ -1,4 +1,8 @@
 import React, { useState } from 'react';
+import { filterSections } from './photoSectionsData';
+import PhotoChecklist from './PhotoChecklist';
+
+const HVAC_SECTIONS = filterSections('hvac', 'repl');
 
 const FUEL_TYPES = ['Natural Gas', 'Propane', 'Oil', 'Electric'];
 const CONDITION_OPTS = ['Good', 'Fair', 'Poor', 'Needs Replacement'];
@@ -192,6 +196,9 @@ export default function JobHVAC({ job, canEdit, isAdmin, onUpdate, user }) {
           </div>
         </div>
       )}
+
+      {/* ─── HVAC Photo Checklist ─── */}
+      <PhotoChecklist sections={HVAC_SECTIONS} job={job} canEdit={canEdit} user={user} />
 
       {canEdit && (
         <button className="btn btn-primary" onClick={handleSave}>Save Changes</button>

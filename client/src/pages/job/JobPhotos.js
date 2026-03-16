@@ -1,45 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import * as api from '../../api';
-import { PHOTO_ZONES } from './photoZonesData';
+import { PHOTO_SECTIONS, PHASE_LABEL } from './photoSectionsData';
 
-/* ══════════════════════════════════════════════════════════════
-   PHOTO_SECTIONS — exact zones & items from HES tracker
-   ══════════════════════════════════════════════════════════════ */
-const PHOTO_SECTIONS = {
-  "Home Exterior (Pre)":[{id:"ext_front",l:"Front w/ address",p:"pre"},{id:"ext_damage",l:"Pre-existing damage",p:"pre"},{id:"ext_roof",l:"Roof condition",p:"pre"},{id:"ext_sA",l:"Side A",p:"pre"},{id:"ext_sB",l:"Side B",p:"pre"},{id:"ext_sC",l:"Side C",p:"pre"},{id:"ext_sD",l:"Side D",p:"pre"},{id:"ext_ac",l:"AC Condenser",p:"pre"},{id:"ext_ac_tag",l:"AC Condenser tag",p:"pre"},{id:"ext_vents",l:"Vent terminations",p:"pre"},{id:"ext_gutters",l:"Gutters",p:"pre"}],
-  "Attic (Pre)":[{id:"att_pre",l:"Pre insulation (wide)",p:"pre"},{id:"att_bypass",l:"Major bypasses",p:"pre"},{id:"att_baffle",l:"Baffle needs",p:"pre"},{id:"att_exh",l:"Exhaust terminations",p:"pre"},{id:"att_hatch",l:"Hatch",p:"pre"},{id:"att_deck",l:"Roof decking",p:"pre"},{id:"att_dmg",l:"Pre-existing damage",p:"pre"},{id:"att_moist",l:"Moisture/mold",p:"pre"}],
-  "Foundation (Pre)":[{id:"fnd_insul",l:"Insulation opps",p:"pre"},{id:"fnd_plumb",l:"Plumbing DI",p:"pre"},{id:"fnd_dmg",l:"Pre-existing damage",p:"pre"},{id:"fnd_frn",l:"FRN w/ venting",p:"pre"},{id:"fnd_hwt",l:"HWT w/ venting",p:"pre"},{id:"fnd_dryer",l:"Dryer vent/cap",p:"pre"},{id:"fnd_moist",l:"Moisture/mold",p:"pre"}],
-  "CAZ (Pre)":[{id:"caz_smoke",l:"Smoke/CO detectors",p:"pre"},{id:"caz_dhw",l:"DHW flue + tag",p:"pre"},{id:"caz_furn",l:"Furnace flue + tag",p:"pre"}],
-  "Blower Door (Pre)":[{id:"as_setup",l:"BD setup w/ manometer",p:"pre"},{id:"as_pre",l:"Pre CFM50 manometer",p:"pre"},{id:"as_pen",l:"Common penetrations",p:"pre"}],
-  "Home Exterior (Post)":[{id:"ext_post_front",l:"Front (post)",p:"post"},{id:"ext_post_vents",l:"Vent terminations (post)",p:"post"},{id:"ext_post_ac",l:"AC Condenser (post)",p:"post"}],
-  "Attic (Post)":[{id:"att_post",l:"Post insulation (wide)",p:"post"},{id:"att_post_detail",l:"Insulation detail/depth",p:"post"},{id:"att_post_bypass",l:"Bypasses sealed",p:"post"},{id:"att_post_baffle",l:"Baffles installed",p:"post"},{id:"att_post_hatch",l:"Hatch insulated",p:"post"},{id:"att_post_dam",l:"Fire dams/can lights",p:"post"}],
-  "Foundation (Post)":[{id:"fnd_post_insul",l:"Foundation insulation",p:"post"},{id:"fnd_post_rim",l:"Rim joist insulation",p:"post"},{id:"fnd_post_seal",l:"Air sealing",p:"post"}],
-  "Air Seal (Post)":[{id:"as_post",l:"Post CFM50 manometer",p:"post"},{id:"as_post_pen",l:"Penetrations sealed",p:"post"},{id:"as_post_detail",l:"Air seal detail",p:"post"}],
-  "CAZ (Post)":[{id:"caz_post_smoke",l:"Smoke/CO detectors (post)",p:"post"},{id:"caz_post_flue",l:"Flue connections (post)",p:"post"},{id:"caz_post_vent",l:"Venting (post)",p:"post"}],
-  "ASHRAE Fan (Post)":[{id:"fan_box",l:"Specs box w/ model #",p:"post"},{id:"fan_inst",l:"Fan installed",p:"post"},{id:"fan_sw",l:"Switch",p:"post"},{id:"fan_duct",l:"Fan ducting/termination",p:"post"}],
-  "New Products (Post)":[{id:"np_hvac",l:"New HVAC w/ tag",p:"post"},{id:"np_furn",l:"New furnace w/ tag",p:"post"},{id:"np_wh",l:"New WH w/ tag",p:"post"},{id:"np_thermo",l:"Smart thermostat",p:"post"},{id:"np_other",l:"Other new product",p:"post"}],
-  "Walls (Post)":[{id:"wall_inject",l:"Injection foam holes",p:"post"},{id:"wall_patch",l:"Patched/finished",p:"post"},{id:"wall_knee",l:"Knee wall insulation",p:"post"}],
-  "Misc (Post)":[{id:"misc_post1",l:"Additional photo 1",p:"post"},{id:"misc_post2",l:"Additional photo 2",p:"post"},{id:"misc_post3",l:"Additional photo 3",p:"post"}],
-  "HVAC \u2014 Furnace":[{id:"hvac_furn_tag",l:"Furnace nameplate/tag",p:"hvac"},{id:"hvac_furn_hx",l:"Heat exchanger",p:"hvac"},{id:"hvac_furn_burner",l:"Burners/flame",p:"hvac"},{id:"hvac_furn_board",l:"Control board",p:"hvac"},{id:"hvac_furn_filter",l:"Filter",p:"hvac"},{id:"hvac_furn_issue",l:"Any issues found",p:"hvac"}],
-  "HVAC \u2014 Water Heater":[{id:"hvac_wh_tag",l:"WH nameplate/tag",p:"hvac"},{id:"hvac_wh_cond",l:"WH overall condition",p:"hvac"},{id:"hvac_wh_vent",l:"WH venting",p:"hvac"},{id:"hvac_wh_burner",l:"WH burners",p:"hvac"},{id:"hvac_wh_issue",l:"WH any issues",p:"hvac"}],
-  "HVAC \u2014 A/C":[{id:"hvac_ac_tag",l:"Condenser nameplate/tag",p:"hvac"},{id:"hvac_ac_cond",l:"Condenser condition",p:"hvac"},{id:"hvac_ac_elec",l:"Electrical/disconnect",p:"hvac"},{id:"hvac_ac_line",l:"Line set",p:"hvac"},{id:"hvac_ac_evap",l:"Evaporator coil",p:"hvac"},{id:"hvac_ac_issue",l:"A/C any issues",p:"hvac"}],
-  "HVAC \u2014 Thermostat":[{id:"hvac_thermo",l:"Thermostat",p:"hvac"}],
-  "HVAC Replacement \u2014 Before":[{id:"repl_before_equip",l:"Old equipment (before removal)",p:"repl"},{id:"repl_before_tag",l:"Old equipment nameplate",p:"repl"},{id:"repl_before_area",l:"Install area (before)",p:"repl"}],
-  "HVAC Replacement \u2014 Install":[{id:"repl_new_equip",l:"New equipment installed",p:"repl"},{id:"repl_new_tag",l:"New equipment nameplate/tag",p:"repl"},{id:"repl_new_model",l:"New model/serial label",p:"repl"},{id:"repl_new_vent",l:"Venting/flue connections",p:"repl"},{id:"repl_new_gas",l:"Gas line connections",p:"repl"},{id:"repl_new_elec",l:"Electrical connections",p:"repl"},{id:"repl_new_area",l:"Install area (after)",p:"repl"},{id:"repl_new_thermo",l:"Thermostat/controls",p:"repl"}],
-  "HVAC Replacement \u2014 Verification":[{id:"repl_permit",l:"Permit/sticker (if applicable)",p:"repl"},{id:"repl_startup",l:"Startup/commissioning readings",p:"repl"},{id:"repl_co_test",l:"CO test after install",p:"repl"},{id:"repl_complete",l:"Completed install overview",p:"repl"}],
-};
-
-const PHASE_LABEL = { pre: 'Pre', post: 'Post', hvac: 'HVAC', repl: 'Replacement' };
+const photoSrc = (p) => p.photo_ref || p.photo_data || '';
 
 function zoneKey(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
 }
 
-const photoSrc = (p) => p.photo_ref || p.photo_data || '';
-
 export default function JobPhotos({ job, canEdit, user }) {
   const [photoMap, setPhotoMap] = useState({});
-  const [otherPhotos, setOtherPhotos] = useState({});
   const [preview, setPreview] = useState(null);
   const [viewMode, setViewMode] = useState('role');
   const [uploading, setUploading] = useState({});
@@ -50,30 +20,25 @@ export default function JobPhotos({ job, canEdit, user }) {
   const allItems = Object.entries(PHOTO_SECTIONS).flatMap(([cat, items]) => items.map(i => ({ ...i, cat })));
   const preSections = Object.entries(PHOTO_SECTIONS).filter(([cat]) => cat.includes('(Pre)'));
   const postSections = Object.entries(PHOTO_SECTIONS).filter(([cat]) => cat.includes('(Post)'));
+  const hvacSections = Object.entries(PHOTO_SECTIONS).filter(([cat]) => cat.startsWith('HVAC'));
+  const replSections = Object.entries(PHOTO_SECTIONS).filter(([cat]) => cat.startsWith('HVAC Replacement'));
   const preItems = preSections.flatMap(([, items]) => items);
   const postItems = postSections.flatMap(([, items]) => items);
+  const hvacItems = hvacSections.flatMap(([, items]) => items);
   const preTaken = preItems.filter(i => hasP(i.id)).length;
   const postTaken = postItems.filter(i => hasP(i.id)).length;
+  const hvacTaken = hvacItems.filter(i => hasP(i.id)).length;
   const totalTaken = allItems.filter(i => hasP(i.id)).length;
 
   const reloadPhotos = async () => {
     try {
       const rows = await api.getJobPhotos(job.id);
       const grouped = {};
-      const otherByZone = {};
-      const knownIds = new Set(allItems.map(i => i.id));
       for (const p of rows) {
         p.photo_src = photoSrc(p);
-        if (knownIds.has(p.description)) {
-          (grouped[p.description] ||= []).push(p);
-        } else {
-          // Photos from other tabs (assess, install, hvac)
-          const zone = p.house_side || 'other';
-          (otherByZone[zone] ||= []).push(p);
-        }
+        (grouped[p.description] ||= []).push(p);
       }
       setPhotoMap(grouped);
-      setOtherPhotos(otherByZone);
     } catch { /* ignore */ }
   };
 
@@ -106,20 +71,18 @@ export default function JobPhotos({ job, canEdit, user }) {
 
   /* ── Preview overlay ── */
   if (preview) {
-    const isOther = !!preview.otherPhoto;
-    const arr = isOther ? [preview.otherPhoto] : getPhotos(preview.id);
-    const ph = isOther ? preview.otherPhoto : arr[preview.idx];
-    const it = isOther ? null : allItems.find(x => x.id === preview.id);
-    const label = isOther ? (ph?.description || '').replace(/_/g, ' ') : it?.l;
+    const arr = getPhotos(preview.id);
+    const ph = arr[preview.idx];
+    const it = allItems.find(x => x.id === preview.id);
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#000', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '10px 16px', gap: 8 }}>
           <button style={{ background: 'none', border: 'none', color: '#fff', fontSize: 16, cursor: 'pointer', padding: '4px 8px' }}
             onClick={() => setPreview(null)}>{'\u2190'} Back</button>
           <div style={{ flex: 1, textAlign: 'center', fontWeight: 600, fontSize: 14, color: '#fff' }}>
-            {label} {arr.length > 1 ? `(${preview.idx + 1}/${arr.length})` : ''}
+            {it?.l} {arr.length > 1 ? `(${preview.idx + 1}/${arr.length})` : ''}
           </div>
-          {canEdit && !isOther && (
+          {canEdit && (
             <button style={{ background: 'none', border: '1px solid #ef4444', color: '#ef4444', padding: '4px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}
               onClick={() => handleDelete(preview.id, preview.idx)}>Delete</button>
           )}
@@ -192,7 +155,7 @@ export default function JobPhotos({ job, canEdit, user }) {
     );
   };
 
-  /* ── Side-by-side pairs ── */
+  /* ── Side-by-side pairs — match Pre/Post categories by base name ── */
   const buildPairs = () => {
     const pairs = [];
     const usedPost = new Set();
@@ -204,6 +167,7 @@ export default function JobPhotos({ job, canEdit, user }) {
         let postIt = null;
         if (postMatch) {
           postIt = postMatch[1].find(po => !usedPost.has(po.id) && hasP(po.id));
+          if (!postIt) postIt = postMatch[1].find(po => !usedPost.has(po.id));
           if (postIt) usedPost.add(postIt.id);
         }
         if (preArr.length > 0 || postIt) {
@@ -211,6 +175,7 @@ export default function JobPhotos({ job, canEdit, user }) {
         }
       });
     });
+    // Remaining post items not yet paired
     postSections.forEach(([postCat, postItms]) => {
       postItms.filter(po => !usedPost.has(po.id) && hasP(po.id)).forEach(po => {
         usedPost.add(po.id);
@@ -242,11 +207,24 @@ export default function JobPhotos({ job, canEdit, user }) {
     </div>
   );
 
+  const SectionBlock = ({ sections: secs, color }) => secs.map(([cat, items]) => {
+    const cd = items.filter(i => hasP(i.id)).length;
+    return (
+      <div key={cat} style={{ marginTop: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: color || 'var(--color-primary)', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
+          <span>{cat}</span>
+          <span style={{ color: cd === items.length ? 'var(--color-success)' : 'var(--color-text-muted)' }}>{cd}/{items.length}</span>
+        </div>
+        {items.map(it => <PhotoRow key={it.id} it={it} cat={cat} />)}
+      </div>
+    );
+  });
+
   /* ── Render ── */
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       {/* ── HEADER ── */}
-      <Sec title={<>Photos <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>{totalTaken + Object.values(otherPhotos).reduce((n, arr) => n + arr.length, 0)} total ({totalTaken}/{allItems.length} checklist)</span></>}>
+      <Sec title={<>Photos <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>{totalTaken}/{allItems.length}</span></>}>
         {progBar(totalTaken, allItems.length, 'var(--color-primary)')}
         <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
           <button type="button" onClick={() => setViewMode('role')} style={tabStyle('role')}>By Role</button>
@@ -259,35 +237,20 @@ export default function JobPhotos({ job, canEdit, user }) {
       {viewMode === 'role' && <>
         <Sec title={<span style={{ color: 'var(--color-primary)' }}>Assessor &mdash; Pre-Install <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>{preTaken}/{preItems.length}</span></span>}>
           {progBar(preTaken, preItems.length, 'var(--color-primary)')}
-          {preSections.map(([cat, items]) => {
-            const cd = items.filter(i => hasP(i.id)).length;
-            return (
-              <div key={cat} style={{ marginTop: 10 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-primary)', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{cat}</span>
-                  <span style={{ color: cd === items.length ? 'var(--color-success)' : 'var(--color-text-muted)' }}>{cd}/{items.length}</span>
-                </div>
-                {items.map(it => <PhotoRow key={it.id} it={it} cat={cat} />)}
-              </div>
-            );
-          })}
+          <SectionBlock sections={preSections} color="var(--color-primary)" />
         </Sec>
 
         <Sec title={<span style={{ color: '#f97316' }}>Install Crew &mdash; Post-Install <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>{postTaken}/{postItems.length}</span></span>}>
           {progBar(postTaken, postItems.length, '#f97316')}
-          {postSections.map(([cat, items]) => {
-            const cd = items.filter(i => hasP(i.id)).length;
-            return (
-              <div key={cat} style={{ marginTop: 10 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#f97316', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{cat}</span>
-                  <span style={{ color: cd === items.length ? 'var(--color-success)' : 'var(--color-text-muted)' }}>{cd}/{items.length}</span>
-                </div>
-                {items.map(it => <PhotoRow key={it.id} it={it} cat={cat} />)}
-              </div>
-            );
-          })}
+          <SectionBlock sections={postSections} color="#f97316" />
         </Sec>
+
+        {hvacSections.length > 0 && (
+          <Sec title={<span style={{ color: '#ea580c' }}>HVAC <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>{hvacTaken}/{hvacItems.length}</span></span>}>
+            {progBar(hvacTaken, hvacItems.length, '#ea580c')}
+            <SectionBlock sections={hvacSections} color="#ea580c" />
+          </Sec>
+        )}
       </>}
 
       {/* ═══ VIEW: ALL ═══ */}
@@ -300,47 +263,13 @@ export default function JobPhotos({ job, canEdit, user }) {
         );
       })}
 
-      {/* ═══ PHOTOS FROM OTHER TABS ═══ */}
-      {Object.keys(otherPhotos).length > 0 && (
-        <Sec title="Photos from Other Tabs">
-          <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 12 }}>
-            Photos uploaded from Assessment, Install, and HVAC tabs.
-          </p>
-          {Object.entries(otherPhotos).map(([zone, zonePhotos]) => {
-            const zoneInfo = PHOTO_ZONES.find(z => z.zone === zone);
-            const zoneName = zoneInfo ? zoneInfo.title : zone.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-            return (
-              <div key={zone} style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-primary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  {zoneName} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>({zonePhotos.length})</span>
-                </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {zonePhotos.map(p => (
-                    <div key={p.id} style={{ position: 'relative' }}>
-                      <button style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                        onClick={() => setPreview({ otherPhoto: p })}>
-                        <img src={p.photo_src} alt={p.description}
-                          style={{ width: 64, height: 64, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--color-border)' }} />
-                      </button>
-                      <div style={{ fontSize: 9, color: 'var(--color-text-muted)', textAlign: 'center', maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {p.description.replace(/_/g, ' ')}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </Sec>
-      )}
-
       {/* ═══ VIEW: SIDE-BY-SIDE ═══ */}
       {viewMode === 'compare' && (() => {
         const pairs = buildPairs();
         if (pairs.length === 0) return (
           <Sec title="Side-by-Side Comparison">
             <p style={{ color: 'var(--color-text-muted)', fontSize: 12, textAlign: 'center', padding: 20 }}>
-              No photos to compare yet. Take pre and post photos to see side-by-side.
+              Take pre photos (from Assess tab) and post photos (from Install tab) to see them side-by-side.
             </p>
           </Sec>
         );
