@@ -58,9 +58,9 @@ export default function ProgramDetail({ role, fixedProgramId }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div className="tab-bar" style={{ marginBottom: 0 }}>
         {tabs.map(t => (
-          <button key={t.key} className={`btn btn-sm ${tab === t.key ? 'btn-primary' : 'btn-secondary'}`}
+          <button key={t.key} className={`tab-btn${tab === t.key ? ' active' : ''}`}
             onClick={() => setTab(t.key)}>{t.label}</button>
         ))}
       </div>
