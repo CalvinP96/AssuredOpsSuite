@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useJob } from '../hooks/useJob';
-import { JOB_PHASES, getPhaseForStatus } from '../constants';
+import { JOB_PHASES } from '../constants';
 import { StatusBadge } from '../components/ui';
 import * as api from '../api';
 import JobInfo from './job/JobInfo';
@@ -39,22 +39,6 @@ const PHASE_TAB_MAP = {
 
 const REQUIRED_PHOTOS = 6;
 
-// Status ordering for forward-only progression
-const STATUS_ORDER = [
-  'assessment_scheduled', 'assessment_complete', 'pre_approval',
-  'in_review', 'approved', 'install_scheduled', 'install_in_progress',
-  'inspection', 'submitted', 'invoiced', 'complete',
-];
-
-function getPhaseStates(job) {
-  const currentPhase = getPhaseForStatus(job.status);
-  const currentIdx = JOB_PHASES.indexOf(currentPhase);
-  return JOB_PHASES.map((phase, i) => ({
-    ...phase,
-    state: i < currentIdx ? 'done' : i === currentIdx ? 'current' : 'future',
-  }));
-}
-
 function parseJSON(raw) {
   try { return typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {}); } catch { return {}; }
 }
@@ -64,41 +48,44 @@ function parseAssessment(job) {
 }
 
 /**
- * Compute what the job status SHOULD be based on filled-out data.
- * Only moves forward, never backward. Manual-only phases (in_review,
- * approved, complete) are never auto-set — they require explicit action.
+ * Each phase independently checks its own data to determine done/not-done.
+ * Phases happen in parallel — no sequential gating except Closeout (needs all others).
+ * Pre-Approved is external (program approval).
  */
-function computeAutoStatus(job) {
-  const current = job.status || 'assessment_scheduled';
-  const currentIdx = STATUS_ORDER.indexOf(current);
-
+function getPhaseStates(job) {
   const assess = parseJSON(job.assessment_data);
   const scope = parseJSON(job.scope_data);
   const install = parseJSON(job.install_data);
   const inspection = parseJSON(job.inspection_data);
 
-  // Phase checks — each returns true if that phase's data is sufficiently filled
-  const hasSchedule = !!(job.assessment_date && job.assessor_name);
-  const hasAssessment = !!(job.authorization_signed_at && assess.tenant_type);
-  const hasScope = (scope.measures?.length || 0) > 0;
-  const hasInstallData = !!(install.install_date && install.crew_lead);
-  const installComplete = hasInstallData && install.post_blower_door && install.post_sow_signed;
-  const hasInspection = !!(inspection.date && inspection.inspector && inspection.inspector_sig);
+  const intakeDone = !!(job.customer_name && job.address && job.city && job.zip);
+  const scheduleDone = !!(job.assessment_date && job.assessor_name);
+  const assessDone = !!(job.authorization_signed_at && assess.tenant_type);
+  const scopeDone = (scope.measures?.length || 0) > 0 && !!(scope.building?.bd_in);
+  const reviewDone = job.status === 'in_review' || ['approved', 'install_scheduled', 'install_in_progress', 'inspection', 'submitted', 'invoiced', 'complete'].includes(job.status);
+  const preApprovedDone = ['approved', 'install_scheduled', 'install_in_progress', 'inspection', 'submitted', 'invoiced', 'complete'].includes(job.status);
+  const installDone = !!(install.install_date && install.crew_lead && install.post_blower_door && install.post_sow_signed);
+  const inspectionDone = !!(inspection.date && inspection.inspector && inspection.inspector_sig);
+  const closeoutDone = ['submitted', 'invoiced', 'complete'].includes(job.status);
+  const completeDone = job.status === 'complete';
 
-  // Walk forward through statuses to find the highest we should be at
-  let target = 'assessment_scheduled';
-  if (hasSchedule) target = 'assessment_complete';
-  if (hasSchedule && hasAssessment) target = 'pre_approval';
-  // in_review and approved are MANUAL — don't auto-set
-  if (hasSchedule && hasAssessment && hasScope && currentIdx >= STATUS_ORDER.indexOf('approved')) {
-    if (hasInstallData) target = 'install_in_progress';
-    if (installComplete) target = 'inspection';
-    if (installComplete && hasInspection) target = 'submitted';
-  }
+  const checks = {
+    intake: intakeDone,
+    schedule: scheduleDone,
+    assess: assessDone,
+    scope: scopeDone,
+    in_review: reviewDone,
+    pre_approved: preApprovedDone,
+    install: installDone,
+    post_qc: inspectionDone,
+    closeout: closeoutDone,
+    complete: completeDone,
+  };
 
-  // Only move forward, never backward
-  const targetIdx = STATUS_ORDER.indexOf(target);
-  return targetIdx > currentIdx ? target : current;
+  return JOB_PHASES.map(phase => ({
+    ...phase,
+    state: checks[phase.key] ? 'done' : 'active',
+  }));
 }
 
 function ReviewTab({ job, isAdmin, onUpdate }) {
@@ -206,15 +193,6 @@ export default function JobDetail({ role, user }) {
       await update(fields);
       setToast('Saved');
       setTimeout(() => setToast(null), 2000);
-
-      // Auto-advance phase if data warrants it (forward only, skip manual phases)
-      if (!fields.status && job.status !== 'deferred') {
-        const merged = { ...job, ...fields };
-        const newStatus = computeAutoStatus(merged);
-        if (newStatus !== job.status) {
-          await update({ status: newStatus });
-        }
-      }
     } catch {
       setToast('Save failed');
       setTimeout(() => setToast(null), 3000);
@@ -294,8 +272,8 @@ export default function JobDetail({ role, user }) {
       <div className="jd-phase-bar">
         {phases.map(phase => (
           <button key={phase.key} className={`jd-phase-pill ${phase.state}`}
-            onClick={() => { if (phase.state !== 'future') setTab(PHASE_TAB_MAP[phase.key] || 'info'); }}>
-            <span className="jd-phase-icon">{phase.icon}</span>
+            onClick={() => setTab(PHASE_TAB_MAP[phase.key] || 'info')}>
+            <span className="jd-phase-icon">{phase.state === 'done' ? '\u2713' : phase.icon}</span>
             <span className="jd-phase-label">{phase.label}</span>
           </button>
         ))}
