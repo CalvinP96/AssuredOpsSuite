@@ -167,10 +167,10 @@ function ReviewTab({ job, isAdmin, onUpdate }) {
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {/* Submit to RISE — moves to In Review */}
           {job.status !== 'in_review' && job.status !== 'approved' && (
-            <button className="btn btn-primary" disabled={!ready || submitting}
+            <button className="btn btn-primary" disabled={!allChecked || submitting}
               onClick={handleSubmit}
               style={{ width: '100%', padding: '12px 24px', fontSize: 15, fontWeight: 700,
-                opacity: !ready || submitting ? 0.6 : 1 }}>
+                opacity: !allChecked || submitting ? 0.6 : 1 }}>
               {submitting ? 'Submitting…' : '📤 Submit to RISE'}
             </button>
           )}
