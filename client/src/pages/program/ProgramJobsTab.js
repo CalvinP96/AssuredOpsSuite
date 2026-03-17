@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const PHASES = [
-  { key: 'intake', label: 'Intake', statuses: ['assessment_scheduled'] },
-  { key: 'schedule', label: 'Schedule', statuses: ['assessment_scheduled'] },
+  { key: 'schedule', label: 'Intake / Schedule', statuses: ['assessment_scheduled'] },
   { key: 'assess', label: 'Assess', statuses: ['assessment_complete'] },
   { key: 'scope', label: 'Scope', statuses: ['pre_approval'] },
   { key: 'in_review', label: 'In Review', statuses: ['in_review'] },
@@ -29,8 +28,7 @@ function getDaysBadgeStyle(days) {
 
 function getStatusColor(phaseKey) {
   const colors = {
-    intake: { bg: '#ede9fe', color: '#5b21b6' },
-    schedule: { bg: '#f3e8ff', color: '#7c3aed' },
+    schedule: { bg: '#ede9fe', color: '#5b21b6' },
     assess: { bg: '#dbeafe', color: '#1e40af' },
     scope: { bg: '#e0f2fe', color: '#0369a1' },
     in_review: { bg: '#fef3c7', color: '#92400e' },
