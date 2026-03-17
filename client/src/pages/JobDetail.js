@@ -66,7 +66,7 @@ function getPhaseStates(job) {
   const preApprovedDone = ['approved', 'install_scheduled', 'install_in_progress', 'inspection', 'submitted', 'invoiced', 'complete'].includes(job.status);
   const installDone = !!(install.install_date && install.crew_lead && install.post_blower_door && install.post_sow_signed);
   const inspectionDone = !!(inspection.date && inspection.inspector && inspection.inspector_sig);
-  const closeoutDone = ['submitted', 'invoiced', 'complete'].includes(job.status);
+  const closeoutDone = !!job.submission_date;
   const completeDone = job.status === 'complete';
 
   const checks = {

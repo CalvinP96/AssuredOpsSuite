@@ -47,8 +47,8 @@ export function useJob(jobId) {
       return;
     }
     await api.updateJob(jobId, fields);
-    // Don't poll after save — local state is already up to date.
-    // The 15s interval poll will sync eventually.
+    // Merge the saved fields into local state so UI updates immediately
+    setJob(prev => prev ? { ...prev, ...fields } : prev);
   }, [jobId]);
 
   const updateNestedData = useCallback(async (key, data) => {

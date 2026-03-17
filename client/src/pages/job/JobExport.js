@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { generatePreWorkSOW, generatePostWorkSOW, printSOW } from '../../utils';
 
 function getScope(job) {
@@ -104,8 +104,22 @@ export default function JobExport({ job, canEdit, isAdmin, onUpdate, user }) {
     if (win) { win.document.write(html); win.document.close(); }
   };
 
-  const handleMarkSubmitted = async () => {
-    await onUpdate({ status: 'submitted' });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmitForPayment = async () => {
+    setSubmitting(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await onUpdate({ submission_date: today, status: 'submitted' });
+    } finally { setSubmitting(false); }
+  };
+
+  const handleDateChange = async (e) => {
+    await onUpdate({ submission_date: e.target.value });
+  };
+
+  const handleClearSubmission = async () => {
+    await onUpdate({ submission_date: null, status: 'inspection' });
   };
 
   return (
@@ -159,19 +173,39 @@ export default function JobExport({ job, canEdit, isAdmin, onUpdate, user }) {
         </div>
       </div>
 
-      {/* SUBMISSION STATUS */}
+      {/* SUBMIT FOR PAYMENT */}
       <div className="jd-card">
-        <div className="jd-card-title">Submission Status</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className={`status-badge status-badge--${job.status}`}>
-            {job.status?.replace(/_/g, ' ') || 'Unknown'}
-          </span>
-          {isAdmin && job.status !== 'submitted' && job.status !== 'complete' && (
-            <button className="btn btn-success btn-sm" onClick={handleMarkSubmitted}>
-              Mark as Submitted
+        <div className="jd-card-title">Submit for Payment</div>
+        {!job.submission_date ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              className="btn btn-success"
+              disabled={submitting}
+              onClick={handleSubmitForPayment}
+            >
+              {submitting ? 'Submitting...' : 'Submit for Payment'}
             </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>Submitted:</span>
+            <input
+              type="date"
+              value={job.submission_date || ''}
+              onChange={handleDateChange}
+              style={{
+                padding: '6px 10px', borderRadius: 6,
+                border: '1px solid var(--color-border)', fontSize: 13,
+              }}
+            />
+            <button
+              className="btn btn-danger btn-sm"
+              onClick={handleClearSubmission}
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
