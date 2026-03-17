@@ -175,11 +175,22 @@ function ReviewTab({ job, isAdmin, onUpdate }) {
             </button>
           )}
 
-          {/* In Review status banner */}
+          {/* In Review status banner + revert button */}
           {job.status === 'in_review' && (
-            <div style={{ padding: '12px 16px', background: '#fef3c7', border: '1px solid #fcd34d',
-              borderRadius: 'var(--radius)', fontSize: 14, fontWeight: 600, color: '#92400e', textAlign: 'center' }}>
-              🔄 In Review — waiting on RI approval
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ flex: 1, padding: '12px 16px', background: '#fef3c7', border: '1px solid #fcd34d',
+                borderRadius: 'var(--radius)', fontSize: 14, fontWeight: 600, color: '#92400e', textAlign: 'center' }}>
+                🔄 In Review — waiting on RI approval
+              </div>
+              <button className="btn btn-secondary btn-sm"
+                style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', whiteSpace: 'nowrap' }}
+                disabled={submitting}
+                onClick={async () => {
+                  setSubmitting(true);
+                  try { await onUpdate({ status: 'assessment_complete' }); } finally { setSubmitting(false); }
+                }}>
+                Revert to Assessment
+              </button>
             </div>
           )}
 
