@@ -90,7 +90,13 @@ function getPhaseStates(job) {
 
 function ReviewTab({ job, isAdmin, onUpdate }) {
   const [submitting, setSubmitting] = useState(false);
-  const checks = job.review_checklist || {};
+  const checks = (() => {
+    try {
+      const r = job.review_checklist;
+      if (!r) return {};
+      return typeof r === 'string' ? JSON.parse(r) : r;
+    } catch { return {}; }
+  })();
   const hasHS = !!(job.assessment_data && (() => {
     try { const d = typeof job.assessment_data === 'string' ? JSON.parse(job.assessment_data) : job.assessment_data;
       return (d.health_safety_conditions || []).length > 0; } catch { return false; }
@@ -108,7 +114,7 @@ function ReviewTab({ job, isAdmin, onUpdate }) {
   const toggle = async (key) => {
     if (!isAdmin) return;
     const updated = { ...checks, [key]: !checks[key] };
-    await onUpdate({ review_checklist: updated });
+    await onUpdate({ review_checklist: JSON.stringify(updated) });
   };
 
   const allChecked = ITEMS.every(i => checks[i.key]);
