@@ -268,6 +268,7 @@ DO $$ BEGIN
   ALTER TABLE program_jobs ADD COLUMN IF NOT EXISTS authorization_signed_by text;
   ALTER TABLE program_jobs ADD COLUMN IF NOT EXISTS hs_consent_signed_at text;
   ALTER TABLE program_jobs ADD COLUMN IF NOT EXISTS submitted_for_payment_at text;
+  ALTER TABLE program_jobs ADD COLUMN IF NOT EXISTS review_checklist text;
   ALTER TABLE program_jobs ADD COLUMN IF NOT EXISTS submitted_for_payment_by text;
   ALTER TABLE program_jobs ADD COLUMN IF NOT EXISTS rise_pid text;
   ALTER TABLE program_jobs ADD COLUMN IF NOT EXISTS service_titan_id text;

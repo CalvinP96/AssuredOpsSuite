@@ -90,46 +90,71 @@ function getPhaseStates(job) {
 
 function ReviewTab({ job, isAdmin, onUpdate }) {
   const [submitting, setSubmitting] = useState(false);
-  const assess = parseAssessment(job);
-  const hasHS = Array.isArray(assess.health_safety) && assess.health_safety.length > 0;
-  const photoCount = Object.keys(assess.photos || {}).length;
-  const scopeComplete = (job.scope_data?.measures?.length || 0) > 0;
-  const authOk = !!job.authorization_signed_at;
-  const hsOk = !hasHS || !!job.hs_consent_signed_at;
-  const ready = authOk && hsOk && scopeComplete;
+  const checks = job.review_checklist || {};
+  const hasHS = !!(job.assessment_data && (() => {
+    try { const d = typeof job.assessment_data === 'string' ? JSON.parse(job.assessment_data) : job.assessment_data;
+      return (d.health_safety_conditions || []).length > 0; } catch { return false; }
+  })());
+
+  const ITEMS = [
+    { key: 'auth_signed', label: 'Customer Authorization signed' },
+    ...(hasHS ? [{ key: 'hs_signed', label: 'H&S Consent & Release signed' }] : []),
+    { key: 'pre_photos', label: 'All required pre-photos uploaded' },
+    { key: 'scope_complete', label: 'Scope of Work complete and reviewed' },
+    { key: 'ms_form', label: 'MS Form / assessment data complete' },
+    { key: 'rise_id', label: 'RISE PID entered' },
+  ];
+
+  const toggle = async (key) => {
+    if (!isAdmin) return;
+    const updated = { ...checks, [key]: !checks[key] };
+    await onUpdate({ review_checklist: updated });
+  };
+
+  const allChecked = ITEMS.every(i => checks[i.key]);
 
   const handleSubmit = async () => {
     setSubmitting(true);
     try { await onUpdate({ status: 'in_review' }); } finally { setSubmitting(false); }
   };
 
-  const Row = ({ label, ok, text }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
-      borderBottom: '1px solid var(--color-border)' }}>
-      <span style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex',
-        alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0,
-        background: ok ? '#dcfce7' : '#fee2e2', color: ok ? '#166534' : '#991b1b' }}>
-        {ok ? '\u2713' : '\u2717'}
-      </span>
-      <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{label}</span>
-      <span style={{ fontSize: 12, color: ok ? 'var(--color-success)' : 'var(--color-text-muted)' }}>{text}</span>
-    </div>
-  );
-
   return (
     <div className="jd-card">
       <div className="jd-card-title">Submission Readiness</div>
-      <Row label="Customer Authorization" ok={authOk} text={authOk ? 'Signed' : 'Not signed'} />
-      <Row label="H&S Consent" ok={hsOk}
-        text={!hasHS ? 'N/A' : job.hs_consent_signed_at ? 'Signed' : 'Not signed'} />
-      <Row label="Pre-Photos" ok={photoCount >= REQUIRED_PHOTOS}
-        text={`${photoCount} / ${REQUIRED_PHOTOS} uploaded`} />
-      <Row label="Scope Complete" ok={scopeComplete} text={scopeComplete ? 'Yes' : 'No'} />
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+        Check each item once confirmed. All must be checked before submitting to RISE.
+      </p>
+      {ITEMS.map(item => (
+        <div key={item.key}
+          onClick={() => toggle(item.key)}
+          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0',
+            borderBottom: '1px solid var(--color-border)', cursor: isAdmin ? 'pointer' : 'default',
+            userSelect: 'none' }}>
+          <span style={{ width: 26, height: 26, borderRadius: 6, display: 'flex', flexShrink: 0,
+            alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700,
+            background: checks[item.key] ? '#dcfce7' : 'var(--color-surface-alt)',
+            border: `2px solid ${checks[item.key] ? '#16a34a' : 'var(--color-border)'}`,
+            color: checks[item.key] ? '#16a34a' : 'var(--color-text-muted)',
+            transition: 'all 0.15s' }}>
+            {checks[item.key] ? '✓' : ''}
+          </span>
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 500,
+            color: checks[item.key] ? 'var(--color-text)' : 'var(--color-text-muted)',
+            textDecoration: checks[item.key] ? 'none' : 'none' }}>
+            {item.label}
+          </span>
+          {checks[item.key] && (
+            <span style={{ fontSize: 11, color: 'var(--color-success)', fontWeight: 600 }}>✓ Confirmed</span>
+          )}
+        </div>
+      ))}
 
       <div style={{ marginTop: 16, padding: '12px 16px', borderRadius: 'var(--radius)',
-        background: ready ? '#dcfce7' : '#fee2e2', border: `1px solid ${ready ? '#86efac' : '#fca5a5'}`,
-        color: ready ? '#166534' : '#991b1b', fontSize: 14, fontWeight: 700, textAlign: 'center' }}>
-        {ready ? 'Ready to Submit' : 'Not Ready \u2014 complete required items above'}
+        background: allChecked ? '#dcfce7' : '#f8fafc',
+        border: `1px solid ${allChecked ? '#86efac' : 'var(--color-border)'}`,
+        color: allChecked ? '#166534' : 'var(--color-text-muted)',
+        fontSize: 14, fontWeight: 700, textAlign: 'center' }}>
+        {allChecked ? '✅ All items confirmed — ready to submit' : `${ITEMS.filter(i => checks[i.key]).length} / ${ITEMS.length} confirmed`}
       </div>
 
       {isAdmin && (
