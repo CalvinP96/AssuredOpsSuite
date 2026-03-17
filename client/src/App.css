@@ -755,13 +755,11 @@ tr:hover { background: var(--color-surface-alt); }
   flex-shrink: 0;
 }
 .jd-phase-pill.done { background: var(--color-success); color: #fff; }
-.jd-phase-pill.current {
-  background: var(--color-primary);
-  color: #fff;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+.jd-phase-pill.active {
+  background: #1e293b;
+  color: #94a3b8;
 }
-.jd-phase-pill.future { background: #1e293b; color: #64748b; cursor: default; }
-.jd-phase-pill:not(.future):hover { opacity: 0.85; }
+.jd-phase-pill:hover { opacity: 0.85; }
 .jd-phase-icon { font-size: 15px; line-height: 1; }
 .jd-phase-label { font-size: 13px; }
 

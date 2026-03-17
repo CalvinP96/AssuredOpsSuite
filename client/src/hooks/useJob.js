@@ -40,21 +40,16 @@ export function useJob(jobId) {
   }, [poll]);
 
   const update = useCallback(async (fields) => {
-    try {
-      // If fields is empty or just a reload signal, do a silent reload
-      const keys = Object.keys(fields || {});
-      if (keys.length === 0 || (keys.length === 1 && keys[0] === '_reload')) {
-        await poll();
-        return;
-      }
-      await api.updateJob(jobId, fields);
-      // Silent reload — doesn't set loading so UI stays intact
+    // If fields is empty or just a reload signal, do a silent reload
+    const keys = Object.keys(fields || {});
+    if (keys.length === 0 || (keys.length === 1 && keys[0] === '_reload')) {
       await poll();
-    } catch (err) {
-      setError(err.message);
-      throw err;
+      return;
     }
-  }, [jobId, poll]);
+    await api.updateJob(jobId, fields);
+    // Don't poll after save — local state is already up to date.
+    // The 15s interval poll will sync eventually.
+  }, [jobId]);
 
   const updateNestedData = useCallback(async (key, data) => {
     return update({ [key]: data });

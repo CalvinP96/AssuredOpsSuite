@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useJob } from '../hooks/useJob';
-import { JOB_PHASES, getPhaseForStatus } from '../constants';
+import { JOB_PHASES } from '../constants';
 import { StatusBadge } from '../components/ui';
 import * as api from '../api';
 import JobInfo from './job/JobInfo';
@@ -39,20 +39,53 @@ const PHASE_TAB_MAP = {
 
 const REQUIRED_PHOTOS = 6;
 
-function getPhaseStates(job) {
-  const currentPhase = getPhaseForStatus(job.status);
-  const currentIdx = JOB_PHASES.indexOf(currentPhase);
-  return JOB_PHASES.map((phase, i) => ({
-    ...phase,
-    state: i < currentIdx ? 'done' : i === currentIdx ? 'current' : 'future',
-  }));
+function parseJSON(raw) {
+  try { return typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {}); } catch { return {}; }
 }
 
 function parseAssessment(job) {
-  try {
-    const raw = job.assessment_data;
-    return typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {});
-  } catch { return {}; }
+  return parseJSON(job.assessment_data);
+}
+
+/**
+ * Each phase independently checks its own data to determine done/not-done.
+ * Phases happen in parallel — no sequential gating except Closeout (needs all others).
+ * Pre-Approved is external (program approval).
+ */
+function getPhaseStates(job) {
+  const assess = parseJSON(job.assessment_data);
+  const scope = parseJSON(job.scope_data);
+  const install = parseJSON(job.install_data);
+  const inspection = parseJSON(job.inspection_data);
+
+  const intakeDone = !!(job.customer_name && job.address && job.city && job.zip);
+  const scheduleDone = !!(job.assessment_date && job.assessor_name);
+  const assessDone = !!(job.authorization_signed_at && assess.tenant_type);
+  const scopeDone = (scope.measures?.length || 0) > 0;
+  const reviewDone = !!(scopeDone && assessDone && job.authorization_signed_at);
+  const preApprovedDone = ['approved', 'install_scheduled', 'install_in_progress', 'inspection', 'submitted', 'invoiced', 'complete'].includes(job.status);
+  const installDone = !!(install.install_date && install.crew_lead && install.post_blower_door && install.post_sow_signed);
+  const inspectionDone = !!(inspection.date && inspection.inspector && inspection.inspector_sig);
+  const closeoutDone = ['submitted', 'invoiced', 'complete'].includes(job.status);
+  const completeDone = job.status === 'complete';
+
+  const checks = {
+    intake: intakeDone,
+    schedule: scheduleDone,
+    assess: assessDone,
+    scope: scopeDone,
+    in_review: reviewDone,
+    pre_approved: preApprovedDone,
+    install: installDone,
+    post_qc: inspectionDone,
+    closeout: closeoutDone,
+    complete: completeDone,
+  };
+
+  return JOB_PHASES.map(phase => ({
+    ...phase,
+    state: checks[phase.key] ? 'done' : 'active',
+  }));
 }
 
 function ReviewTab({ job, isAdmin, onUpdate }) {
@@ -239,8 +272,8 @@ export default function JobDetail({ role, user }) {
       <div className="jd-phase-bar">
         {phases.map(phase => (
           <button key={phase.key} className={`jd-phase-pill ${phase.state}`}
-            onClick={() => { if (phase.state !== 'future') setTab(PHASE_TAB_MAP[phase.key] || 'info'); }}>
-            <span className="jd-phase-icon">{phase.icon}</span>
+            onClick={() => setTab(PHASE_TAB_MAP[phase.key] || 'info')}>
+            <span className="jd-phase-icon">{phase.state === 'done' ? '\u2713' : phase.icon}</span>
             <span className="jd-phase-label">{phase.label}</span>
           </button>
         ))}

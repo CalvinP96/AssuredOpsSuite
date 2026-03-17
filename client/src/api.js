@@ -605,14 +605,11 @@ export async function updateJob(jobId, data) {
     filtered[k] = (JSON_COLS.has(k) && typeof v === 'object') ? JSON.stringify(v) : v;
   }
   if (Object.keys(filtered).length === 0) return;
-  const { data: updated, error } = await supabase
+  const { error } = await supabase
     .from('program_jobs')
     .update({ ...filtered, updated_at: new Date().toISOString() })
-    .eq('id', jobId)
-    .select()
-    .single();
+    .eq('id', jobId);
   if (error) throw error;
-  return updated;
 }
 
 export async function deleteJob(jobId) {
