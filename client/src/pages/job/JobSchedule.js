@@ -34,11 +34,23 @@ export default function JobSchedule({ job, canEdit, onUpdate }) {
 
   const saveTimer = useRef(null);
   const mounted = useRef(false);
+  const prevForm = useRef(form);
 
   useEffect(() => {
-    if (!mounted.current) { mounted.current = true; return; }
+    if (!mounted.current) { mounted.current = true; prevForm.current = form; return; }
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => onUpdate(form), 800);
+    saveTimer.current = setTimeout(() => {
+      const updates = { ...form };
+      // Sync assessment_date / assessor_name into assessment_data so Assess tab stays in sync
+      const prev = prevForm.current;
+      if (form.assessment_date !== prev.assessment_date || form.assessor_name !== prev.assessor_name) {
+        let existing = {};
+        try { const raw = job.assessment_data; existing = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {}); } catch {}
+        updates.assessment_data = { ...existing, assessment_date: form.assessment_date, assessor_name: form.assessor_name };
+      }
+      prevForm.current = form;
+      onUpdate(updates);
+    }, 800);
     return () => clearTimeout(saveTimer.current);
   }, [form]); // eslint-disable-line
 

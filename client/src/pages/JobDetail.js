@@ -278,6 +278,19 @@ export default function JobDetail({ role, user }) {
 
   const handleUpdate = async (fields) => {
     try {
+      // Auto-revert: if assessment_date moves to the future while status is assessment_complete,
+      // bump back to assessment_scheduled so the job doesn't sit in the wrong bucket.
+      if (!fields.status) {
+        const newDate = fields.assessment_date
+          ?? (fields.assessment_data?.assessment_date)
+          ?? null;
+        if (newDate && job.status === 'assessment_complete') {
+          const today = new Date().toISOString().slice(0, 10);
+          if (newDate > today) {
+            fields = { ...fields, status: 'assessment_scheduled' };
+          }
+        }
+      }
       await update(fields);
       setToast('Saved');
       setTimeout(() => setToast(null), 2000);
