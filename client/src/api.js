@@ -593,6 +593,10 @@ const JOB_COLUMNS = new Set([
   'inspection_date', 'needs_permit', 'permit_status', 'permit_applied_date',
   'permit_received_date', 'permit_number', 'permit_jurisdiction', 'permit_notes',
   'notes',
+  'submitted_for_payment_at', 'submitted_for_payment_by',
+  'rise_pid', 'service_titan_id',
+  'pre_sow_signed_at', 'post_sow_signed_at', 'inspection_signed_at',
+  'hs_consent_signed_at', 'hs_consent_homeowner_name', 'hs_consent_description',
 ]);
 
 export async function updateJob(jobId, data) {
