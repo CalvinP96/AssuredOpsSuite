@@ -105,7 +105,6 @@ export default function JobExport({ job, canEdit, isAdmin, onUpdate, user }) {
   };
 
   const handleMarkSubmitted = async () => {
-    if (!window.confirm('Mark this job as submitted for payment? This will record today as the submission date.')) return;
     await onUpdate({
       status: 'submitted',
       submitted_for_payment_at: new Date().toISOString(),
@@ -164,37 +163,64 @@ export default function JobExport({ job, canEdit, isAdmin, onUpdate, user }) {
         </div>
       </div>
 
-      {/* SUBMISSION STATUS */}
-      <div className="jd-card" style={job.submitted_for_payment_at ? { borderLeft: '4px solid var(--color-success)' } : {}}>
-        <div className="jd-card-title">Submission Status</div>
+      {/* PAYMENT SUBMISSION — standalone card */}
+      <div className="jd-card" style={job.submitted_for_payment_at ? { borderLeft: '4px solid var(--color-success)' } : { borderLeft: '4px solid var(--color-border)' }}>
+        <div className="jd-card-title">Payment Submission</div>
+
         {job.submitted_for_payment_at ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 20 }}>✅</span>
               <span style={{ fontWeight: 700, color: 'var(--color-success)', fontSize: 15 }}>Submitted for Payment</span>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-              Submitted on {new Date(job.submitted_for_payment_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              {job.submitted_for_payment_by ? ` by ${job.submitted_for_payment_by}` : ''}
-            </div>
+            {isAdmin && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div>
+                  <label className="form-label">Submission Date</label>
+                  <input
+                    type="date"
+                    defaultValue={job.submitted_for_payment_at?.split('T')[0]}
+                    onBlur={e => onUpdate({ submitted_for_payment_at: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                    style={{ width: 160 }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 18 }}>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                    By {job.submitted_for_payment_by || '—'}
+                  </span>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+                    onClick={() => {
+                      if (window.confirm('Clear submission status? This will remove the submitted date and revert status.')) {
+                        onUpdate({ submitted_for_payment_at: null, submitted_for_payment_by: null, status: 'invoiced' });
+                      }
+                    }}
+                  >
+                    Clear Submission
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span className={`status-badge status-badge--${job.status}`}>
-              {job.status?.replace(/_/g, ' ') || 'Unknown'}
-            </span>
-            {isAdmin && (
-              <button
-                className="btn btn-success"
-                style={{ background: 'var(--color-success)', color: '#fff', border: 'none' }}
-                disabled={!allComplete}
-                onClick={handleMarkSubmitted}
-                title={!allComplete ? 'Complete all checklist items first' : ''}
-              >
-                Submit for Payment
-              </button>
-            )}
-            {!allComplete && <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Complete checklist to enable</span>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
+              Mark this job as submitted for payment to RISE. This records the submission date and highlights the job in green.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              {isAdmin ? (
+                <button
+                  className="btn btn-primary"
+                  style={{ background: 'var(--color-success)', borderColor: 'var(--color-success)' }}
+                  onClick={handleMarkSubmitted}
+                >
+                  ✓ Submit for Payment
+                </button>
+              ) : (
+                <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Admin only</span>
+              )}
+            </div>
           </div>
         )}
       </div>
