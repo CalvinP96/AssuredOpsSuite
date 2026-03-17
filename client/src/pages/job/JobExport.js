@@ -170,16 +170,17 @@ export default function JobExport({ job, canEdit, isAdmin, onUpdate, user }) {
           {job.submitted_for_payment_at ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <span style={{ color: 'var(--color-success)', fontWeight: 600, fontSize: 13 }}>✅ Submitted for payment</span>
-              <div style={{ display: 'flex', align: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <input
+                  key={job.submitted_for_payment_at}
                   type="date"
                   defaultValue={job.submitted_for_payment_at?.split('T')[0]}
-                  onBlur={e => e.target.value && onUpdate({ submitted_for_payment_at: new Date(e.target.value).toISOString() })}
+                  onBlur={e => e.target.value && onUpdate({ submitted_for_payment_at: new Date(e.target.value + 'T12:00:00').toISOString() })}
                   style={{ width: 150, fontSize: 13 }}
                 />
                 <button className="btn btn-secondary btn-sm"
                   style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
-                  onClick={() => onUpdate({ submitted_for_payment_at: null, submitted_for_payment_by: null, status: 'invoiced' })}>
+                  onClick={() => onUpdate({ submitted_for_payment_at: '', submitted_for_payment_by: '', status: 'invoiced' })}>
                   Clear
                 </button>
               </div>
