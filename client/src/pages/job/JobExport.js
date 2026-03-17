@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { generatePreWorkSOW, generatePostWorkSOW, printSOW } from '../../utils';
 
 function getScope(job) {
@@ -79,16 +79,8 @@ export default function JobExport({ job, canEdit, isAdmin, onUpdate, user }) {
 
   const allComplete = checklist.every(c => c.done);
 
-  const handlePrintPreSOW = () => {
-    const html = generatePreWorkSOW(job, measures);
-    printSOW(html);
-  };
-
-  const handlePrintPostSOW = () => {
-    const changeOrders = job.change_orders || [];
-    const html = generatePostWorkSOW(job, measures, changeOrders);
-    printSOW(html);
-  };
+  const handlePrintPreSOW = () => printSOW(generatePreWorkSOW(job, measures));
+  const handlePrintPostSOW = () => printSOW(generatePostWorkSOW(job, measures, job.change_orders || []));
 
   const handlePhotoReport = () => {
     const all = [...prePhotos, ...postPhotos];
@@ -98,18 +90,32 @@ export default function JobExport({ job, canEdit, isAdmin, onUpdate, user }) {
     ).join('');
     const html = `<!DOCTYPE html><html><head><title>Photo Report</title>
 <style>body{font-family:sans-serif;padding:24px;max-width:900px;margin:0 auto}table{width:100%;border-collapse:collapse}th,td{padding:8px 12px;border:1px solid #ddd;text-align:left}th{background:#f1f5f9}</style>
-</head><body><h1>Photo Report &mdash; ${job.customer_name || ''}</h1><p>${job.address || ''}</p>
+</head><body><h1>Photo Report — ${job.customer_name || ''}</h1><p>${job.address || ''}</p>
 <table><thead><tr><th>Description</th><th>Timing</th><th>Photo</th></tr></thead><tbody>${rows || '<tr><td colspan="3">No photos</td></tr>'}</tbody></table></body></html>`;
     const win = window.open('', '_blank');
     if (win) { win.document.write(html); win.document.close(); }
   };
 
-  const handleMarkSubmitted = async () => {
-    await onUpdate({
-      status: 'submitted',
-      submitted_for_payment_at: new Date().toISOString(),
-      submitted_for_payment_by: user?.full_name || user?.email || 'Admin',
-    });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmitForPayment = async () => {
+    setSubmitting(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await onUpdate({
+        submission_date: today,
+        status: 'submitted',
+        submitted_for_payment_by: user?.full_name || user?.email || 'Admin',
+      });
+    } finally { setSubmitting(false); }
+  };
+
+  const handleDateChange = async (e) => {
+    await onUpdate({ submission_date: e.target.value });
+  };
+
+  const handleClearSubmission = async () => {
+    await onUpdate({ submission_date: '', submitted_for_payment_by: '', status: 'inspection' });
   };
 
   return (
@@ -129,12 +135,10 @@ export default function JobExport({ job, canEdit, isAdmin, onUpdate, user }) {
               color: item.done ? '#166534' : '#991b1b',
               flexShrink: 0,
             }}>
-              {item.done ? '\u2713' : '\u2717'}
+              {item.done ? '✓' : '✗'}
             </span>
             <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{item.label}</span>
-            <span style={{
-              fontSize: 12, color: item.done ? 'var(--color-success)' : 'var(--color-text-muted)',
-            }}>
+            <span style={{ fontSize: 12, color: item.done ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
               {item.status}
             </span>
           </div>
@@ -148,50 +152,34 @@ export default function JobExport({ job, canEdit, isAdmin, onUpdate, user }) {
       <div className="jd-card">
         <div className="jd-card-title">Export Actions</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
-          <button className="btn btn-primary" disabled={!allComplete} onClick={handlePrintPreSOW}>
-            Print Pre-Work SOW
-          </button>
-          <button className="btn btn-primary" disabled={!allComplete} onClick={handlePrintPostSOW}>
-            Print Post-Work SOW
-          </button>
-          <button className="btn btn-secondary" disabled={!allComplete} onClick={handlePhotoReport}>
-            Export Photo Report
-          </button>
-          <button className="btn btn-secondary" disabled title="Coming soon">
-            Download All Forms (ZIP)
-          </button>
+          <button className="btn btn-primary" onClick={handlePrintPreSOW}>Print Pre-Work SOW</button>
+          <button className="btn btn-primary" onClick={handlePrintPostSOW}>Print Post-Work SOW</button>
+          <button className="btn btn-secondary" onClick={handlePhotoReport}>Export Photo Report</button>
+          <button className="btn btn-secondary" disabled title="Coming soon">Download All Forms (ZIP)</button>
         </div>
       </div>
 
-      {/* EXPORT ACTIONS bottom row — Submit for Payment */}
-      {isAdmin && (
-        <div className="jd-card">
-          <div className="jd-card-title">Closeout</div>
-          {job.submitted_for_payment_at ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <span style={{ color: 'var(--color-success)', fontWeight: 600, fontSize: 13 }}>✅ Submitted for payment</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input
-                  key={job.submitted_for_payment_at}
-                  type="date"
-                  defaultValue={job.submitted_for_payment_at?.split('T')[0]}
-                  onBlur={e => e.target.value && onUpdate({ submitted_for_payment_at: new Date(e.target.value + 'T12:00:00').toISOString() })}
-                  style={{ width: 150, fontSize: 13 }}
-                />
-                <button className="btn btn-secondary btn-sm"
-                  style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
-                  onClick={() => onUpdate({ submitted_for_payment_at: '', submitted_for_payment_by: '', status: 'invoiced' })}>
-                  Clear
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button className="btn btn-primary" onClick={handleMarkSubmitted}>
-              ✓ Submit for Payment
+      {/* SUBMIT FOR PAYMENT */}
+      <div className="jd-card">
+        <div className="jd-card-title">Submit for Payment</div>
+        {!job.submission_date ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button className="btn btn-primary" style={{ background: 'var(--color-success)', border: 'none' }}
+              disabled={submitting} onClick={handleSubmitForPayment}>
+              {submitting ? 'Submitting...' : '✓ Submit for Payment'}
             </button>
-          )}
-        </div>
-      )}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-success)' }}>✅ Submitted</span>
+            <input type="date" value={job.submission_date || ''} onChange={handleDateChange}
+              style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 13 }} />
+            <button className="btn btn-secondary btn-sm"
+              style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+              onClick={handleClearSubmission}>Clear</button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
