@@ -7,9 +7,19 @@ const HVAC_SECTIONS = filterSections('hvac', 'repl');
 const FUEL_TYPES = ['Natural Gas', 'Propane', 'Oil', 'Electric'];
 const CONDITION_OPTS = ['Good', 'Fair', 'Poor', 'Needs Replacement'];
 const VENT_TYPES = ['Natural Draft', 'Direct Vent', 'Power Vent', 'Sealed Combustion'];
-const EQUIP_TYPES = ['Furnace', 'AC', 'Water Heater', 'Heat Pump'];
+const EQUIP_TYPES = ['Gas Furnace', 'Gas Boiler', 'Central AC', 'Water Heater', 'Room AC', 'Heat Pump'];
 const PRIORITY_OPTS = ['Immediate', 'Standard'];
 const REPLACE_STATUSES = ['Pending', 'Submitted to RI', 'Approved by RI', 'Denied'];
+
+// Program minimum efficiency standards (HES Retrofits Ops Manual 2026)
+const MIN_EFFICIENCY = {
+  'Gas Furnace':  { label: 'Min. AFUE', value: '≥ 95% AFUE' },
+  'Gas Boiler':   { label: 'Min. AFUE', value: '≥ 95% AFUE' },
+  'Central AC':   { label: 'Min. SEER2', value: '≥ 15.2 SEER2 (16 SEER equivalent)' },
+  'Water Heater': { label: 'Min. EF', value: '≥ 0.67 EF (gas) · Energy Star (electric/HPWH)' },
+  'Room AC':      { label: 'Requirement', value: 'Energy Star rated' },
+  'Heat Pump':    { label: 'Requirement', value: 'See program guidelines' },
+};
 
 function Field({ label, value, onChange, disabled, type, children }) {
   return (
@@ -173,11 +183,43 @@ export default function JobHVAC({ job, canEdit, isAdmin, onUpdate, user }) {
               <Select label="Priority" value={rp.priority} onChange={v => set('replacement', 'priority', v)} disabled={dis} options={PRIORITY_OPTS} />
               <Select label="Status" value={rp.status} onChange={v => set('replacement', 'status', v)} disabled={!isAdmin} options={REPLACE_STATUSES} />
             </div>
-            <div className="jd-field" style={{ marginTop: 12 }}>
-              <label className="jd-field-label">Justification</label>
+
+            {/* Program minimum efficiency reminder */}
+            {rp.equip_type && MIN_EFFICIENCY[rp.equip_type] && (
+              <div style={{ margin: '12px 0', padding: '10px 14px', background: '#eff6ff',
+                border: '1px solid #bfdbfe', borderRadius: 'var(--radius)',
+                display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 18 }}>📋</span>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Program Minimum — {MIN_EFFICIENCY[rp.equip_type].label}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1e40af' }}>
+                    {MIN_EFFICIENCY[rp.equip_type].value}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* What to replace with */}
+            <div className="jd-field-grid" style={{ marginTop: 4 }}>
+              <Field label="Recommended Make / Brand" value={rp.rec_make}
+                onChange={v => set('replacement', 'rec_make', v)} disabled={dis} />
+              <Field label="Recommended Model" value={rp.rec_model}
+                onChange={v => set('replacement', 'rec_model', v)} disabled={dis} />
+              <Field label="Recommended Efficiency (AFUE/SEER/EF)" value={rp.rec_efficiency}
+                onChange={v => set('replacement', 'rec_efficiency', v)} disabled={dis}
+                placeholder={rp.equip_type ? MIN_EFFICIENCY[rp.equip_type]?.value : 'e.g. 96% AFUE'} />
+              <Field label="Recommended Size / Capacity" value={rp.rec_size}
+                onChange={v => set('replacement', 'rec_size', v)} disabled={dis}
+                placeholder="e.g. 80,000 BTU / 3 Ton" />
+            </div>
+
+            <div className="jd-field" style={{ marginTop: 4 }}>
+              <label className="jd-field-label">Justification / Notes</label>
               <textarea value={rp.justification || ''} disabled={dis}
                 onChange={e => set('replacement', 'justification', e.target.value)} rows={3}
-                placeholder="Why is replacement needed..." />
+                placeholder="Why is replacement needed, decision tree result..." />
             </div>
             {canEdit && rp.status !== 'Submitted to RI' && (
               <button className="btn btn-primary btn-sm" style={{ marginTop: 10 }}
