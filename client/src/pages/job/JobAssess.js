@@ -60,7 +60,11 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
   const doSave = useCallback(async (f) => {
     let existing = {};
     try { const raw = job.assessment_data; existing = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {}); } catch {}
-    await onUpdate({ assessment_data: { ...existing, ...f } });
+    const updates = { assessment_data: { ...existing, ...f } };
+    // Keep top-level schedule fields in sync
+    if ('assessment_date' in f) updates.assessment_date = f.assessment_date;
+    if ('assessor_name' in f) updates.assessor_name = f.assessor_name;
+    await onUpdate(updates);
   }, [job.assessment_data, onUpdate]);
 
   const set = (field, value) => {
