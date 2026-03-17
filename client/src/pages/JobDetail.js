@@ -61,8 +61,8 @@ function getPhaseStates(job) {
   const intakeDone = !!(job.customer_name && job.address && job.city && job.zip);
   const scheduleDone = !!(job.assessment_date && job.assessor_name);
   const assessDone = !!(job.authorization_signed_at && assess.tenant_type);
-  const scopeDone = (scope.measures?.length || 0) > 0 && !!(scope.building?.bd_in);
-  const reviewDone = job.status === 'in_review' || ['approved', 'install_scheduled', 'install_in_progress', 'inspection', 'submitted', 'invoiced', 'complete'].includes(job.status);
+  const scopeDone = (scope.measures?.length || 0) > 0;
+  const reviewDone = !!(scopeDone && assessDone && job.authorization_signed_at);
   const preApprovedDone = ['approved', 'install_scheduled', 'install_in_progress', 'inspection', 'submitted', 'invoiced', 'complete'].includes(job.status);
   const installDone = !!(install.install_date && install.crew_lead && install.post_blower_door && install.post_sow_signed);
   const inspectionDone = !!(inspection.date && inspection.inspector && inspection.inspector_sig);
