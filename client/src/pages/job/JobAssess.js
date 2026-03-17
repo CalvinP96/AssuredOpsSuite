@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import CustomerAuthForm from '../CustomerAuthForm';
 import HSConsentForm from '../HSConsentForm';
 import { filterSections } from './photoSectionsData';
@@ -48,7 +48,6 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
   const [form, setForm] = useState({ ...DEFAULTS, assessor_name: user?.full_name || '' });
   const [showAuthInline, setShowAuthInline] = useState(false);
   const [showHSInline, setShowHSInline] = useState(false);
-  const saveTimer = useRef(null);
 
   useEffect(() => {
     try {
@@ -67,8 +66,7 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
   const set = (field, value) => {
     setForm(prev => {
       const next = { ...prev, [field]: value };
-      clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => doSave(next), 800);
+      doSave(next);
       return next;
     });
   };
@@ -76,12 +74,10 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
     setForm(prev => {
       const arr = Array.isArray(prev[field]) ? prev[field] : [];
       const next = { ...prev, [field]: arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value] };
-      clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => doSave(next), 800);
+      doSave(next);
       return next;
     });
   };
-  useEffect(() => () => clearTimeout(saveTimer.current), []);
 
   const PillRadio = ({ field, options }) => (
     <div style={{ display: 'inline-flex', flexWrap: 'wrap' }}>
@@ -110,8 +106,8 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
     <div className="jd-field"><label className="jd-field-label">{label}</label>{children}</div>
   );
   const Inp = ({ field, type = 'text', ...rest }) => (
-    <input type={type} value={form[field]} disabled={!canEdit}
-      onChange={e => set(field, e.target.value)} {...rest} />
+    <input type={type} defaultValue={form[field]} disabled={!canEdit}
+      onBlur={e => set(field, e.target.value)} {...rest} />
   );
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -235,8 +231,8 @@ export default function JobAssess({ job, canEdit, onUpdate, user }) {
           )}
         </div>
         <F label="Additional Notes">
-          <textarea value={form.additional_notes} disabled={!canEdit} rows={3}
-            onChange={e => set('additional_notes', e.target.value)} />
+          <textarea defaultValue={form.additional_notes} disabled={!canEdit} rows={3}
+            onBlur={e => set('additional_notes', e.target.value)} />
         </F>
       </div>
 

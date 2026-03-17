@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import ScopeMeasureBuilder from '../ScopeMeasureBuilder';
 import ScopeASHRAECalc from '../ScopeASHRAECalc';
 import { generatePreWorkSOW, printSOW } from '../../utils';
@@ -52,7 +52,7 @@ const Chk = ({ l, c, set, dis }) => (
 );
 const Notes = ({ value, onChange, dis, placeholder }) => (
   <textarea style={{ width: '100%', marginTop: 10, minHeight: 50, padding: '8px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', fontSize: 13, resize: 'vertical', background: 'var(--color-surface)', color: 'var(--color-text)' }}
-    value={value || ''} onChange={e => onChange(e.target.value)} disabled={dis} rows={2} placeholder={placeholder || 'Notes...'} />
+    defaultValue={value || ''} onBlur={e => onChange(e.target.value)} disabled={dis} rows={2} placeholder={placeholder || 'Notes...'} />
 );
 const InsulRec = ({ label, preR, addR, target }) => {
   const pre = Number(preR) || 0;
@@ -119,25 +119,18 @@ export default function JobScope({ job, canEdit, onUpdate, user }) {
   const [scopeData, setScopeData] = useState(job.scope_data || {});
   const [activeSection, setActiveSection] = useState(null);
   const scrollRef = useRef(null);
-  const saveTimer = useRef(null);
-  const latestData = useRef(scopeData);
 
-  // Debounced save: update local state immediately, persist after 800ms idle
   const save = useCallback((d) => {
     setScopeData(d);
-    latestData.current = d;
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => onUpdate({ scope_data: latestData.current }), 800);
+    onUpdate({ scope_data: d });
   }, [onUpdate]);
-
-  useEffect(() => () => clearTimeout(saveTimer.current), []);
 
   const bd = scopeData.building || {};
   const setBd = (k, val) => save({ ...scopeData, building: { ...bd, [k]: val } });
   const measures = scopeData.measures || [];
   const dis = !canEdit;
   const v = k => bd[k] ?? '';
-  const inp = (k, type) => <input type={type || 'text'} value={v(k)} disabled={dis} onChange={e => setBd(k, e.target.value)} />;
+  const inp = (k, type) => <input type={type || 'text'} defaultValue={v(k)} disabled={dis} onBlur={e => setBd(k, e.target.value)} style={{ width: '100%' }} />;
 
   /* ── Auto-calculations ── */
   const num = k => Number(bd[k]) || 0;
