@@ -88,15 +88,30 @@ export default function JobInfo({ job, canEdit, isAdmin, onUpdate, onDelete }) {
             <input value={form.st_id} disabled={!canEdit}
               onChange={e => set('st_id', e.target.value)} />
           </div>
-          <div className="jd-field">
-            <label className="jd-field-label">Utility</label>
-            <select value={form.utility} disabled={!canEdit}
-              onChange={e => set('utility', e.target.value)}>
-              <option value="">Select utility...</option>
-              {UTILITIES.map(u => (
-                <option key={u} value={u}>{u}</option>
-              ))}
-            </select>
+          <div className="jd-field" style={{ gridColumn: '1 / -1' }}>
+            <label className="jd-field-label">Utilities (select all that apply)</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+              {UTILITIES.map(u => {
+                const selected = (form.utility || '').split(',').map(s => s.trim()).filter(Boolean).includes(u);
+                return (
+                  <button key={u} type="button" disabled={!canEdit}
+                    onClick={() => {
+                      const current = (form.utility || '').split(',').map(s => s.trim()).filter(Boolean);
+                      const next = selected ? current.filter(x => x !== u) : [...current, u];
+                      set('utility', next.join(', '));
+                    }}
+                    style={{
+                      padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600,
+                      cursor: canEdit ? 'pointer' : 'default',
+                      border: `1.5px solid ${selected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      background: selected ? 'var(--color-primary)' : 'var(--color-surface)',
+                      color: selected ? '#fff' : 'var(--color-text)',
+                    }}>
+                    {u}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
