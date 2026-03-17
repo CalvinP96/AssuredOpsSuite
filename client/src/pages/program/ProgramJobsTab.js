@@ -161,10 +161,11 @@ export default function ProgramJobsTab({ jobs, canEdit, onRefresh, onNewJob }) {
                 const phaseClr = phase ? getStatusColor(phase.key) : { bg: '#f1f5f9', color: '#475569' };
 
                 return (
-                  <div key={job.id} className="card" style={{
+                  <Link key={job.id} to={`/job/${job.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+                  <div className="card" style={{
                     marginBottom: 8, padding: '14px 18px',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    gap: 16, flexWrap: 'wrap',
+                    gap: 16, flexWrap: 'wrap', cursor: 'pointer',
                   }}>
                     {/* Left: Name, job#, address */}
                     <div style={{ minWidth: 0, flex: '1 1 280px' }}>
@@ -215,6 +216,7 @@ export default function ProgramJobsTab({ jobs, canEdit, onRefresh, onNewJob }) {
                       </Link>
                     </div>
                   </div>
+                  </Link>
                 );
               })}
             </div>
