@@ -166,6 +166,7 @@ export default function ProgramJobsTab({ jobs, canEdit, onRefresh, onNewJob }) {
                     marginBottom: 8, padding: '14px 18px',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     gap: 16, flexWrap: 'wrap', cursor: 'pointer',
+                    ...(job.submitted_for_payment_at ? { borderLeft: '4px solid #16a34a', background: '#f0fdf4' } : {}),
                   }}>
                     {/* Left: Name, job#, address */}
                     <div style={{ minWidth: 0, flex: '1 1 280px' }}>
