@@ -133,12 +133,58 @@ function ReviewTab({ job, isAdmin, onUpdate }) {
       </div>
 
       {isAdmin && (
-        <button className="btn btn-primary" disabled={!ready || submitting}
-          onClick={handleSubmit}
-          style={{ width: '100%', marginTop: 12, padding: '12px 24px', fontSize: 15, fontWeight: 700,
-            opacity: !ready || submitting ? 0.6 : 1 }}>
-          {submitting ? 'Submitting\u2026' : 'Submit to RISE'}
-        </button>
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Submit to RISE — moves to In Review */}
+          {job.status !== 'in_review' && job.status !== 'approved' && (
+            <button className="btn btn-primary" disabled={!ready || submitting}
+              onClick={handleSubmit}
+              style={{ width: '100%', padding: '12px 24px', fontSize: 15, fontWeight: 700,
+                opacity: !ready || submitting ? 0.6 : 1 }}>
+              {submitting ? 'Submitting…' : '📤 Submit to RISE'}
+            </button>
+          )}
+
+          {/* In Review status banner */}
+          {job.status === 'in_review' && (
+            <div style={{ padding: '12px 16px', background: '#fef3c7', border: '1px solid #fcd34d',
+              borderRadius: 'var(--radius)', fontSize: 14, fontWeight: 600, color: '#92400e', textAlign: 'center' }}>
+              🔄 In Review — waiting on RI approval
+            </div>
+          )}
+
+          {/* Pre-Approved — set when RI approves */}
+          {(job.status === 'in_review' || job.status === 'pre_approval') && (
+            <button className="btn btn-primary"
+              style={{ width: '100%', padding: '12px 24px', fontSize: 15, fontWeight: 700,
+                background: 'var(--color-success)', border: 'none' }}
+              disabled={submitting}
+              onClick={async () => {
+                setSubmitting(true);
+                try { await onUpdate({ status: 'approved' }); } finally { setSubmitting(false); }
+              }}>
+              ✅ Mark Pre-Approved (RI Approved)
+            </button>
+          )}
+
+          {/* Already Pre-Approved */}
+          {job.status === 'approved' && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ flex: 1, padding: '12px 16px', background: '#dcfce7', border: '1px solid #86efac',
+                borderRadius: 'var(--radius)', fontSize: 14, fontWeight: 700, color: '#166534', textAlign: 'center' }}>
+                ✅ Pre-Approved — ready to schedule install
+              </div>
+              <button className="btn btn-secondary btn-sm"
+                style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', whiteSpace: 'nowrap' }}
+                disabled={submitting}
+                onClick={async () => {
+                  setSubmitting(true);
+                  try { await onUpdate({ status: 'in_review' }); } finally { setSubmitting(false); }
+                }}>
+                Revert to In Review
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
