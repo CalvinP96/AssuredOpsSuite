@@ -39,6 +39,13 @@ const PHASE_TAB_MAP = {
 
 const REQUIRED_PHOTOS = 6;
 
+// Status ordering for forward-only progression
+const STATUS_ORDER = [
+  'assessment_scheduled', 'assessment_complete', 'pre_approval',
+  'in_review', 'approved', 'install_scheduled', 'install_in_progress',
+  'inspection', 'submitted', 'invoiced', 'complete',
+];
+
 function getPhaseStates(job) {
   const currentPhase = getPhaseForStatus(job.status);
   const currentIdx = JOB_PHASES.indexOf(currentPhase);
@@ -48,11 +55,50 @@ function getPhaseStates(job) {
   }));
 }
 
+function parseJSON(raw) {
+  try { return typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {}); } catch { return {}; }
+}
+
 function parseAssessment(job) {
-  try {
-    const raw = job.assessment_data;
-    return typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {});
-  } catch { return {}; }
+  return parseJSON(job.assessment_data);
+}
+
+/**
+ * Compute what the job status SHOULD be based on filled-out data.
+ * Only moves forward, never backward. Manual-only phases (in_review,
+ * approved, complete) are never auto-set — they require explicit action.
+ */
+function computeAutoStatus(job) {
+  const current = job.status || 'assessment_scheduled';
+  const currentIdx = STATUS_ORDER.indexOf(current);
+
+  const assess = parseJSON(job.assessment_data);
+  const scope = parseJSON(job.scope_data);
+  const install = parseJSON(job.install_data);
+  const inspection = parseJSON(job.inspection_data);
+
+  // Phase checks — each returns true if that phase's data is sufficiently filled
+  const hasSchedule = !!(job.assessment_date && job.assessor_name);
+  const hasAssessment = !!(job.authorization_signed_at && assess.tenant_type);
+  const hasScope = (scope.measures?.length || 0) > 0;
+  const hasInstallData = !!(install.install_date && install.crew_lead);
+  const installComplete = hasInstallData && install.post_blower_door && install.post_sow_signed;
+  const hasInspection = !!(inspection.date && inspection.inspector && inspection.inspector_sig);
+
+  // Walk forward through statuses to find the highest we should be at
+  let target = 'assessment_scheduled';
+  if (hasSchedule) target = 'assessment_complete';
+  if (hasSchedule && hasAssessment) target = 'pre_approval';
+  // in_review and approved are MANUAL — don't auto-set
+  if (hasSchedule && hasAssessment && hasScope && currentIdx >= STATUS_ORDER.indexOf('approved')) {
+    if (hasInstallData) target = 'install_in_progress';
+    if (installComplete) target = 'inspection';
+    if (installComplete && hasInspection) target = 'submitted';
+  }
+
+  // Only move forward, never backward
+  const targetIdx = STATUS_ORDER.indexOf(target);
+  return targetIdx > currentIdx ? target : current;
 }
 
 function ReviewTab({ job, isAdmin, onUpdate }) {
@@ -160,6 +206,15 @@ export default function JobDetail({ role, user }) {
       await update(fields);
       setToast('Saved');
       setTimeout(() => setToast(null), 2000);
+
+      // Auto-advance phase if data warrants it (forward only, skip manual phases)
+      if (!fields.status && job.status !== 'deferred') {
+        const merged = { ...job, ...fields };
+        const newStatus = computeAutoStatus(merged);
+        if (newStatus !== job.status) {
+          await update({ status: newStatus });
+        }
+      }
     } catch {
       setToast('Save failed');
       setTimeout(() => setToast(null), 3000);
