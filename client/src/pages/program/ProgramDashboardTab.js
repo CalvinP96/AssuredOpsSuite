@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import * as api from '../../api';
 
 const PHASES = [
-  { key: 'intake', label: 'Intake', statuses: ['assessment_scheduled'] },
-  { key: 'schedule', label: 'Schedule', statuses: ['assessment_scheduled'] },
+  { key: 'schedule', label: 'Intake / Schedule', statuses: ['assessment_scheduled'] },
   { key: 'assess', label: 'Assess', statuses: ['assessment_complete'] },
   { key: 'scope', label: 'Scope', statuses: ['pre_approval'] },
   { key: 'in_review', label: 'In Review', statuses: ['in_review'] },
@@ -109,7 +108,7 @@ export default function ProgramDashboardTab({ program, jobs, onSwitchTab }) {
             if (p.count === 0) return null;
             const pct = totalPipelineJobs > 0 ? Math.max((p.count / totalPipelineJobs) * 100, 8) : 0;
             const colors = {
-              intake: '#6366f1', schedule: '#8b5cf6', assess: '#3b82f6',
+              schedule: '#6366f1', assess: '#3b82f6',
               scope: '#0ea5e9', in_review: '#d97706', pre_approved: '#16a34a',
               install: '#059669', post_qc: '#0d9488', closeout: '#14b8a6',
             };
